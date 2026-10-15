@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Stock Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Apply the saved theme before first paint (same as the boilerplate's theme-init.js) -->
+  <script>
+    try {
+      var t = localStorage.getItem('theme') || 'system';
+      var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    } catch (e) {}
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+  <script type="module" src="./js/main.js"></script>
+</head>
+
+<body>
+  <div id="app" v-cloak>
+  <div :class="{ counting: activeTab === 'count' }">
+
+    <!-- APP BAR -->
+    <header class="app-bar">
+      <div class="brand">
+        <span class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        </span>
+        Stock Monitor
+      </div>
+      <div class="app-bar-spacer"></div>
+      <div class="toolbar">
+        <button @click="exportExcel" class="btn btn-outline btn-sm btn-tool" :disabled="exporting" title="Download the full day-by-day history as an Excel file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+          <span class="btn-label">{{ exporting ? 'Exporting…' : 'Excel' }}</span>
+        </button>
+        <button @click="exportData" class="btn btn-outline btn-sm btn-tool" title="Download a backup file (.json) that can be restored later">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="btn-label">Backup</span>
+        </button>
+        <button @click="triggerImport" class="btn btn-outline btn-sm btn-tool" title="Restore all data from a backup file (.json)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span class="btn-label">Restore</span>
+        </button>
+        <button v-if="supportsFileSystemAccess" @click="connectLocalFile" class="btn btn-outline btn-sm btn-tool"
+          :class="{ 'btn-tool-on': fileHandle }"
+          :title="fileHandle ? 'Every change is also saved to ' + fileHandle.name : 'Pick a backup file that is updated on every change'">
+          <svg v-if="fileHandle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <span class="btn-label">{{ fileHandle ? 'Auto-save on' : 'Auto-save' }}</span>
+        </button>
+        <input type="file" ref="fileInput" @change="handleImport" class="hidden-input" accept=".json" />
+      </div>
+      <button @click="cycleTheme" class="btn btn-ghost btn-icon-sm theme-toggle"
+        :title="'Theme: ' + theme + ' (click to change)'">
+        <svg v-if="theme === 'light'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        <svg v-else-if="theme === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+      </button>
+    </header>
+
+    <main class="page">
+      <!-- Tabs + date -->
+      <div class="page-header">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" :aria-selected="activeTab === 'stock'" :class="{ 'tab-active': activeTab === 'stock' }" @click="activeTab = 'stock'">Stock</button>
+          <button class="tab" role="tab" :aria-selected="activeTab === 'count'" :class="{ 'tab-active': activeTab === 'count' }" @click="activeTab = 'count'">Inventory count</button>
+        </div>
+        <div class="date-switcher">
+          <button @click="prevDay" :disabled="isMinDate" class="btn btn-outline btn-icon" title="Previous Day">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div class="date-display">{{ formattedDate }}</div>
+          <button @click="nextDay" :disabled="isMaxDate" class="btn btn-outline btn-icon" title="Next Day">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <button @click="goToToday" class="btn btn-outline btn-today">Today</button>
+        </div>
+      </div>
+
+      <!-- ================= INVENTORY COUNT TAB ================= -->
+      <section v-if="activeTab === 'count'" class="card count-tab">
+        <div class="room-pills">
+          <button class="room-pill" :class="{ 'room-pill-active': activeLocation === 'all' }" @click="activeLocation = 'all'">All rooms</button>
+          <button v-for="loc in locations" :key="loc.id" class="room-pill"
+            :class="{ 'room-pill-active': activeLocation === loc.id }" @click="activeLocation = loc.id">
+            {{ loc.name || 'Unnamed room' }}
+            <span class="room-pill-progress">{{ roomProgress(loc.id) }}/{{ items.length }}</span>
+          </button>
+        </div>
+
+        <div v-if="items.length === 0" class="empty-state">
+          <h3>No stock items yet</h3>
+          <p>Add items on the Stock tab first.</p>
+        </div>
+
+        <!-- One room: the counter's list -->
+        <div v-else-if="activeLocation !== 'all' && activeRoom" class="count-list">
+          <div class="count-hint">
+            {{ formattedDate }}: type the number and tap <strong>Save</strong> (or Enter) to go to the next item.
+            Enter 0 if there is none. To undo a count, empty the field and save.
+          </div>
+          <div class="count-progress">
+            <div class="count-progress-text">
+              <strong>{{ activeRoom.name }}</strong>
+              <span>{{ roomProgress(activeLocation) }} of {{ items.length }} counted</span>
+            </div>
+            <div class="count-progress-bar">
+              <div :style="{ width: (100 * roomProgress(activeLocation) / items.length) + '%' }"></div>
+            </div>
+          </div>
+          <div v-if="countError" class="alert alert-danger count-error-banner" role="alert">{{ countError }}</div>
+          <div v-for="(item, idx) in items" :key="item.id" class="count-row"
+            :class="'count-row-' + countState(activeLocation, item.id)">
+            <label class="count-name" :for="'count-' + item.id">{{ item.name || 'Unnamed Stock Item' }}</label>
+            <div class="count-input">
+              <input :id="'count-' + item.id" type="number" min="0" inputmode="decimal" placeholder="—"
+                :enterkeyhint="idx === items.length - 1 ? 'done' : 'next'"
+                :value="countInputValue(activeLocation, item.id)"
+                @input="e => onCountInput(activeLocation, item.id, e.target.value)"
+                @keydown.enter.prevent="e => submitCount(activeLocation, item.id, e)" />
+              <button class="btn count-submit" :class="'count-submit-' + countState(activeLocation, item.id)"
+                :disabled="['saving', 'saved', 'empty'].includes(countState(activeLocation, item.id))"
+                @click="e => submitCount(activeLocation, item.id, e)">
+                {{ { saving: 'Saving…', saved: '✓ Saved', error: 'Retry', draft: 'Save', empty: 'Save' }[countState(activeLocation, item.id)] }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- All rooms: summary for the admin -->
+        <div v-else>
+          <div v-if="locations.length === 0" class="empty-state">
+            <h3>No rooms yet</h3>
+            <p>Add the places where stock is kept, e.g. "1 level", "2 level", "Cleaning room".</p>
+          </div>
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Stock Name</th>
+                  <th v-for="loc in locations" :key="loc.id" class="num">
+                    {{ loc.name || 'Unnamed room' }}
+                    <div class="th-sub">{{ roomProgress(loc.id) }}/{{ items.length }} counted</div>
+                  </th>
+                  <th v-if="hasRemovedRoomCounts" class="num" title="Counts entered for rooms that were removed later">Removed rooms</th>
+                  <th class="num">Sum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in items" :key="item.id">
+                  <td class="week-name">{{ item.name || 'Unnamed Stock Item' }}</td>
+                  <td v-for="loc in locations" :key="loc.id" class="week-cell" :class="{ 'count-missing': roomCount(loc.id, item.id) == null }">
+                    {{ roomCount(loc.id, item.id) ?? '—' }}
+                  </td>
+                  <td v-if="hasRemovedRoomCounts" class="week-cell count-missing">{{ removedRoomsCount(item.id) ?? '—' }}</td>
+                  <td class="week-cell rooms-sum">{{ roomSum(item.id, currentDateStr) ?? '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Manage rooms -->
+        <details class="manage-rooms">
+          <summary>Manage rooms</summary>
+          <div v-for="loc in locations" :key="loc.id" class="manage-row">
+            <input type="text" v-model="loc.name" @change="saveData" placeholder="Room name" />
+            <button @click="removeLocation(loc.id)" class="btn btn-ghost btn-icon btn-delete" title="Remove room">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          </div>
+          <div class="manage-row">
+            <input type="text" v-model="newLocationName" placeholder="New room (e.g. 1 level)" @keyup.enter="addLocation" />
+            <button @click="addLocation" class="btn">+ Add Room</button>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= STOCK TAB ================= -->
+      <template v-if="activeTab === 'stock'">
+        <div class="stock-grid" :class="{ 'no-groups': groups.length === 0 }">
+          <!-- Groups (departures) -->
+          <section v-if="groups.length > 0" class="card groups-section">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Departures</h2>
+                <p class="card-description">Rooms checked out today, per group</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Group</th>
+                    <th class="num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="group in groups" :key="group.id">
+                    <td>
+                      <div class="group-name-cell">
+                        <input type="text" v-model="group.name" @change="saveData" placeholder="Group Name" />
+                        <button @click="selectedGroup = group" class="btn btn-ghost btn-icon-sm" title="Edit items in this group">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button @click="removeGroup(group.id)" class="btn btn-ghost btn-icon-sm btn-delete" title="Remove group">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                    <td class="input-cell">
+                      <input type="number" min="0" placeholder="0" v-model.number="getGroupRecord(group.id, currentDateStr).d" @input="saveData" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="add-row">
+              <input type="text" v-model="newGroupName" placeholder="New group (e.g. TRIPLE)" @keyup.enter="addGroup" />
+              <button @click="addGroup" class="btn">+ Add Group</button>
+            </div>
+          </section>
+
+          <!-- Items -->
+          <section class="card items-section">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Stock</h2>
+                <p class="card-description">Consumption, income and end-of-day stock for {{ formattedDate }}</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Stock Name</th>
+                    <th class="col-consumption">Consumption</th>
+                    <th>Income</th>
+                    <th>Total Stock</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody v-if="items.length > 0">
+                  <tr v-for="item in items" :key="item.id">
+                    <td>
+                      <input type="text" v-model="item.name" @change="saveData" placeholder="Enter stock name..." />
+                    </td>
+                    <td class="input-cell col-consumption">
+                      <div class="total-input-wrapper">
+                        <input type="number"
+                          :class="getRecord(item.id, currentDateStr).mc != null ? 'manual-val' : 'calc-val'"
+                          :value="getRecord(item.id, currentDateStr).mc != null ? getRecord(item.id, currentDateStr).mc : calculateAutoConsumption(item, currentDateStr)"
+                          @change="e => updateManualConsumption(item.id, currentDateStr, e.target.value)"
+                          title="Edit to override calculated consumption" />
+                        <button v-if="getRecord(item.id, currentDateStr).mc != null"
+                          @click="clearManualConsumption(item.id, currentDateStr)"
+                          class="clear-manual" title="Clear manual override">×</button>
+                      </div>
+                    </td>
+                    <td class="input-cell">
+                      <input type="number" min="0" placeholder="0" v-model.number="getRecord(item.id, currentDateStr).i" @input="saveData" />
+                    </td>
+                    <td class="input-cell">
+                      <div class="total-input-wrapper">
+                        <input type="number"
+                          :class="getRecord(item.id, currentDateStr).m !== null ? 'manual-val' : roomStatus(item.id, currentDateStr) ? 'rooms-val' : 'calc-val'"
+                          :value="calculateTotal(item.id, currentDateStr)"
+                          @change="e => updateManualTotal(item.id, currentDateStr, e.target.value)"
+                          title="Edit to override calculation" />
+                        <button v-if="getRecord(item.id, currentDateStr).m !== null" @click="clearManualTotal(item.id, currentDateStr)" class="clear-manual" title="Clear manual override">×</button>
+                      </div>
+                      <div v-if="roomStatus(item.id, currentDateStr)" class="rooms-caption" :title="roomStatus(item.id, currentDateStr).title">
+                        {{ roomStatus(item.id, currentDateStr).label }}
+                      </div>
+                    </td>
+                    <td class="actions-cell">
+                      <button @click="removeItem(item.id)" class="btn btn-ghost btn-icon-sm btn-delete" title="Remove stock position">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody v-else>
+                  <tr>
+                    <td colspan="5">
+                      <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                        <h3>No items yet</h3>
+                        <p>Add stock items below, e.g. bed sheets, pillow cases, towels.</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="add-row add-row-stack">
+              <div>
+                <input type="text" v-model="newItemName" placeholder="New stock name (e.g. Bath towel)" @keyup.enter="addItem" />
+                <button @click="addItem" class="btn">+ Add Item</button>
+              </div>
+              <button v-if="groups.length === 0" @click="addGroup" class="btn btn-dashed btn-block">+ Setup Room Groups</button>
+            </div>
+          </section>
+        </div>
+
+        <!-- Overview: all navigable days, scrolls sideways -->
+        <section class="card week-overview" v-if="items.length > 0">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Overview</h2>
+              <p class="card-description">End-of-day stock for the last 30 and next 7 days. Scroll sideways for other dates; "—" = nothing entered. Click a day to open it.</p>
+            </div>
+          </div>
+          <div class="table-wrap overview-scroll" ref="overviewScroll">
+            <table>
+              <thead>
+                <tr>
+                  <th class="week-name">Stock Name</th>
+                  <th v-for="day in overviewDays" :key="day.str" :data-day="day.str" class="week-day"
+                    :class="{ 'week-today': day.isToday, 'week-selected': day.str === currentDateStr }"
+                    @click="goToDate(day.date)" title="Go to this day">
+                    <div class="week-day-name">{{ day.isToday ? 'Today' : day.weekday }}</div>{{ day.label }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in items" :key="item.id">
+                  <td class="week-name">{{ item.name || 'Unnamed Stock Item' }}</td>
+                  <td v-for="day in overviewDays" :key="day.str" class="week-cell" :class="hasActivity(item.id, day.str) ? {
+                      'week-today': day.isToday, 'week-selected': day.str === currentDateStr,
+                      'manual-val': isManualTotal(item.id, day.str) && !roomStatus(item.id, day.str),
+                      'rooms-val': !!roomStatus(item.id, day.str),
+                      'calc-val': !isManualTotal(item.id, day.str),
+                      'week-short': calculateTotal(item.id, day.str) < 0
+                    } : { 'week-today': day.isToday, 'week-selected': day.str === currentDateStr, 'count-missing': true }"
+                    :title="hasActivity(item.id, day.str) ? '' : 'Nothing entered for this day'">
+                    {{ hasActivity(item.id, day.str) ? calculateTotal(item.id, day.str) : '—' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color color-calc"></div><span>Calculated</span></div>
+          <div class="legend-item"><div class="legend-color color-manual"></div><span>Entered by hand</span></div>
+          <div class="legend-item" v-if="locations.length > 0"><div class="legend-color color-rooms"></div><span>Counted in rooms (sum)</span></div>
+          <div class="legend-item" v-if="items.length > 0"><div class="legend-color color-short"></div><span>Shortage (below zero)</span></div>
+        </div>
+      </template>
+    </main>
+
+    <!-- Edit group modal -->
+    <div v-if="selectedGroup" class="modal-overlay" @click.self="selectedGroup = null">
+      <div class="modal-content" role="dialog" aria-modal="true">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Items in {{ selectedGroup.name }}</h3>
+            <p class="card-description">How many of each item one departure uses</p>
+          </div>
+          <button @click="selectedGroup = null" class="btn btn-ghost btn-icon-sm" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div v-if="items.length === 0" class="empty-state">No stock items created yet.</div>
+          <div v-for="item in items" :key="item.id" class="group-item-row">
+            <span class="week-name">{{ item.name || 'Unnamed Stock Item' }}</span>
+            <input type="number" min="0" placeholder="0" v-model.number="item.multipliers[selectedGroup.id]" @input="saveData" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</body>
+
+</html>
