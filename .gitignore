@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+data/*
+!data/.gitkeep
+*.log
+coverage/
+.DS_Store
+# separate checkout, reference only
+boilerplate/
+# pre-deploy database copies (deploy.sh)
+backups/
