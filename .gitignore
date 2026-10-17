@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+data/*
+!data/.gitkeep
+*.log
+coverage/
+.DS_Store
+# separate checkout, reference only
+boilerplate/

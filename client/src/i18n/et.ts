@@ -1,0 +1,245 @@
+import type { Messages } from './en';
+import { plural } from './plural';
+
+const p = plural('et');
+
+/** Estonian. Hotel rooms = "toad"; the places where stock is counted (locations) = "ruumid". */
+export const et: Messages = {
+  appName: 'Stock Monitor',
+
+  common: {
+    add: 'Lisa',
+    remove: 'Eemalda',
+    cancel: 'Tühista',
+    save: 'Salvesta',
+    confirm: 'Kinnita',
+    close: 'Sulge',
+    loading: 'Laadimine',
+    dismiss: 'Sulge',
+    today: 'Täna',
+    stockName: 'Nimetus',
+    unnamedItem: 'Nimetu toode',
+    unnamedRoom: 'Nimetu ruum',
+    enterNumber: 'Sisesta number',
+    enterQty: 'Sisesta number 0 või rohkem',
+    clearManual: 'Kustuta käsitsi sisestatud väärtus',
+    notSaved: 'Ei salvestatud',
+    loadFailed: 'Andmeid ei õnnestunud laadida',
+    tryAgain: 'Proovi uuesti',
+  },
+
+  errors: {
+    offline: 'Server ei vasta. Kontrolli WiFi-ühendust ja proovi uuesti.',
+    badRequest: 'Server ei aktsepteerinud seda väärtust.',
+    notFound: 'See eemaldati teises seadmes.',
+    server: 'Serveris tekkis viga.',
+    generic: 'Midagi läks valesti',
+  },
+
+  nav: {
+    stock: 'Ladu',
+    counter: 'Inventuur',
+    checklist: 'Kontrollnimekiri',
+    openMenu: 'Ava menüü',
+    closeMenu: 'Sulge menüü',
+  },
+
+  theme: {
+    names: { light: 'hele', dark: 'tume', system: 'süsteemi oma' },
+    current: (name) => `Teema: ${name}`,
+    switchTo: (name) => `Vaheta teemaks: ${name}`,
+  },
+
+  language: 'Keel',
+
+  date: {
+    prev: 'Eelmine päev',
+    next: 'Järgmine päev',
+  },
+
+  data: {
+    excel: 'Excel',
+    excelHint: 'Kogu ajalugu päevade kaupa Exceli failina',
+    backup: 'Varukoopia',
+    backupHint: 'Laadi alla varukoopia (.json)',
+    restore: 'Taasta',
+    restoreHint: 'Taasta kõik andmed varukoopiast',
+    noData: 'Eksportimiseks pole veel andmeid',
+    noHistory: 'Eksportimiseks pole veel ajalugu',
+    noBackupData: 'Varundamiseks pole veel andmeid',
+    exportFailed: 'Exceli eksport ebaõnnestus',
+    notBackup: 'See pole varukoopia',
+    notBackupFile: (file) => `„${file}“ ei ole Stock Monitori varukoopia.`,
+    restoreTitle: 'Kas taastada see varukoopia?',
+    restoreDescription: (file, items, groups, rooms) =>
+      `„${file}“ sisaldab: ${p(items, { one: 'toode', other: 'toodet' })}, ${p(groups, { one: 'grupp', other: 'gruppi' })} ja ${p(rooms, { one: 'ruum', other: 'ruumi' })}. See asendab KÕIK praegused andmed, ka ruumides loetud kogused.`,
+    restored: 'Varukoopia taastatud',
+    restoreFailed: 'Taastamine ebaõnnestus',
+  },
+
+  stock: {
+    title: 'Ladu',
+    departures: {
+      title: 'Lahkumised',
+      description: 'Sel päeval vabanenud toad grupiti',
+      group: 'Grupp',
+      amount: 'Kogus',
+      groupName: 'Grupi nimi',
+      itemsPerDeparture: 'Kulu ühe lahkumise kohta',
+      itemsPerDepartureIn: (group) => `Kulu ühe lahkumise kohta: ${group}`,
+      removeGroup: 'Eemalda grupp',
+      removeGroupNamed: (group) => `Eemalda ${group}`,
+      departuresOf: (group) => `Lahkumised ${group}`,
+      removeTitle: (group) => `Kas eemaldada grupp „${group}“?`,
+      removeDescription: 'Selle grupi lahkumisi ei arvestata enam kuluna.',
+      newGroup: 'Uus grupp (nt TRIPLE)',
+    },
+    items: {
+      title: 'Laoseis',
+      description: (date) => `Kulu, juurdetulek ja laoseis päeva lõpus: ${date}`,
+      emptyTitle: 'Tooteid veel pole',
+      emptyDescription: 'Lisa tooted allpool, nt voodilinad, padjapüürid, käterätikud.',
+      consumption: 'Kulu',
+      income: 'Juurdetulek',
+      total: 'Laoseis',
+      consumptionHint: 'Arvutatud lahkumiste põhjal; muutmiseks sisesta uus väärtus',
+      totalHint: 'Arvutatud; muutmiseks sisesta loetud kogus',
+      consumptionOf: (item) => `Kulu ${item}`,
+      incomeOf: (item) => `Juurdetulek ${item}`,
+      totalOf: (item) => `Laoseis ${item}`,
+      removeItem: 'Eemalda toode',
+      removeItemNamed: (item) => `Eemalda ${item}`,
+      removeTitle: (item) => `Kas eemaldada „${item}“?`,
+      removeDescription: 'Toode ja kogu selle ajalugu kustutatakse.',
+      newItem: 'Uue toote nimi (nt vannilina)',
+      addItem: 'Lisa toode',
+      setUpGroups: '+ Seadista tubade grupid (lahkumised)',
+      defaultGroupName: 'Uus grupp',
+      roomsCounted: (counted, total) => `${counted}/${total} ruumi`,
+      countedIn: (rooms) => `Loetud: ${rooms}`,
+      removedRooms: 'eemaldatud ruumid',
+    },
+    groupItems: {
+      title: (group) => `Kulu grupis ${group}`,
+      description: 'Mitu tükki igast tootest kulub ühe lahkumise kohta',
+      empty: 'Tooteid pole veel loodud',
+    },
+    overview: {
+      title: 'Ülevaade',
+      description:
+        'Laoseis päeva lõpus viimase 30 ja järgmise 7 päeva kohta. Teiste kuupäevade nägemiseks keri külgsuunas; „—“ = midagi pole sisestatud. Päeva avamiseks klõpsa sellel.',
+      goToDay: 'Ava see päev',
+      nothingEntered: 'Sellel päeval pole midagi sisestatud',
+    },
+    legend: {
+      calculated: 'Arvutatud',
+      manual: 'Käsitsi sisestatud',
+      rooms: 'Ruumides loetud (summa)',
+      shortage: 'Puudujääk (alla nulli)',
+    },
+  },
+
+  counter: {
+    title: 'Inventuur',
+    allRooms: 'Kõik ruumid',
+    noItemsTitle: 'Tooteid veel pole',
+    noItemsDescription: 'Lisa esmalt tooted lehel Ladu.',
+    goToStock: 'Ava Ladu',
+    roomGoneTitle: 'Seda ruumi enam ei ole',
+    roomGoneDescription: 'See eemaldati. Vali ülalt mõni teine ruum.',
+    noRoomsTitle: 'Ruume veel pole',
+    noRoomsDescription:
+      'Lisa kohad, kus kaupa hoitakse, nt „1. korrus“, „2. korrus“, „Koristusruum“.',
+    countedShort: (counted, total) => `loetud ${counted}/${total}`,
+    removedRooms: 'Eemaldatud ruumid',
+    removedRoomsHint: 'Kogused, mis sisestati hiljem eemaldatud ruumidele',
+    sum: 'Summa',
+    howTo: {
+      before: 'Sisesta kogus ja vajuta',
+      after:
+        '(või Enter), et minna järgmise toote juurde. Kui toodet pole, sisesta 0. Loenduse tühistamiseks tühjenda väli ja salvesta.',
+    },
+    progress: (counted, total) => `Loetud ${counted}/${total}`,
+    invalid: 'Sisesta number 0 või rohkem.',
+    serverError: (message) =>
+      `Server ei saanud seda salvestada (${message}). Vajuta „Proovi uuesti“.`,
+    offline: 'Server ei vasta. Kontrolli WiFi-ühendust ja vajuta „Proovi uuesti“.',
+    button: {
+      empty: 'Salvesta',
+      draft: 'Salvesta',
+      saving: 'Salvestan…',
+      saved: '✓ Salvestatud',
+      error: 'Proovi uuesti',
+    },
+    manageRooms: 'Halda ruume',
+    roomName: 'Ruumi nimi',
+    removeRoom: 'Eemalda ruum',
+    removeRoomNamed: (room) => `Eemalda ${room}`,
+    removeTitle: (room) => `Kas eemaldada ruum „${room}“?`,
+    removeDescription: 'Sellele juba sisestatud kogused jäävad laoseisu sisse.',
+    newRoom: 'Uus ruum (nt 1. korrus)',
+    addRoom: 'Lisa ruum',
+  },
+
+  checklist: {
+    title: 'Päeva kontrollnimekiri',
+    howTo:
+      'Märgi iga ülesanne, kui see on tehtud. Juhendi lugemiseks vajuta ülesandele. Iga päev algab tühja nimekirjaga.',
+    progress: (done, total) => `${done} / ${total} tehtud`,
+    allDone: 'Kõik ülesanded on tehtud',
+    emptyTitle: 'Ülesandeid veel pole',
+    emptyDescription:
+      'Kirjuta ülesanne ülemisse lahtrisse ja vajuta „Lisa ülesanne“. See ilmub siia iga päev.',
+    unnamedTask: 'Nimetu ülesanne',
+    showInstructions: 'Näita juhendit',
+    hideInstructions: 'Peida juhend',
+    doneAt: (time) => `Tehtud ${time}`,
+    keptDays: 'Märked ja kommentaarid säilivad 30 päeva.',
+    notes: {
+      title: 'Kommentaar järgmisele vahetusele',
+      previous: (date) => `Eelmise päeva kommentaar (${date})`,
+      placeholder: 'Mida peaks järgmine vahetus teadma: probleemid, pooleli tööd, väike laoseis…',
+      hint: 'Salvestub, kui vajutad kastist välja.',
+    },
+    manage: {
+      taskName: 'Ülesanne',
+      instructions: 'Juhend',
+      instructionsPlaceholder: 'Kuidas seda teha (valikuline)',
+      newTask: 'Uus ülesanne (nt Kontrolli minibaare)',
+      addTask: 'Lisa ülesanne',
+      moveUp: 'Liiguta üles',
+      moveDown: 'Liiguta alla',
+      editTask: 'Muuda ülesannet',
+      editTaskNamed: (task) => `Muuda ${task}`,
+      removeTask: 'Eemalda ülesanne',
+      removeTaskNamed: (task) => `Eemalda ${task}`,
+      removeTitle: (task) => `Kas eemaldada ülesanne „${task}“?`,
+      removeDescription: (date) =>
+        `See eemaldatakse nimekirjast alates sellest päevast (${date}). Varasematel päevadel jääb see alles koos märgetega.`,
+      appliesFrom: (date) =>
+        `Muudatused kehtivad alates sellest päevast (${date}). Varasemad päevad jäävad samaks.`,
+    },
+  },
+
+  notFound: {
+    title: '404 — Lehte ei leitud',
+    description: 'Otsitavat lehte ei ole olemas või see on teisaldatud.',
+    goHome: 'Avalehele',
+  },
+
+  excel: {
+    stockSheet: 'Laoseis',
+    departuresSheet: 'Lahkumised',
+    date: 'Kuupäev',
+    consumption: 'Kulu',
+    income: 'Juurdetulek',
+    stock: 'Laoseis',
+    unnamedItem: 'Nimetu toode',
+    itemsPerDeparture: 'Kulu lahkumise kohta',
+    legend: [
+      'Laoseis = laoseis päeva lõpus. Kollane = loetud (ruumide summa või käsitsi sisestatud); punane = puudujääk.',
+      'Kulu sisaldab lahkumised × kulu toa kohta, kui seda pole käsitsi sisestatud.',
+      'Hallis kaldkirjas kuupäevad on planeeritud (tulevikus).',
+    ],
+  },
+};

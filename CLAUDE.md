@@ -4,86 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Stock Monitor": a single-page tool for tracking daily housekeeping stock (linens, amenities, etc.) per item, where consumption is partly derived from guest-group departures.
+"Stock Monitor": a standalone tool for tracking daily housekeeping stock (linens, amenities, etc.) per item in a hotel. Consumption is partly derived from guest-group departures. It is not integrated with any hotel system, has no login ("there is no sensitive data") and stores everything in one JSON file. The user wants it simple and lightweight but easy to extend.
 
 ## Commands
 
 ```bash
 npm install
-npm start                              # node server.js → http://localhost:3005 (override with PORT)
-npm test                               # unit tests for the stock rules (node:test)
-node --test --test-name-pattern="room" test/*.test.mjs   # a single test
+npm run dev                  # server :3000 (tsx watch) + client :5173 (Vite, proxies /api)
+npm test                     # shared (stock rules) + server (API) + client (UI kit) tests, all Vitest
+npm run typecheck && npm run lint
+npx vitest run -t "room"     # a single test, run inside a workspace (shared/, server/ or client/)
+npm run build && npm start   # production (start sets NODE_ENV=production): the server also serves client/dist
+docker compose up --build -d # http://localhost:3000, data in the app-data volume
 ```
 
-There is no build step or linter. The running server must be restarted after `server.js` changes. Frontend changes only need a page reload.
+Before committing: `npm run lint && npm run typecheck && npm test`.
 
 ## Architecture
 
-No bundler. Vue 3 is loaded as a global build from unpkg, and the app code is native ES modules:
+npm workspaces, structured like `boilerplate/` (a separate, untracked checkout of a full-stack TypeScript template; reference only, don't modify it unless asked). Auth, Socket.io, the SQL drivers and the appearance customizer were deliberately left out.
 
-- `server.js`: Express 5. Serves `public/` statically (`data.json`, `server.js` and `node_modules` stay private) plus three endpoints:
-  - `GET /api/data` returns `data.json` verbatim.
-  - `POST /api/data` replaces it with the request body, but **keeps the `counts` already on disk** unless `?restore=1` (backup restore).
-  - `POST /api/count` `{ date, locationId, itemId, value|null }` merges one room count into `counts` and returns that day's counts.
+- `shared/src/` (`@app/shared`, imported as TS source by both sides):
+  - `types.ts`: the dataset (`StockData`) and its parts.
+  - `schemas.ts`: zod request schemas, `backupSchema` (reads old-format backups with `''` blanks) and `normalizeStockData`/`cleanRecord` (stored data contains only real values: no nulls, no empty records, no 0 departures).
+  - `stock.ts`: `createStockMath(state, { minDateStr })`, the stock rules (pure). `dates.ts`: local-date helpers.
+- `server/src/`: Express 5.
+  - `config.ts` validates env with zod. `context.ts` holds `{ config, db }` for the routes.
+  - `db/types.ts`: the repository interface `Db`. Routes only use it. `db/json/index.ts` is the only driver: the whole dataset in memory, atomic writes (tmp + rename) through a promise chain, and before the first write of each day a copy goes to `backups/db-YYYY-MM-DD.json` (pruned after `BACKUP_DAYS`).
+  - `routes/`: `checklist` (`/api/tasks`: POST and `PATCH /:id` with `from`, `DELETE /:id/:date`, `PUT /order`; `PUT /api/checks/:date/:taskId` `{ done }`, which returns the day's ticks; `PUT /api/notes/:date` `{ text }`), `system` (`/api/health`), `data` (`GET /api/data`, `POST /api/restore`), `setup` (`/api/items`, `/api/groups`, `/api/locations`: POST/PATCH/DELETE), `daily` (`PATCH /api/records/:itemId/:date`, `PUT /api/departures/:groupId/:date`, `PUT /api/counts/:date/:locationId/:itemId`, which returns the whole day's counts). Missing rows → `HttpError.notFound` via `found()` in `lib/params.ts`.
+- `client/src/`: React + Vite + Tailwind 4 + React Router.
+  - `App.tsx`: routes `/` → `/stock`, `/stock`, `/counter/:locationId?`, `/checklist`, all lazy-loaded inside `AppShell`. New pages need a route here and an entry in `NAV` (`components/layout/AppShell.tsx`).
+  - `context/StockContext.tsx`: the dataset and every mutation (`useStock()`). Each change updates state optimistically and sends one small request for that value, so several people can edit at once. On failure it shows a toast and reloads. It polls `GET /api/data` every 15 s and on focus, skipping while requests are pending or an input has focus; a `version` ref stops a refresh that started before an edit from overwriting it.
+  - `context/I18nContext.tsx` + `i18n/{en,et,ru}.ts`: all UI text in English, Estonian and Russian (`const { t, locale } = useI18n()`). `en.ts` is the source and its shape is the `Messages` type, so a key missing from et/ru fails typecheck. Language is chosen in the header and stored per device. Never hard-code UI text: follow the `i18n` skill (`.claude/skills/i18n/SKILL.md`), which has the glossary.
+  - `context/DateContext.tsx`: the selected day, shared by all pages, limited to today −30 … +7. `ConfirmContext`: `await confirm({...})`. `ThemeContext`/`ToastContext` come from the boilerplate.
+  - `components/ui/`: the boilerplate UI kit, plus `CommitInput`/`CommitTextarea` (edits freely and saves on blur/Enter/unmount; Escape reverts). Feature components live next to their page (`pages/stock/`, `pages/counter/`).
+  - `lib/excel.ts`: the Excel export, dynamically imported (ExcelJS is a ~1 MB chunk). `styles/index.css`: boilerplate tokens + `val-calc`/`val-manual`/`val-rooms`/`val-short` and `no-spin` utilities. Use semantic tokens (`bg-surface`, `text-fg-muted`, `text-primary`…), never raw colours, so dark mode keeps working.
 
-  The server validates only the top-level shape (400 otherwise) and writes atomically (tmp + rename). Counts have their own endpoint because several people count at the same time, while all other edits send the entire dataset (last write wins).
-- `public/index.html`: the whole Vue template. Bindings on `#app` itself are ignored by Vue, so root-level classes go on the inner wrapper div.
-- `public/js/` (`"type": "module"` via its own package.json). Modules use the `Vue` global, except `dates.js` and `stock.js`, which stay Vue-free so `test/` can import them in Node:
-  - `main.js`: `createApp`/`setup()`. It wires the modules together, holds the date navigation and Stock-tab actions, and returns everything the template uses. A new template binding must be added to its return object.
-  - `store.js`: state refs, `applyData`, `serializeData`, saving and polling, `getRecord`/`getGroupRecord`.
-  - `stock.js`: `createStockMath(state)`, the stock rules (pure).
-  - `counting.js`: Inventory count tab, rooms, tab/URL-hash state.
-  - `excel.js`, `backup.js`, `theme.js`: toolbar features and the light/dark theme.
-- `public/styles.css`: the boilerplate's design system as plain CSS. Layer-1 parameters plus semantic tokens (`--surface`, `--fg-muted`, `--primary`, `--success`/`--warning`/`--danger` and their `-soft` variants) for light and `[data-theme='dark']`. Component classes copy the boilerplate's `components/ui` (`.btn` + `.btn-outline`/`-ghost`/`-danger`/`-sm`/`-icon`, `.card`, `.tabs`/`.tab`, `.badge`, `.alert`, `.empty-state`, `.modal-*`). Use the tokens, never raw colours, so dark mode keeps working. The theme (system/light/dark) is stored in `localStorage.theme` and applied before first paint by the inline script in `index.html`.
-
-### Persistence (several layers, all written on every change)
-
-Each mutation calls `saveData()`. It is debounced (400 ms), because inputs call it on every keystroke, and saves run one after another through a promise chain so they can't reach the server out of order. Use `persistData()` when a save must happen immediately (import, file connect). A pending save is flushed with `sendBeacon` on `pagehide`. Each save writes the full state (from `serializeData()`) to:
-1. the server (`POST /api/data` → `data.json`),
-2. `localStorage['stockMonitorData']`,
-3. a user-picked local file via the File System Access API (`fileHandle`, Chromium only).
-
-`getRecord`/`getGroupRecord` create empty placeholder records during render (the template binds `v-model` to them). `serializeData()` drops these blank entries, so they never reach `data.json`.
-
-On load, the app reads from the server and falls back to localStorage. `applyData()` is the one place that sets state from a parsed dataset. Every 15 s and on window focus, `startPolling()` (store.js) reloads from the server so changes made on other devices show up. It skips the refresh while a save or count is pending, an input has focus, or the group modal is open.
-
-### Data model (`data.json`)
+### Data model (`data/db.json` = backup file format)
 
 ```
 items:        [{ id, name, multipliers: { [groupId]: qtyPerDeparture } }]
-records:      { [itemId]: { [YYYY-MM-DD]: { c, i, m, mc } } }
-groups:       [{ id: 'g_<ts>', name }]
+records:      { [itemId]: { [YYYY-MM-DD]: { c?, i?, m?, mc? } } }
+groups:       [{ id, name }]
 groupRecords: { [groupId]: { [YYYY-MM-DD]: { d } } }
-locations:    [{ id: 'l_<ts>', name }]                        // rooms where stock is counted
+locations:    [{ id, name }]                                   // rooms where stock is counted
 counts:       { [YYYY-MM-DD]: { [locationId]: { [itemId]: number } } }   // missing = not counted
+tasks:        [{ id, name, description, added?, removed?, earlier?: [{ name, description, until }] }]  // checklist, display order
+checks:       { [YYYY-MM-DD]: { [taskId]: ISO time ticked } }  // missing = not done
+notes:        { [YYYY-MM-DD]: string }                         // note for the next shift
 ```
 
-- `d`: departures for a group on that day.
-- `c`: extra consumption, added on top of auto consumption.
-- `mc`: manual consumption override, which replaces auto + extra.
-- `i`: income (stock received).
-- `m`: manual stock-count override, which resets the running total to this value for that day.
+- `d`: departures for a group on that day. `c`: extra consumption, added on top of auto consumption (no UI for it at the moment). `mc`: manual consumption, which replaces auto + extra. `i`: income. `m`: manual stock count, which resets the running total to this value for that day.
+- New IDs are UUIDs. Older data has timestamp IDs (`'1792…'`, `'g_…'`, `'l_…'`); both are plain strings.
 - Dates are local-time `YYYY-MM-DD` strings (`formatDate`), not ISO/UTC, so string comparison sorts them correctly.
+- Checklist ticks and notes older than `CHECKLIST_DAYS` (30) are deleted by the JSON driver (`pruneChecklist`, on start and with every write). Stock data is never pruned.
+- Task changes apply from a day onwards (the day shown on `/checklist`); earlier days keep their list, wording and ticks. A task is on day D when `added ≤ D < removed`; `earlier` holds old wordings (each used before its `until`), the top-level name/description is the current one. Rules in `shared/src/checklist.ts` (`tasksOn`, `editTask`, `removeTaskIn`), shared by the server and the client's optimistic updates. Removing a task on the day it was added deletes it; otherwise it gets `removed` and loses only its ticks from that day on. `pruneTasks` (part of `pruneChecklist`) forgets history older than 30 days. Tasks from before this existed have no `added` and show on every past day.
+- Removing a group drops its departures and multipliers. Removing an item drops its records and counts. Removing a room keeps its counts, which still count in the totals (shown as "Removed rooms").
 
 ### Stock calculation
 
-`dayFigures(item, date, prevTotal)` is the single source of the stock rules. Order of precedence for the end-of-day total: `m` (typed on the Stock tab) > `roomSum()` (sum of the room counts for that day, including rooms removed since) > calculation, where `total = prevTotal + i - consumption`. Here consumption = `mc` if set, else auto + `c`, where auto = Σ over groups of `multipliers[g] × d`. A manual count `m` is intentionally the end-of-day figure: that day's income and consumption are ignored. The user confirmed this. `calculateTotal(itemId, date)` doesn't store totals: it replays `dayFigures` from the earliest record date up to the target date. The Excel export does the same in one pass.
+`dayFigures(item, date, prevTotal)` is the single source of the stock rules. Order of precedence for the end-of-day total: `m` (typed on the Stock page) > `roomSum()` (sum of the room counts that day, including removed rooms) > calculation, where `total = prevTotal + i - consumption`. Here consumption = `mc` if set, else auto + `c`, where auto = Σ over groups of `multipliers[g] × d`. A manual count `m` is intentionally the end-of-day figure, so that day's income and consumption are ignored (confirmed by the user). Totals are never stored: `calculateTotal` replays from the earliest record date, and `series(item, toDate)` returns every day in one pass (used by the Overview and the Excel export).
 
-Date navigation is limited to today −30 / +7 days. The Overview table (`overviewDays`) has one column per navigable day (today −30 … +7) and scrolls sideways, with the item names pinned on the left. It keeps the selected day centred (`scrollOverviewToSelected`). It shows `calculateTotal` only on days where `hasActivity` is true (consumption, income or a count) and "—" otherwise, at the user's request. Clicking a day header jumps to it, and negative totals are shown as shortages.
+The Overview (`pages/stock/OverviewCard.tsx`) has one column per navigable day, scrolls sideways with item names pinned, centres the selected day, and shows "—" on days without consumption, income or a count (at the user's request). Negative totals are shortages.
 
-### Tabs
+### Pages
 
-The tab and selected room live in the URL hash (`#count/<locationId>`), so each floor can bookmark its own room.
-
-- **Stock:** everything above. When a total comes from room counts, it is styled `rooms-val` with a "2/3 rooms" caption (`roomStatus`).
-- **Inventory count:** pick a room to see every item with a count input. Typing only creates a draft (`countDrafts`). The row's Save button or Enter calls `submitCount` → `setRoomCount` → `/api/count`, then focuses the next item. Row states are empty / draft / saving / saved / error (`countState`), and failures show a plain-language banner (`countError`). A 404 means the running server predates `/api/count`. On phones (≤768px) the admin toolbar is hidden on this tab and each row stacks the name above a large input and button. **All rooms** shows items × rooms + Sum, plus a "Removed rooms" column when needed. Rooms are added and removed under "Manage rooms".
-
-### Toolbar: Excel / Backup / Restore / Auto-save
-
-- **Excel** (`exportExcel`) is the human-readable history. It lazy-loads ExcelJS from jsdelivr on click; ExcelJS was chosen over SheetJS because SheetJS CE can't write styles. The "Stock" sheet has one row per day, from the first day with data to max(last day, today), with Consumption / Income / Stock columns per item. Counted stock is highlighted and negative stock is red. A "Departures" sheet is added when groups exist. Item names are often Cyrillic, which is one reason the export is .xlsx rather than CSV.
-- **Backup** downloads the restorable JSON (`serializeData()`, pretty-printed, including `locations` and `counts`). **Restore** (`handleImport`) asks for confirmation, then replaces all data, counts included, and saves with `?restore=1`.
-- **Auto-save** (Chromium only) links a local JSON file that is rewritten on every save.
-
-## `boilerplate/`
-
-`boilerplate/` is an untracked, separate git checkout of a full-stack TypeScript template. This app does not run on it. The user decided against moving to its React/TypeScript/database stack as too heavy for this tool, and against logins ("there is no sensitive data"). It is only the reference for the look: `boilerplate/client/src/styles/index.css` and `components/ui/` are the source of `public/styles.css`. Don't modify it unless explicitly asked.
+- **`/stock`**: Departures per group (the ⚙ button opens items-per-departure), items with Consumption / Income / Total stock for the selected day (× clears a manual value; totals from room counts are blue with a "2/3 rooms" caption), Overview, legend.
+- **`/counter`** (all rooms: items × rooms + Sum) and **`/counter/:locationId`** (one room's list, so each floor bookmarks its own URL). Typing creates a draft (`useCountDrafts`, kept in `Counter` so switching rooms keeps unsaved numbers). Save or Enter calls `setCount`, then focuses the next item. Row states: empty / draft / saving / saved / error. Leaving with unsaved drafts triggers `beforeunload`. On phones the header hides the Excel/Backup/Restore toolbar on this page. Rooms are managed under "Manage rooms".
+- **`/checklist`**: the same tasks every day, ticked per day (so each day starts empty) with the tick time shown. Tasks with a description open accordion-style. Below: "Notes for the next shift" shows the previous day's note read-only above this day's `CommitTextarea`. The "New task" line comes first while there are no tasks and below the list once there are. Each task's ✎ opens it in place (`pages/checklist/TaskEditor.tsx`: name, instructions, ↑/↓, remove, all from that day on), which saves only on Save, never on blur: always-editable name fields led to accidental renames. Like `/counter`, the header hides the toolbar on phones.
+- Header toolbar (`components/layout/DataMenu.tsx`): **Excel** (history workbook: "Stock" sheet with one row per day and Consumption/Income/Stock per item; "Departures" sheet when groups exist), **Backup** (JSON download), **Restore** (validates with `backupSchema`, confirms, then `POST /api/restore` replaces everything including counts).

@@ -1,0 +1,26 @@
+# Usage:
+#   docker compose up --build -d     -> http://localhost:3000 (set APP_PORT to change)
+# The database (db.json + daily copies in backups/) lives in the `app-data` volume.
+# Values come from your shell or .env; the defaults below are fine on a local network.
+
+services:
+  app:
+    build: .
+    image: housekeeping-stock
+    restart: unless-stopped
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CLIENT_URL: ${PUBLIC_URL:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_DRIVER: json
+      BACKUP_DAYS: ${BACKUP_DAYS:-30}
+      # true once the app is behind HTTPS (enables HSTS)
+      HTTPS_ONLY: ${HTTPS_ONLY:-false}
+    volumes:
+      - app-data:/app/data
+
+volumes:
+  app-data:
