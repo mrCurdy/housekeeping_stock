@@ -5,7 +5,7 @@ const p = plural('ru');
 
 /** Russian. Hotel rooms = "номера"; the places where stock is counted (locations) = "помещения". */
 export const ru: Messages = {
-  appName: 'Stock Monitor',
+  appName: 'Fomka',
 
   common: {
     add: 'Добавить',
@@ -55,6 +55,12 @@ export const ru: Messages = {
     switchTo: (name) => `Сменить тему: ${name}`,
   },
 
+  palette: {
+    names: { violet: 'Фиолетовая', ocean: 'Океан', berry: 'Ягода' },
+    current: (name) => `Цвета: ${name}`,
+    switchTo: (name) => `Сменить цвета: ${name}`,
+  },
+
   language: 'Язык',
 
   auth: {
@@ -83,7 +89,7 @@ export const ru: Messages = {
     noBackupData: 'Пока нечего сохранять',
     exportFailed: 'Не удалось выгрузить в Excel',
     notBackup: 'Это не резервная копия',
-    notBackupFile: (file) => `«${file}» — не резервная копия Stock Monitor.`,
+    notBackupFile: (file) => `«${file}» — не резервная копия Fomka.`,
     restoreTitle: 'Восстановить эту копию?',
     restoreDescription: (file, items, groups, rooms) =>
       `В «${file}»: ${p(items, { one: 'позиция', few: 'позиции', many: 'позиций', other: 'позиции' })}, ${p(groups, { one: 'группа', few: 'группы', many: 'групп', other: 'группы' })} и ${p(rooms, { one: 'помещение', few: 'помещения', many: 'помещений', other: 'помещения' })}. Это заменит ВСЕ текущие данные, включая подсчёты в помещениях.`,
@@ -156,6 +162,9 @@ export const ru: Messages = {
   counter: {
     title: 'Инвентаризация',
     allRooms: 'Все помещения',
+    prevRoom: 'Предыдущее помещение',
+    nextRoom: 'Следующее помещение',
+    chooseRoom: 'Выберите помещение',
     noItemsTitle: 'Позиций пока нет',
     noItemsDescription: 'Сначала добавьте позиции на странице «Склад».',
     goToStock: 'Открыть «Склад»',

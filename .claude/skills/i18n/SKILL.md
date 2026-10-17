@@ -63,7 +63,7 @@ The server stays English. `apiErrorMessage(err, t)` in `lib/api.ts` maps error c
 
 "Room" is ambiguous in English: hotel rooms (departures) and storage rooms (locations) are different words in et and ru. Pick by meaning.
 
-Style: Estonian quotes `„…“`, Russian `«…»`, English `"…"`. Short, plain wording: the users are housekeeping staff, often on a phone. Use the informal imperative in Estonian (Sisesta, Vajuta) and the polite imperative in Russian (Введите, Нажмите). Keep "Stock Monitor" and "Excel" untranslated.
+Style: Estonian quotes `„…“`, Russian `«…»`, English `"…"`. Short, plain wording: the users are housekeeping staff, often on a phone. Use the informal imperative in Estonian (Sisesta, Vajuta) and the polite imperative in Russian (Введите, Нажмите). Keep "Fomka" (the app name) and "Excel" untranslated.
 
 ## Adding a language
 

@@ -2,10 +2,16 @@ import { createContext, use, useEffect, useMemo, useState, type ReactNode } from
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
+/** Colour schemes; the CSS for each is under `[data-palette]` in styles/index.css. */
+export const PALETTES = ['violet', 'ocean', 'berry'] as const;
+export type Palette = (typeof PALETTES)[number];
+
 interface ThemeState {
   theme: ThemePreference;
   resolved: 'light' | 'dark';
   setTheme(t: ThemePreference): void;
+  palette: Palette;
+  setPalette(p: Palette): void;
 }
 
 const ThemeContext = createContext<ThemeState | null>(null);
@@ -20,8 +26,26 @@ const readStored = (): ThemePreference => {
   }
 };
 
+const readPalette = (): Palette => {
+  try {
+    const v = localStorage.getItem('palette');
+    return PALETTES.find((p) => p === v) ?? 'violet';
+  } catch {
+    return 'violet';
+  }
+};
+
+const store = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable */
+  }
+};
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemePreference>(readStored);
+  const [palette, setPaletteState] = useState<Palette>(readPalette);
   const [systemDark, setSystemDark] = useState(() => media().matches);
 
   useEffect(() => {
@@ -37,20 +61,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.theme = resolved;
   }, [resolved]);
 
+  useEffect(() => {
+    // The default scheme is the plain :root tokens, so it needs no attribute.
+    if (palette === 'violet') delete document.documentElement.dataset.palette;
+    else document.documentElement.dataset.palette = palette;
+  }, [palette]);
+
   const value = useMemo<ThemeState>(
     () => ({
       theme,
       resolved,
       setTheme: (t) => {
         setThemeState(t);
-        try {
-          localStorage.setItem('theme', t);
-        } catch {
-          /* storage unavailable */
-        }
+        store('theme', t);
+      },
+      palette,
+      setPalette: (p) => {
+        setPaletteState(p);
+        store('palette', p);
       },
     }),
-    [theme, resolved],
+    [theme, resolved, palette],
   );
 
   return <ThemeContext value={value}>{children}</ThemeContext>;

@@ -9,6 +9,7 @@ import type { Messages } from '@/i18n/en';
 import { cn } from '@/lib/cn';
 import { DataMenu } from './DataMenu';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { PaletteToggle } from './PaletteToggle';
 import { ThemeToggle } from './ThemeToggle';
 
 interface NavItem {
@@ -116,6 +117,7 @@ export function AppShell() {
             </div>
           )}
           <LanguageSwitcher />
+          <PaletteToggle />
           <ThemeToggle />
           <Button
             variant="ghost"

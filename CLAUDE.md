@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Stock Monitor": a standalone tool for tracking daily housekeeping stock (linens, amenities, etc.) per item in a hotel. Consumption is partly derived from guest-group departures. It is not integrated with any hotel system, uses a light 4-digit PIN login (one PIN each for admin and worker, plus a QR link that opens today's Counter) and stores everything in one SQLite file. The user wants it simple and lightweight but easy to extend.
+"Fomka" (formerly "Stock Monitor"): a standalone tool for tracking daily housekeeping stock (linens, amenities, etc.) per item in a hotel. Consumption is partly derived from guest-group departures. It is not integrated with any hotel system, uses a light 4-digit PIN login (one PIN each for admin and worker, plus a QR link that opens today's Counter) and stores everything in one SQLite file. The user wants it simple and lightweight but easy to extend.
 
 ## Commands
 

@@ -5,7 +5,7 @@ const p = plural('et');
 
 /** Estonian. Hotel rooms = "toad"; the places where stock is counted (locations) = "ruumid". */
 export const et: Messages = {
-  appName: 'Stock Monitor',
+  appName: 'Fomka',
 
   common: {
     add: 'Lisa',
@@ -55,6 +55,12 @@ export const et: Messages = {
     switchTo: (name) => `Vaheta teemaks: ${name}`,
   },
 
+  palette: {
+    names: { violet: 'Violetne', ocean: 'Ookean', berry: 'Mari' },
+    current: (name) => `Värvid: ${name}`,
+    switchTo: (name) => `Vaheta värvid: ${name}`,
+  },
+
   language: 'Keel',
 
   auth: {
@@ -83,7 +89,7 @@ export const et: Messages = {
     noBackupData: 'Varundamiseks pole veel andmeid',
     exportFailed: 'Exceli eksport ebaõnnestus',
     notBackup: 'See pole varukoopia',
-    notBackupFile: (file) => `„${file}“ ei ole Stock Monitori varukoopia.`,
+    notBackupFile: (file) => `„${file}“ ei ole Fomka varukoopia.`,
     restoreTitle: 'Kas taastada see varukoopia?',
     restoreDescription: (file, items, groups, rooms) =>
       `„${file}“ sisaldab: ${p(items, { one: 'toode', other: 'toodet' })}, ${p(groups, { one: 'grupp', other: 'gruppi' })} ja ${p(rooms, { one: 'ruum', other: 'ruumi' })}. See asendab KÕIK praegused andmed, ka ruumides loetud kogused.`,
@@ -156,6 +162,9 @@ export const et: Messages = {
   counter: {
     title: 'Inventuur',
     allRooms: 'Kõik ruumid',
+    prevRoom: 'Eelmine ruum',
+    nextRoom: 'Järgmine ruum',
+    chooseRoom: 'Vali ruum',
     noItemsTitle: 'Tooteid veel pole',
     noItemsDescription: 'Lisa esmalt tooted lehel Ladu.',
     goToStock: 'Ava Ladu',

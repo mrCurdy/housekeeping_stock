@@ -77,6 +77,21 @@
   color-scheme: dark;
 }
 
+/* Colour schemes (palette shifter in the header): each one only moves the brand and neutral knobs,
+   so light and dark mode both follow. Hues stay clear of success/warning/danger, which mark stock values. */
+:root[data-palette='ocean'] {
+  --brand-h: 245;
+  --brand-c: 0.17;
+  --neutral-h: 240;
+  --neutral-tint: 1.3;
+}
+:root[data-palette='berry'] {
+  --brand-h: 350;
+  --brand-c: 0.19;
+  --neutral-h: 345;
+  --neutral-tint: 0.9;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);

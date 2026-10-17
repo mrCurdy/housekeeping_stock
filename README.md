@@ -1,4 +1,4 @@
-# Stock Monitor
+# Fomka
 
 A small tool for tracking daily housekeeping stock (linens, amenities, …) in a hotel. Consumption is partly derived from guest departures per room group, and stock can be counted per room on a phone. It is standalone (no integration with a hotel system) and protected by a 4-digit PIN: an **admin** PIN (sets up items, groups, rooms, checklist tasks, PINs, QR code, Restore) and a **worker** PIN (everything day-to-day). A QR code made by the admin opens today's room counting without a PIN.
 

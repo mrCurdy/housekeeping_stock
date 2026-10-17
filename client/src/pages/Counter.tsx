@@ -1,6 +1,6 @@
 import { todayOnly } from '@app/shared';
 import { ClipboardList, Package } from 'lucide-react';
-import { Link, NavLink, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { DateSwitcher } from '@/components/layout/DateSwitcher';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, buttonVariants, Card, EmptyState, Spinner } from '@/components/ui';
@@ -8,10 +8,10 @@ import { formatLongDate, useSelectedDate } from '@/context/DateContext';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
-import { cn } from '@/lib/cn';
 import { AllRoomsTable } from './counter/AllRoomsTable';
 import { ManageRooms } from './counter/ManageRooms';
 import { RoomCountList } from './counter/RoomCountList';
+import { RoomSwitcher } from './counter/RoomSwitcher';
 import { useCountDrafts } from './counter/useCountDrafts';
 
 /**
@@ -33,14 +33,6 @@ export default function Counter() {
     return data.items.filter((i) => counted[i.id] != null).length;
   };
 
-  const pill = (active: boolean) =>
-    cn(
-      'focus-ring inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
-      active
-        ? 'border-primary bg-primary text-primary-fg'
-        : 'border-border bg-surface text-fg hover:bg-surface-2',
-    );
-
   return (
     <>
       <PageHeader
@@ -61,23 +53,7 @@ export default function Counter() {
         </div>
       ) : (
         <Card>
-          <nav className="flex gap-2 overflow-x-auto border-b border-border px-5 py-3 scrollbar-thin">
-            <NavLink to="/counter" end className={({ isActive }) => pill(isActive)}>
-              {tx.allRooms}
-            </NavLink>
-            {data.locations.map((loc) => (
-              <NavLink
-                key={loc.id}
-                to={`/counter/${loc.id}`}
-                className={({ isActive }) => pill(isActive)}
-              >
-                {loc.name || t.common.unnamedRoom}
-                <span className="text-xs opacity-75">
-                  {progress(loc.id)}/{data.items.length}
-                </span>
-              </NavLink>
-            ))}
-          </nav>
+          <RoomSwitcher locationId={locationId} progress={progress} />
 
           {data.items.length === 0 ? (
             <EmptyState

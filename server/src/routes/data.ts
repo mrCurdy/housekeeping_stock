@@ -17,7 +17,7 @@ export function dataRouter({ db }: AppContext) {
   /** Backup restore: replaces ALL data, room counts included. Accepts old-format backups too. */
   r.post('/restore', allow('restore'), async (req, res) => {
     const parsed = backupSchema.safeParse(req.body);
-    if (!parsed.success) throw HttpError.badRequest('This file is not a Stock Monitor backup');
+    if (!parsed.success) throw HttpError.badRequest('This file is not a Fomka backup');
     await db.replace(parsed.data);
     res.json(parsed.data);
   });

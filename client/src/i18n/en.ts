@@ -8,7 +8,7 @@ const p = plural('en');
  * Text with values in it is a function; plurals go through `p(n, { one, other })`.
  */
 export const en = {
-  appName: 'Stock Monitor',
+  appName: 'Fomka',
 
   common: {
     add: 'Add',
@@ -58,6 +58,12 @@ export const en = {
     switchTo: (name: string) => `Switch to ${name} theme`,
   },
 
+  palette: {
+    names: { violet: 'Violet', ocean: 'Ocean', berry: 'Berry' },
+    current: (name: string) => `Colours: ${name}`,
+    switchTo: (name: string) => `Switch colours to ${name}`,
+  },
+
   language: 'Language',
 
   auth: {
@@ -86,7 +92,7 @@ export const en = {
     noBackupData: 'No data to back up yet',
     exportFailed: 'Excel export failed',
     notBackup: 'Not a backup',
-    notBackupFile: (file: string) => `"${file}" is not a Stock Monitor backup.`,
+    notBackupFile: (file: string) => `"${file}" is not a Fomka backup.`,
     restoreTitle: 'Restore this backup?',
     restoreDescription: (file: string, items: number, groups: number, rooms: number) =>
       `"${file}" contains ${p(items, { one: 'item', other: 'items' })}, ${p(groups, { one: 'group', other: 'groups' })} and ${p(rooms, { one: 'room', other: 'rooms' })}. This replaces ALL current data, including room counts.`,
@@ -159,6 +165,9 @@ export const en = {
   counter: {
     title: 'Inventory count',
     allRooms: 'All rooms',
+    prevRoom: 'Previous room',
+    nextRoom: 'Next room',
+    chooseRoom: 'Choose a room',
     noItemsTitle: 'No stock items yet',
     noItemsDescription: 'Add items on the Stock page first.',
     goToStock: 'Go to Stock',
