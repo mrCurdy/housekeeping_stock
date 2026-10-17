@@ -44,6 +44,18 @@ docker compose up --build -d     # http://localhost:3000 (APP_PORT=8080 to chang
 
 The data lives in the `app-data` volume. Set `ADMIN_PIN`/`WORKER_PIN` in your shell or `.env` before the first start. To move existing data in, open the app as admin and use **Restore** with a backup file (or an old `data/db.json`).
 
+### Deploying to a server
+
+The `production` branch is the deployable one. On the server (Docker with the compose plugin):
+
+```bash
+git clone -b production <repo-url> fomka && cd fomka
+cp .env.example .env   # set ADMIN_PIN, WORKER_PIN (first start only), APP_PORT; HTTPS_ONLY=true behind TLS
+./deploy.sh            # later updates: just ./deploy.sh again
+```
+
+`deploy.sh` fast-forwards to `origin/production`, copies the live database to `backups/stock-<time>.db` (newest 10 kept), rebuilds the image, restarts and waits for the health check; if the new version isn't healthy it starts the previous image again. `--no-pull` deploys the checkout as it is. Behind a reverse proxy on the same host, set `APP_BIND=127.0.0.1` and `HTTPS_ONLY=true`.
+
 ## Data and backups
 
 - `data/stock.db` (SQLite, `SQLITE_PATH`) holds everything. PINs and sessions are stored there too, but never in backups.
