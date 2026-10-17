@@ -51,8 +51,7 @@ export function RoomCountList({
       setError('');
       const next = inputs.current[index + 1];
       if (next) {
-        next.focus();
-        next.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        next.focus({ preventScroll: true });
       } else {
         inputs.current[index]?.blur();
       }
