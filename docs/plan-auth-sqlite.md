@@ -101,12 +101,13 @@ Work happens in **separate sessions, one step each, tests first**, and is set up
    - Then write `shared/src/auth.ts`, `server/src/auth/{pins,sessions,middleware}.ts`, `routes/auth.ts`, and the guards in `app.ts`.
    - Write `.claude/skills/auth/SKILL.md`: the role matrix and how to guard a new route and hide UI with `can()`.
    - Done. Differences: storage is a `db.auth` repo (`AuthRepo` in `db/types.ts`; no daily backup, not in `StockData`). Wrong PINs only count towards the rate limit (`skipSuccessfulRequests`). Seeding is `seedPins(config, db)` after `db.init()` (in `index.ts` and `tests/helpers.ts`); it only fills a role with no PIN. Setting an env PIN equal to the other fails config validation. `PUT /auth/pins` answers 204; a PIN equal to the other role's is 400. Checklist ticks/notes need `checklist`, `GET /data` any login. `helpers.ts`: `api()` is an admin agent, `request()` has no session, `login(pin)`. The counter today-only check is left for step 3. `.env.example` already lists `ADMIN_PIN`/`WORKER_PIN`.
-- [ ] **3. QR on the server:**
+- [x] **3. QR on the server:**
    - Tests first in `server/tests/qr.test.ts`:
      - Creating a QR code then linking gives a counter session.
      - A counter session can `GET /data` and PUT today's counts, but gets 403 for another date, records or setup.
      - Regenerating or revoking ends the old link and its sessions.
    - Then write the routes and the repo.
+   - Done. Differences: `POST /auth/qr` answers 201 `{ token, createdAt }`, `GET` answers `{ active: false }` or `{ active: true, createdAt }`, `DELETE` 204. `POST /auth/link` shares the login rate limiter (wrong tokens count), answers `{ role: 'counter' }` like login, and drops the browser's previous session. The today-only rule is `todayOnly(role)` in `shared/src/auth.ts` (for the client's date lock in step 5 too), checked in the counts route. Repo: `db.auth.qrLink/setQrLink/deleteQrLink/qrLinkId`, and `createSession` takes a `linkId`; revoking deletes every session with a `link_id`. No migration was needed. `tests/helpers.ts` gained `agent()` (cookie-keeping, no session).
 - [ ] **4. Client login and roles:**
    - Tests first (Vitest + Testing Library, as in `client/src/components/ui/ui.test.tsx`):
      - `pages/Login.test.tsx`: the keypad submits after 4 digits, and an error shows on a wrong PIN.

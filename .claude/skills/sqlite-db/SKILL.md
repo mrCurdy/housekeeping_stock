@@ -23,7 +23,7 @@ Files: `server/src/db/types.ts` (the `Db` interface, the only thing routes see),
 | `tasks` | `id, name, description, added, removed, earlier_json, pos` | `earlier` as JSON text |
 | `checks` | `date, task_id, at` | `at` = ISO time ticked |
 | `notes` | `date, text` | no blank notes |
-| `pins`, `sessions`, `qr_links` | auth (`db.auth`, see the `auth` skill) | not part of `StockData` / backups; written without `write()` |
+| `pins`, `sessions`, `qr_links` | auth (`db.auth`, see the `auth` skill) | not part of `StockData` / backups; written without `write()`; `sessions.link_id` = the QR link a counter session came from |
 
 There are **no foreign keys**, on purpose: a restored backup may hold counts of removed rooms or
 ticks of old tasks. Deletes clean up dependent rows by hand (`items.delete`, the `groups` repo's

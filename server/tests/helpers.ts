@@ -15,7 +15,8 @@ export const WORKER_PIN = '0000';
 /**
  * A fresh app on an empty SQLite database in a temp dir. `before` runs first with the dir
  * (e.g. to put a db.json there to import); `extraEnv` adds environment variables.
- * `api()` is logged in as admin; `request()` has no session; `login(pin)` gives a new agent.
+ * `api()` is logged in as admin; `request()` has no session; `agent()` keeps cookies but has no
+ * session yet; `login(pin)` gives a new logged-in agent.
  */
 export async function setup(before?: (dir: string) => void, extraEnv: NodeJS.ProcessEnv = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'stock-test-'));
@@ -47,6 +48,8 @@ export async function setup(before?: (dir: string) => void, extraEnv: NodeJS.Pro
       return admin;
     },
     request: () => request(app),
+    /** A cookie-keeping client without a session yet. */
+    agent: () => request.agent(app),
     login,
     async cleanup() {
       await db.close();

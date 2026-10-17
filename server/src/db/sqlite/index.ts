@@ -133,6 +133,12 @@ export function createSqliteDb(
   const get = <T>(query: string, ...params: unknown[]) =>
     sql.prepare(query).get(...params) as T | undefined;
   const run = (query: string, ...params: unknown[]) => sql.prepare(query).run(...params);
+
+  /** Deletes every QR link and the counter sessions opened from them. */
+  const deleteQrLinks = () => {
+    run('DELETE FROM sessions WHERE link_id IS NOT NULL');
+    run('DELETE FROM qr_links');
+  };
   const nextPos = (table: NamedTable | 'tasks') =>
     get<{ n: number }>(`SELECT COALESCE(MAX(pos) + 1, 0) AS n FROM ${table}`)!.n;
 
@@ -599,11 +605,12 @@ export function createSqliteDb(
           hash,
         );
       },
-      async createSession(tokenHash, role) {
+      async createSession(tokenHash, role, linkId) {
         run(
-          'INSERT INTO sessions (token_hash, role, created_at) VALUES (?, ?, ?)',
+          'INSERT INTO sessions (token_hash, role, link_id, created_at) VALUES (?, ?, ?, ?)',
           tokenHash,
           role,
+          linkId ?? null,
           new Date().toISOString(),
         );
       },
@@ -618,6 +625,34 @@ export function createSqliteDb(
       },
       async deleteSessions(role, keep = '') {
         run('DELETE FROM sessions WHERE role = ? AND token_hash != ?', role, keep);
+      },
+      async qrLink() {
+        return (
+          get<{ id: string; createdAt: string }>(
+            'SELECT id, created_at AS createdAt FROM qr_links ORDER BY created_at DESC LIMIT 1',
+          ) ?? null
+        );
+      },
+      async setQrLink(id, tokenHash) {
+        const createdAt = new Date().toISOString();
+        sql.transaction(() => {
+          deleteQrLinks();
+          run(
+            'INSERT INTO qr_links (id, token_hash, created_at) VALUES (?, ?, ?)',
+            id,
+            tokenHash,
+            createdAt,
+          );
+        })();
+        return { id, createdAt };
+      },
+      async deleteQrLink() {
+        sql.transaction(deleteQrLinks)();
+      },
+      async qrLinkId(tokenHash) {
+        return (
+          get<{ id: string }>('SELECT id FROM qr_links WHERE token_hash = ?', tokenHash)?.id ?? null
+        );
       },
     },
   };

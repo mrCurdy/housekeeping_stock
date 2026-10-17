@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import {
   countSchema,
+  formatDate,
+  todayLocal,
+  todayOnly,
   departuresSchema,
   recordPatchSchema,
   type CountInput,
@@ -9,6 +12,7 @@ import {
 } from '@app/shared';
 import { allow } from '../auth/middleware';
 import type { AppContext } from '../context';
+import { HttpError } from '../lib/errors';
 import { dateParam, found, param } from '../lib/params';
 import { validateBody } from '../middleware/validate';
 
@@ -46,15 +50,22 @@ export function dailyRouter({ db }: AppContext) {
     },
   );
 
-  /** One room count. Returns every count of that day, including what others counted meanwhile. */
+  /**
+   * One room count. Returns every count of that day, including what others counted meanwhile.
+   * A QR (counter) session may only count today.
+   */
   r.put(
     '/counts/:date/:locationId/:itemId',
     allow('count'),
     validateBody(countSchema),
     async (req, res) => {
       const { value } = req.body as CountInput;
+      const date = dateParam(req);
+      if (todayOnly(req.role) && date !== formatDate(todayLocal())) {
+        throw HttpError.forbidden('This login can only count today');
+      }
       const day = await db.counts.set(
-        dateParam(req),
+        date,
         param(req, 'locationId'),
         param(req, 'itemId'),
         value,

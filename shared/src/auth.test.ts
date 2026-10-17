@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { can, loginSchema, PERMISSIONS, pinChangeSchema, pinSchema, ROLES } from './auth';
+import {
+  can,
+  linkSchema,
+  loginSchema,
+  PERMISSIONS,
+  pinChangeSchema,
+  pinSchema,
+  ROLES,
+  todayOnly,
+} from './auth';
 
 describe('can', () => {
   it('admin may do everything', () => {
@@ -21,6 +30,23 @@ describe('can', () => {
 
   it('knows the three roles', () => {
     expect(ROLES).toEqual(['admin', 'worker', 'counter']);
+  });
+});
+
+describe('todayOnly', () => {
+  it('only the QR counter session is limited to today', () => {
+    expect(todayOnly('counter')).toBe(true);
+    expect(todayOnly('admin')).toBe(false);
+    expect(todayOnly('worker')).toBe(false);
+    expect(todayOnly(null)).toBe(false);
+  });
+});
+
+describe('linkSchema', () => {
+  it('needs a token', () => {
+    expect(linkSchema.safeParse({ token: 'abc' }).success).toBe(true);
+    expect(linkSchema.safeParse({ token: '' }).success).toBe(false);
+    expect(linkSchema.safeParse({}).success).toBe(false);
   });
 });
 

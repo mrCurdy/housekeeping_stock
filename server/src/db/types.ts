@@ -72,12 +72,21 @@ export interface AuthRepo {
   /** Stored PIN hashes by role (a role without a PIN is missing). */
   pinHashes(): Promise<Partial<Record<PinRole, string>>>;
   setPinHash(role: PinRole, hash: string): Promise<void>;
-  createSession(tokenHash: string, role: Role): Promise<void>;
+  /** `linkId`: the QR link a counter session was opened from (revoking it ends the session). */
+  createSession(tokenHash: string, role: Role, linkId?: string): Promise<void>;
   /** The role of a session, or null when it doesn't exist (any more). */
   sessionRole(tokenHash: string): Promise<Role | null>;
   deleteSession(tokenHash: string): Promise<void>;
   /** Logs out every session of a role, except `keep` (a token hash). */
   deleteSessions(role: Role, keep?: string): Promise<void>;
+  /** The QR link (there is at most one), or null. */
+  qrLink(): Promise<{ id: string; createdAt: string } | null>;
+  /** Replaces the QR link: the old one and its sessions are deleted. */
+  setQrLink(id: string, tokenHash: string): Promise<{ id: string; createdAt: string }>;
+  /** Deletes the QR link and its sessions. */
+  deleteQrLink(): Promise<void>;
+  /** The id of the QR link with this token hash, or null. */
+  qrLinkId(tokenHash: string): Promise<string | null>;
 }
 
 export type DbDriver = 'sqlite';

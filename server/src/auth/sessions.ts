@@ -17,10 +17,19 @@ const cookieOptions = (config: Config): CookieOptions => ({
   path: '/',
 });
 
+/** A random URL-safe token (session cookies, QR links). */
+export const newToken = () => randomBytes(32).toString('base64url');
+
 /** Starts a session for `role` and sets its cookie (kept for a year, until logout). */
-export async function startSession(res: Response, config: Config, db: Db, role: Role) {
-  const token = randomBytes(32).toString('base64url');
-  await db.auth.createSession(hashToken(token), role);
+export async function startSession(
+  res: Response,
+  config: Config,
+  db: Db,
+  role: Role,
+  linkId?: string,
+) {
+  const token = newToken();
+  await db.auth.createSession(hashToken(token), role, linkId);
   res.cookie(SESSION_COOKIE, token, { ...cookieOptions(config), maxAge: MAX_AGE_MS });
 }
 
