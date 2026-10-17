@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui';
+import { AuthProvider } from '@/context/AuthContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
 import { DateProvider } from '@/context/DateContext';
 import { I18nProvider } from '@/context/I18nContext';
@@ -45,11 +46,13 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <ConfirmProvider>
-            <DateProvider>
-              <StockProvider>
-                <RouterProvider router={router} />
-              </StockProvider>
-            </DateProvider>
+            <AuthProvider>
+              <DateProvider>
+                <StockProvider>
+                  <RouterProvider router={router} />
+                </StockProvider>
+              </DateProvider>
+            </AuthProvider>
           </ConfirmProvider>
         </ToastProvider>
       </ThemeProvider>

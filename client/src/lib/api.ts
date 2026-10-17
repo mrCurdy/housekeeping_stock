@@ -16,6 +16,9 @@ export class ApiError extends Error {
 
 type Options = Omit<RequestInit, 'body'> & { body?: unknown };
 
+/** Fired on a 401 outside `/auth/*` (session ended or revoked); AuthContext shows the PIN screen. */
+export const AUTH_EXPIRED = 'auth:expired';
+
 async function request<T>(path: string, { body, headers, ...init }: Options = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
@@ -26,6 +29,9 @@ async function request<T>(path: string, { body, headers, ...init }: Options = {}
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    window.dispatchEvent(new Event(AUTH_EXPIRED));
+  }
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -60,6 +66,9 @@ export function apiErrorMessage(err: unknown, t: Messages): string {
   if (err instanceof ApiError) {
     if (err.code === 'BAD_REQUEST') return t.errors.badRequest;
     if (err.code === 'NOT_FOUND') return t.errors.notFound;
+    if (err.code === 'UNAUTHORIZED') return t.errors.loggedOut;
+    if (err.code === 'FORBIDDEN') return t.errors.forbidden;
+    if (err.code === 'TOO_MANY_REQUESTS') return t.auth.tooMany;
     if (err.status >= 500) return t.errors.server;
     return err.message;
   }

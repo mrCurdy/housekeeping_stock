@@ -1,7 +1,8 @@
-import { Boxes, ClipboardList, ListChecks, Menu, Package, X } from 'lucide-react';
+import { Boxes, ClipboardList, ListChecks, LogOut, Menu, Package, X } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import type { Messages } from '@/i18n/en';
 import { cn } from '@/lib/cn';
@@ -24,6 +25,7 @@ const NAV: NavItem[] = [
 
 export function AppShell() {
   const { t } = useI18n();
+  const { logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   // Counting and the checklist happen on phones: keep their header free of the admin tools
   const { pathname } = useLocation();
@@ -102,6 +104,15 @@ export function AppShell() {
           </div>
           <LanguageSwitcher />
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            title={t.nav.logout}
+            aria-label={t.nav.logout}
+            onClick={logout}
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
         </header>
         <main className="flex-1 overflow-y-auto scrollbar-thin">
           <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

@@ -14,6 +14,7 @@ import {
   THead,
   Tr,
 } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
@@ -29,6 +30,7 @@ export function DeparturesCard({ onEditGroup }: { onEditGroup: (groupId: string)
   const toast = useToast();
   const { t } = useI18n();
   const tx = t.stock.departures;
+  const setup = useAuth().can('setup');
 
   return (
     <Card>
@@ -47,44 +49,48 @@ export function DeparturesCard({ onEditGroup }: { onEditGroup: (groupId: string)
           {data.groups.map((group) => (
             <Tr key={group.id}>
               <Td className="py-2">
-                <div className="flex items-center gap-1">
-                  <CommitInput
-                    value={group.name}
-                    onCommit={(name) => renameGroup(group.id, name.trim())}
-                    placeholder={tx.groupName}
-                    aria-label={tx.groupName}
-                    className="h-9"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title={tx.itemsPerDeparture}
-                    aria-label={tx.itemsPerDepartureIn(group.name)}
-                    onClick={() => onEditGroup(group.id)}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title={tx.removeGroup}
-                    aria-label={tx.removeGroupNamed(group.name)}
-                    className="text-fg-muted hover:text-danger"
-                    onClick={async () => {
-                      if (
-                        await confirm({
-                          title: tx.removeTitle(group.name),
-                          description: tx.removeDescription,
-                          confirmLabel: t.common.remove,
-                        })
-                      ) {
-                        removeGroup(group.id);
-                      }
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+                {setup ? (
+                  <div className="flex items-center gap-1">
+                    <CommitInput
+                      value={group.name}
+                      onCommit={(name) => renameGroup(group.id, name.trim())}
+                      placeholder={tx.groupName}
+                      aria-label={tx.groupName}
+                      className="h-9"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title={tx.itemsPerDeparture}
+                      aria-label={tx.itemsPerDepartureIn(group.name)}
+                      onClick={() => onEditGroup(group.id)}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title={tx.removeGroup}
+                      aria-label={tx.removeGroupNamed(group.name)}
+                      className="text-fg-muted hover:text-danger"
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: tx.removeTitle(group.name),
+                            description: tx.removeDescription,
+                            confirmLabel: t.common.remove,
+                          })
+                        ) {
+                          removeGroup(group.id);
+                        }
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="font-medium">{group.name}</span>
+                )}
               </Td>
               <Td className="py-2">
                 <CommitInput
@@ -106,12 +112,14 @@ export function DeparturesCard({ onEditGroup }: { onEditGroup: (groupId: string)
           ))}
         </TBody>
       </Table>
-      <AddForm
-        className="border-t border-border px-5 py-4"
-        placeholder={tx.newGroup}
-        label={t.common.add}
-        onAdd={addGroup}
-      />
+      {setup && (
+        <AddForm
+          className="border-t border-border px-5 py-4"
+          placeholder={tx.newGroup}
+          label={t.common.add}
+          onAdd={addGroup}
+        />
+      )}
     </Card>
   );
 }

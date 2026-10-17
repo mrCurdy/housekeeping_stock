@@ -2,6 +2,7 @@ import { backupSchema, formatDate } from '@app/shared';
 import { Download, FileSpreadsheet, Upload } from 'lucide-react';
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Button, Tooltip } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
@@ -15,6 +16,7 @@ export function DataMenu() {
   const toast = useToast();
   const confirm = useConfirm();
   const { t } = useI18n();
+  const canRestore = useAuth().can('restore');
   const fileInput = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -99,23 +101,27 @@ export function DataMenu() {
           <span className="hidden lg:inline">{t.data.backup}</span>
         </Button>
       </Tooltip>
-      <Tooltip content={t.data.restoreHint} side="bottom" align="end">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => fileInput.current?.click()}
-          leftIcon={<Upload className="h-4 w-4" />}
-        >
-          <span className="hidden lg:inline">{t.data.restore}</span>
-        </Button>
-      </Tooltip>
-      <input
-        ref={fileInput}
-        type="file"
-        accept=".json,application/json"
-        className="hidden"
-        onChange={onFile}
-      />
+      {canRestore && (
+        <Tooltip content={t.data.restoreHint} side="bottom" align="end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => fileInput.current?.click()}
+            leftIcon={<Upload className="h-4 w-4" />}
+          >
+            <span className="hidden lg:inline">{t.data.restore}</span>
+          </Button>
+        </Tooltip>
+      )}
+      {canRestore && (
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={onFile}
+        />
+      )}
     </div>
   );
 }

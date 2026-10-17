@@ -2,6 +2,7 @@ import { tasksOn } from '@app/shared';
 import { ChevronDown, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 import { useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
@@ -17,6 +18,7 @@ export function TaskList() {
   const { date } = useSelectedDate();
   const { t, locale } = useI18n();
   const tx = t.checklist;
+  const canEdit = useAuth().can('tasks');
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [editing, setEditing] = useState<string | null>(null);
   const tasks = tasksOn(data.tasks, date);
@@ -124,16 +126,18 @@ export function TaskList() {
                     {title}
                   </label>
                 )}
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  title={tx.manage.editTask}
-                  aria-label={tx.manage.editTaskNamed(name)}
-                  className="shrink-0 text-fg-muted"
-                  onClick={() => setEditing(task.id)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+                {canEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    title={tx.manage.editTask}
+                    aria-label={tx.manage.editTaskNamed(name)}
+                    className="shrink-0 text-fg-muted"
+                    onClick={() => setEditing(task.id)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               {isOpen && task.description.trim() && (
                 <div

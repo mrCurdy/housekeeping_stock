@@ -26,6 +26,7 @@ export const ru: Messages = {
     notSaved: 'Не сохранено',
     loadFailed: 'Не удалось загрузить данные',
     tryAgain: 'Повторить',
+    askAdmin: 'Попросите администратора это настроить.',
   },
 
   errors: {
@@ -34,6 +35,8 @@ export const ru: Messages = {
     notFound: 'Это было удалено на другом устройстве.',
     server: 'Ошибка на сервере.',
     generic: 'Что-то пошло не так',
+    loggedOut: 'Вы вышли из системы. Введите PIN ещё раз.',
+    forbidden: 'Это может сделать только администратор.',
   },
 
   nav: {
@@ -42,6 +45,7 @@ export const ru: Messages = {
     checklist: 'Чек-лист',
     openMenu: 'Открыть меню',
     closeMenu: 'Закрыть меню',
+    logout: 'Выйти',
   },
 
   theme: {
@@ -51,6 +55,15 @@ export const ru: Messages = {
   },
 
   language: 'Язык',
+
+  auth: {
+    title: 'Введите PIN',
+    pin: 'PIN',
+    clear: 'Стереть последнюю цифру',
+    wrongPin: 'Неверный PIN. Попробуйте ещё раз.',
+    tooMany: 'Слишком много неверных попыток. Подождите 15 минут и попробуйте снова.',
+    qrInvalid: 'Этот QR-код больше не действует. Попросите у администратора новый.',
+  },
 
   date: {
     prev: 'Предыдущий день',

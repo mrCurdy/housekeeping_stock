@@ -4,6 +4,7 @@ import { AddForm } from '@/components/AddForm';
 import { DateSwitcher } from '@/components/layout/DateSwitcher';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, Card, EmptyState, Spinner } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 import { formatLongDate, useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
@@ -20,6 +21,7 @@ export default function Checklist() {
   const { date } = useSelectedDate();
   const { t, locale } = useI18n();
   const tx = t.checklist;
+  const canEdit = useAuth().can('tasks');
 
   const addForm = (
     <AddForm
@@ -52,17 +54,17 @@ export default function Checklist() {
           <Card>
             {!data.tasks.some((task) => isTaskOn(task, date)) ? (
               <>
-                <div className="px-5 pt-5">{addForm}</div>
+                {canEdit && <div className="px-5 pt-5">{addForm}</div>}
                 <EmptyState
                   icon={<ListChecks />}
                   title={tx.emptyTitle}
-                  description={tx.emptyDescription}
+                  description={canEdit ? tx.emptyDescription : t.common.askAdmin}
                 />
               </>
             ) : (
               <>
                 <TaskList />
-                <div className="border-t border-border px-5 py-4">{addForm}</div>
+                {canEdit && <div className="border-t border-border px-5 py-4">{addForm}</div>}
               </>
             )}
           </Card>

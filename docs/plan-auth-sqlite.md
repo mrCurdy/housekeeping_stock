@@ -108,11 +108,12 @@ Work happens in **separate sessions, one step each, tests first**, and is set up
      - Regenerating or revoking ends the old link and its sessions.
    - Then write the routes and the repo.
    - Done. Differences: `POST /auth/qr` answers 201 `{ token, createdAt }`, `GET` answers `{ active: false }` or `{ active: true, createdAt }`, `DELETE` 204. `POST /auth/link` shares the login rate limiter (wrong tokens count), answers `{ role: 'counter' }` like login, and drops the browser's previous session. The today-only rule is `todayOnly(role)` in `shared/src/auth.ts` (for the client's date lock in step 5 too), checked in the counts route. Repo: `db.auth.qrLink/setQrLink/deleteQrLink/qrLinkId`, and `createSession` takes a `linkId`; revoking deletes every session with a `link_id`. No migration was needed. `tests/helpers.ts` gained `agent()` (cookie-keeping, no session).
-- [ ] **4. Client login and roles:**
+- [x] **4. Client login and roles:**
    - Tests first (Vitest + Testing Library, as in `client/src/components/ui/ui.test.tsx`):
      - `pages/Login.test.tsx`: the keypad submits after 4 digits, and an error shows on a wrong PIN.
      - An `AuthContext` test: 401 shows the login screen, and `?key=` is exchanged and removed.
    - Then write `AuthContext`, `Login`, the 401 event in `api.ts`, Logout, and hiding admin-only UI.
+   - Done. Differences: `AuthProvider` (in `App.tsx`, around `DateProvider`/`StockProvider`/router) renders `pages/Login.tsx` itself instead of a route, so the URL is kept through login; `Login` gets `onSubmit`/`notice` props and doesn't import the context. `?key=` is removed from the URL before the request (StrictMode-safe); an invalid key shows "This QR code no longer works" on the PIN screen. `api.ts` fires `auth:expired` (`AUTH_EXPIRED`) on a 401 outside `/auth/*`; `apiErrorMessage` maps `UNAUTHORIZED`/`FORBIDDEN`/`TOO_MANY_REQUESTS`. Workers see item and group names as plain text, and empty states say "Ask the admin to set this up." The Logout button is in the header. `client/src/test/setup.ts` now runs Testing Library's `cleanup` (no Vitest globals); `client/src/test/fetch.ts` has `mockApi()` for fake API replies.
 - [ ] **5. Client admin settings + counter mode:**
    - Tests first: the Settings PIN form validation, and a counter role sees only the Counter and today's date.
    - Then write `pages/Settings.tsx` (PINs + QR), counter mode in `AppShell`/`DateContext`, and the i18n text.

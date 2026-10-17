@@ -42,7 +42,15 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
   `counter` session with `sessions.link_id` set; regenerating or revoking deletes every session
   with a `link_id`. Tests: `tests/qr.test.ts` (`env.agent()` = cookie-keeping, no session).
 
-## Client (step 4+)
+## Client
 
-`useAuth()` returns `{ role, can, logout }`. Hide controls with `can('setup')` etc. — hiding is only
-convenience; the server guard is what enforces it.
+- `client/src/context/AuthContext.tsx`: `AuthProvider` (in `App.tsx`, outside the router) checks
+  `/auth/me`, exchanges `?key=` first, and renders `pages/Login.tsx` while there is no session.
+  `lib/api.ts` dispatches `AUTH_EXPIRED` on a 401 outside `/auth/*` → back to the PIN screen.
+- `useAuth()` returns `{ role, can, logout }`. Hide controls with `can('setup')` etc. — hiding is
+  only convenience; the server guard is what enforces it. Where a worker can't edit, show the value
+  as plain text (item/group names) and use `t.common.askAdmin` in empty states.
+  Hidden now: item add/rename/remove (`ItemsCard`), group controls and ⚙ (`DeparturesCard`),
+  Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`DataMenu`).
+- Tests: `client/src/test/fetch.ts` `mockApi((method, path, body) => reply)` stubs `fetch`;
+  see `context/AuthContext.test.tsx` and `pages/Login.test.tsx`.

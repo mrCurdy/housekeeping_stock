@@ -26,6 +26,7 @@ export const et: Messages = {
     notSaved: 'Ei salvestatud',
     loadFailed: 'Andmeid ei õnnestunud laadida',
     tryAgain: 'Proovi uuesti',
+    askAdmin: 'Palu administraatoril see seadistada.',
   },
 
   errors: {
@@ -34,6 +35,8 @@ export const et: Messages = {
     notFound: 'See eemaldati teises seadmes.',
     server: 'Serveris tekkis viga.',
     generic: 'Midagi läks valesti',
+    loggedOut: 'Sind logiti välja. Sisesta PIN uuesti.',
+    forbidden: 'Seda saab teha ainult administraator.',
   },
 
   nav: {
@@ -42,6 +45,7 @@ export const et: Messages = {
     checklist: 'Kontrollnimekiri',
     openMenu: 'Ava menüü',
     closeMenu: 'Sulge menüü',
+    logout: 'Logi välja',
   },
 
   theme: {
@@ -51,6 +55,15 @@ export const et: Messages = {
   },
 
   language: 'Keel',
+
+  auth: {
+    title: 'Sisesta PIN',
+    pin: 'PIN',
+    clear: 'Kustuta viimane number',
+    wrongPin: 'Vale PIN. Proovi uuesti.',
+    tooMany: 'Liiga palju valesid katseid. Oota 15 minutit ja proovi uuesti.',
+    qrInvalid: 'See QR-kood ei kehti enam. Küsi administraatorilt uus.',
+  },
 
   date: {
     prev: 'Eelmine päev',

@@ -4,6 +4,7 @@ import { DateSwitcher } from '@/components/layout/DateSwitcher';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, buttonVariants, Card, EmptyState, Spinner } from '@/components/ui';
 import { formatLongDate, useSelectedDate } from '@/context/DateContext';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
@@ -19,6 +20,7 @@ import { useCountDrafts } from './counter/useCountDrafts';
 export default function Counter() {
   const { locationId } = useParams();
   const { data, loading, loadError } = useStock();
+  const { can } = useAuth();
   const { date } = useSelectedDate();
   const { t, locale } = useI18n();
   const tx = t.counter;
@@ -100,7 +102,7 @@ export default function Counter() {
                 <EmptyState
                   icon={<ClipboardList />}
                   title={tx.noRoomsTitle}
-                  description={tx.noRoomsDescription}
+                  description={can('setup') ? tx.noRoomsDescription : t.common.askAdmin}
                 />
               ) : (
                 <AllRoomsTable progress={progress} />
@@ -108,7 +110,7 @@ export default function Counter() {
             </>
           )}
 
-          <ManageRooms />
+          {can('setup') && <ManageRooms />}
         </Card>
       )}
     </>

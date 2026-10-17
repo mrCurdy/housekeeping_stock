@@ -29,6 +29,7 @@ export const en = {
     notSaved: 'Not saved',
     loadFailed: 'Could not load the data',
     tryAgain: 'Try again',
+    askAdmin: 'Ask the admin to set this up.',
   },
 
   errors: {
@@ -37,6 +38,8 @@ export const en = {
     notFound: 'It was removed on another device.',
     server: 'Something went wrong on the server.',
     generic: 'Something went wrong',
+    loggedOut: 'You were logged out. Enter the PIN again.',
+    forbidden: 'Only the admin can do this.',
   },
 
   nav: {
@@ -45,6 +48,7 @@ export const en = {
     checklist: 'Checklist',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
+    logout: 'Log out',
   },
 
   theme: {
@@ -54,6 +58,15 @@ export const en = {
   },
 
   language: 'Language',
+
+  auth: {
+    title: 'Enter your PIN',
+    pin: 'PIN',
+    clear: 'Delete last digit',
+    wrongPin: 'Wrong PIN. Try again.',
+    tooMany: 'Too many wrong tries. Wait 15 minutes and try again.',
+    qrInvalid: 'This QR code no longer works. Ask the admin for a new one.',
+  },
 
   date: {
     prev: 'Previous day',
