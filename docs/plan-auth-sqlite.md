@@ -118,9 +118,10 @@ Work happens in **separate sessions, one step each, tests first**, and is set up
    - Tests first: the Settings PIN form validation, and a counter role sees only the Counter and today's date.
    - Then write `pages/Settings.tsx` (PINs + QR), counter mode in `AppShell`/`DateContext`, and the i18n text.
    - Done. Differences: each PIN form asks for the new PIN twice; a 400 from the server is shown as "must be different". The QR is drawn as SVG (`qrcode.toString`, no canvas needed, so it renders in tests) and the PNG download uses `toDataURL`; both in `lib/qr.ts`, dynamically imported. The token is only on screen until the page is left; after that the card says since when a code works and offers "Make a new QR code" (confirmed) and Revoke. Print opens a window with the title and the SVG. NAV entries take an optional `perm` (Settings needs `pins`); `/settings` redirects others to `/stock`. Counter mode is in `AppShell` (no sidebar, menu or toolbar; any other path → `/counter`) and `DateProvider` (uses `useAuth`; `locked` → min = max = today, `DateSwitcher` renders nothing). The Counter's empty state shows `askAdmin` instead of "Go to Stock" for a counter session. Test: `client/src/CounterMode.test.tsx` renders the whole `App` (stubs `matchMedia` and `scrollTo`).
-- [ ] **6. Wrap-up:**
+- [x] **6. Wrap-up:**
    - Update CLAUDE.md (architecture, data model → SQLite tables, roles), README, `.env.example` (`ADMIN_PIN`, `WORKER_PIN`, `SQLITE_PATH`) and `docker-compose.yml`.
    - Run a manual end-to-end check (below) and open a PR.
+   - Done. Differences: docker compose passes `ADMIN_PIN`/`WORKER_PIN`/`SQLITE_PATH`, so `config.ts` now treats an empty PIN as unset (test in `auth.test.ts`). The end-to-end check ran over the API against the built server and a copy of `data/db.json` (import identical, totals equal; worker 403, PIN change → 401, QR today-only, revoke → 401) and in Docker; the UI side of those flows is covered by the client tests, not clicked through in a browser.
 
 To start each session: `Use the plan-step skill: do step N of docs/plan-auth-sqlite.md`.
 

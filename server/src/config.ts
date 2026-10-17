@@ -25,8 +25,9 @@ const envSchema = z
     HTTPS_ONLY: z.enum(['true', 'false']).default('false'),
 
     /** PINs set on the first start (later changed in the app). Unset: 1234 / 0000 with a warning. */
-    ADMIN_PIN: pinSchema.optional(),
-    WORKER_PIN: pinSchema.optional(),
+    // Empty (as docker compose passes an unset variable) means unset
+    ADMIN_PIN: z.preprocess((v) => (v === '' ? undefined : v), pinSchema.optional()),
+    WORKER_PIN: z.preprocess((v) => (v === '' ? undefined : v), pinSchema.optional()),
 
     /** Directory with the built client; served in production. */
     CLIENT_DIST: z.string().optional(),

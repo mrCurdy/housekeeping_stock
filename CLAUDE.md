@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Stock Monitor": a standalone tool for tracking daily housekeeping stock (linens, amenities, etc.) per item in a hotel. Consumption is partly derived from guest-group departures. It is not integrated with any hotel system, has no login ("there is no sensitive data") and stores everything in one JSON file. The user wants it simple and lightweight but easy to extend.
+"Stock Monitor": a standalone tool for tracking daily housekeeping stock (linens, amenities, etc.) per item in a hotel. Consumption is partly derived from guest-group departures. It is not integrated with any hotel system, uses a light 4-digit PIN login (one PIN each for admin and worker, plus a QR link that opens today's Counter) and stores everything in one SQLite file. The user wants it simple and lightweight but easy to extend.
 
 ## Commands
 
@@ -22,7 +22,7 @@ Before committing: `npm run lint && npm run typecheck && npm test`.
 
 ## Architecture
 
-npm workspaces, structured like `boilerplate/` (a separate, untracked checkout of a full-stack TypeScript template; reference only, don't modify it unless asked). Auth, Socket.io, the SQL drivers and the appearance customizer were deliberately left out.
+npm workspaces, structured like `boilerplate/` (a separate, untracked checkout of a full-stack TypeScript template; reference only, don't modify it unless asked). Socket.io, the Postgres/MySQL drivers, user accounts and the appearance customizer were deliberately left out; auth is a small PIN/role layer of its own.
 
 - `shared/src/` (`@app/shared`, imported as TS source by both sides):
   - `types.ts`: the dataset (`StockData`) and its parts.

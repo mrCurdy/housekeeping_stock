@@ -177,4 +177,11 @@ describe('PIN seeding', () => {
     expect(() => loadConfig({ ADMIN_PIN: '1111', WORKER_PIN: '1111' })).toThrow(/differ/);
     expect(() => loadConfig({ ADMIN_PIN: '11' })).toThrow(/ADMIN_PIN/);
   });
+
+  it('treats empty PINs in env (as docker compose passes them) as unset', async () => {
+    const { loadConfig } = await import('../src/config');
+    const config = loadConfig({ ADMIN_PIN: '', WORKER_PIN: '' });
+    expect(config.ADMIN_PIN).toBeUndefined();
+    expect(config.WORKER_PIN).toBeUndefined();
+  });
 });

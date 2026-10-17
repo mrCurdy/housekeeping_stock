@@ -1,6 +1,7 @@
 # Usage:
 #   docker compose up --build -d     -> http://localhost:3000 (set APP_PORT to change)
-# The database (db.json + daily copies in backups/) lives in the `app-data` volume.
+# The database (stock.db + daily JSON copies in backups/) lives in the `app-data` volume.
+# Set ADMIN_PIN / WORKER_PIN before the first start (otherwise 1234 / 0000).
 # Values come from your shell or .env; the defaults below are fine on a local network.
 
 services:
@@ -16,6 +17,9 @@ services:
       CLIENT_URL: ${PUBLIC_URL:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DB_DRIVER: sqlite
+      SQLITE_PATH: /app/data/stock.db
+      ADMIN_PIN: ${ADMIN_PIN:-}
+      WORKER_PIN: ${WORKER_PIN:-}
       BACKUP_DAYS: ${BACKUP_DAYS:-30}
       # true once the app is behind HTTPS (enables HSTS)
       HTTPS_ONLY: ${HTTPS_ONLY:-false}
