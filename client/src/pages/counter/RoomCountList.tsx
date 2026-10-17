@@ -51,7 +51,7 @@ export function RoomCountList({
       setError('');
       const next = inputs.current[index + 1];
       if (next) {
-        next.focus({ preventScroll: true });
+        next.focus();
       } else {
         inputs.current[index]?.blur();
       }
