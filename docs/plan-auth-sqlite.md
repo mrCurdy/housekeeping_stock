@@ -93,13 +93,14 @@ Work happens in **separate sessions, one step each, tests first**, and is set up
    - Then write `db/sqlite/{index,migrations}.ts`, change config and `db/index.ts`, delete `db/json/`, and update the Dockerfile so better-sqlite3 builds or uses prebuilt binaries.
    - Write `.claude/skills/sqlite-db/SKILL.md`: the schema, how to add a migration, row mapping, transactions, and how to add a repo method.
    - Done. Differences: no foreign keys (restores may reference removed rooms/old tasks; deletes clean up by hand). The auth tables are created now in migration 1. `api.test.ts` changed in two places: health reports `db: 'sqlite'`, and the last test checks only the daily backup (there is no db.json any more). `.env.example`, `docker-compose.yml` and README already switched to `sqlite`, since `DB_DRIVER=json` no longer validates.
-- [ ] **2. Auth on the server:**
+- [x] **2. Auth on the server:**
    - Tests first:
      - `shared/src/auth.test.ts` for the `can()` matrix and `pinSchema`.
      - `server/tests/auth.test.ts`: login, a wrong PIN, `me`, logout, the rate limit, 401 without a cookie, 403 for a worker on setup/tasks/restore/pins, PIN change logs out workers, PINs must differ, and seeding from env.
    - Update the existing `api.test.ts` helpers to log in as admin.
    - Then write `shared/src/auth.ts`, `server/src/auth/{pins,sessions,middleware}.ts`, `routes/auth.ts`, and the guards in `app.ts`.
    - Write `.claude/skills/auth/SKILL.md`: the role matrix and how to guard a new route and hide UI with `can()`.
+   - Done. Differences: storage is a `db.auth` repo (`AuthRepo` in `db/types.ts`; no daily backup, not in `StockData`). Wrong PINs only count towards the rate limit (`skipSuccessfulRequests`). Seeding is `seedPins(config, db)` after `db.init()` (in `index.ts` and `tests/helpers.ts`); it only fills a role with no PIN. Setting an env PIN equal to the other fails config validation. `PUT /auth/pins` answers 204; a PIN equal to the other role's is 400. Checklist ticks/notes need `checklist`, `GET /data` any login. `helpers.ts`: `api()` is an admin agent, `request()` has no session, `login(pin)`. The counter today-only check is left for step 3. `.env.example` already lists `ADMIN_PIN`/`WORKER_PIN`.
 - [ ] **3. QR on the server:**
    - Tests first in `server/tests/qr.test.ts`:
      - Creating a QR code then linking gives a counter session.

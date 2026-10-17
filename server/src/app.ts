@@ -1,12 +1,15 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
+import { allow, requireAuth, session } from './auth/middleware';
 import type { AppContext } from './context';
 import { logger } from './lib/logger';
 import { errorHandler, notFoundHandler } from './middleware/error';
+import { authRouter } from './routes/auth';
 import { checklistRouter, tasksRouter } from './routes/checklist';
 import { dailyRouter } from './routes/daily';
 import { dataRouter } from './routes/data';
@@ -30,6 +33,7 @@ export function createApp(ctx: AppContext) {
   app.use(cors({ origin: config.CLIENT_URL.split(',') }));
   // Backups of a few years of daily data stay well below this
   app.use(express.json({ limit: '20mb' }));
+  app.use(cookieParser());
   if (config.NODE_ENV !== 'test') {
     app.use(
       pinoHttp({
@@ -47,14 +51,19 @@ export function createApp(ctx: AppContext) {
   }
 
   // ---- API ----
+  // Guards: `allow(perm)` per router here, or per route inside routers mounted at '/'
+  // (a guard on a '/' mount would also answer unknown routes with 403).
   const api = express.Router();
-  api.use('/', systemRouter(ctx));
+  api.use(session(ctx));
+  api.use('/', systemRouter(ctx)); // public
+  api.use('/auth', authRouter(ctx)); // login is public; the rest guard themselves
+  api.use(requireAuth);
   api.use('/', dataRouter(ctx));
   api.use('/', dailyRouter(ctx));
-  api.use('/items', itemsRouter(ctx));
-  api.use('/groups', groupsRouter(ctx));
-  api.use('/locations', locationsRouter(ctx));
-  api.use('/tasks', tasksRouter(ctx));
+  api.use('/items', allow('setup'), itemsRouter(ctx));
+  api.use('/groups', allow('setup'), groupsRouter(ctx));
+  api.use('/locations', allow('setup'), locationsRouter(ctx));
+  api.use('/tasks', allow('tasks'), tasksRouter(ctx));
   api.use('/', checklistRouter(ctx));
   // Register new feature routers here.
   api.use(notFoundHandler);

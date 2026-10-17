@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { backupSchema, type StockData } from '@app/shared';
+import { allow } from '../auth/middleware';
 import type { AppContext } from '../context';
 import { HttpError } from '../lib/errors';
 
@@ -14,7 +15,7 @@ export function dataRouter({ db }: AppContext) {
   });
 
   /** Backup restore: replaces ALL data, room counts included. Accepts old-format backups too. */
-  r.post('/restore', async (req, res) => {
+  r.post('/restore', allow('restore'), async (req, res) => {
     const parsed = backupSchema.safeParse(req.body);
     if (!parsed.success) throw HttpError.badRequest('This file is not a Stock Monitor backup');
     await db.replace(parsed.data);

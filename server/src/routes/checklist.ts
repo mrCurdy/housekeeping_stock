@@ -11,6 +11,7 @@ import {
   type TaskOrderInput,
   type TaskPatchInput,
 } from '@app/shared';
+import { allow } from '../auth/middleware';
 import type { AppContext } from '../context';
 import { dateParam, found, param } from '../lib/params';
 import { validateBody } from '../middleware/validate';
@@ -43,13 +44,18 @@ export function checklistRouter({ db }: AppContext) {
   const r = Router();
 
   /** Ticks / unticks one task. Returns every tick of that day, including other people's. */
-  r.put('/checks/:date/:taskId', validateBody(checkSchema), async (req, res) => {
-    const { done } = req.body as CheckInput;
-    const day = await db.checklist.setDone(dateParam(req), param(req, 'taskId'), done);
-    res.json(found(day, 'Task'));
-  });
+  r.put(
+    '/checks/:date/:taskId',
+    allow('checklist'),
+    validateBody(checkSchema),
+    async (req, res) => {
+      const { done } = req.body as CheckInput;
+      const day = await db.checklist.setDone(dateParam(req), param(req, 'taskId'), done);
+      res.json(found(day, 'Task'));
+    },
+  );
 
-  r.put('/notes/:date', validateBody(noteSchema), async (req, res) => {
+  r.put('/notes/:date', allow('checklist'), validateBody(noteSchema), async (req, res) => {
     const { text } = req.body as NoteInput;
     await db.checklist.setNote(dateParam(req), text);
     res.json({ text });

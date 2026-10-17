@@ -6,7 +6,9 @@ import type {
   Item,
   ItemPatchInput,
   Location,
+  PinRole,
   RecordPatchInput,
+  Role,
   StockData,
   Task,
   TaskPatchInput,
@@ -65,6 +67,19 @@ export interface ChecklistRepo {
   setNote(date: string, text: string): Promise<void>;
 }
 
+/** Login storage. Not part of StockData: backups and restores never touch it. */
+export interface AuthRepo {
+  /** Stored PIN hashes by role (a role without a PIN is missing). */
+  pinHashes(): Promise<Partial<Record<PinRole, string>>>;
+  setPinHash(role: PinRole, hash: string): Promise<void>;
+  createSession(tokenHash: string, role: Role): Promise<void>;
+  /** The role of a session, or null when it doesn't exist (any more). */
+  sessionRole(tokenHash: string): Promise<Role | null>;
+  deleteSession(tokenHash: string): Promise<void>;
+  /** Logs out every session of a role, except `keep` (a token hash). */
+  deleteSessions(role: Role, keep?: string): Promise<void>;
+}
+
 export type DbDriver = 'sqlite';
 
 export interface Db {
@@ -83,6 +98,7 @@ export interface Db {
   tasks: TaskRepo;
   /** Ticks and notes older than CHECKLIST_DAYS are deleted (on start and with every change). */
   checklist: ChecklistRepo;
+  auth: AuthRepo;
   /** Create tables / files. Must be idempotent. */
   init(): Promise<void>;
   close(): Promise<void>;

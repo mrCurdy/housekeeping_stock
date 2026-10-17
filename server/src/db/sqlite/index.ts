@@ -25,10 +25,12 @@ import {
   type Item,
   isTaskOn,
   type Location,
+  type PinRole,
   newTask,
   normalizeStockData,
   pruneTasks,
   removeTaskFrom,
+  type Role,
   type StockData,
   type Task,
   todayLocal,
@@ -581,6 +583,41 @@ export function createSqliteDb(
             );
           } else run('DELETE FROM notes WHERE date = ?', date);
         });
+      },
+    },
+
+    // Auth rows are outside the dataset, so they skip write() (no backup, no prune).
+    auth: {
+      async pinHashes() {
+        const rows = all<{ role: PinRole; hash: string }>('SELECT role, hash FROM pins');
+        return Object.fromEntries(rows.map((r) => [r.role, r.hash]));
+      },
+      async setPinHash(role, hash) {
+        run(
+          'INSERT INTO pins (role, hash) VALUES (?, ?) ON CONFLICT (role) DO UPDATE SET hash = excluded.hash',
+          role,
+          hash,
+        );
+      },
+      async createSession(tokenHash, role) {
+        run(
+          'INSERT INTO sessions (token_hash, role, created_at) VALUES (?, ?, ?)',
+          tokenHash,
+          role,
+          new Date().toISOString(),
+        );
+      },
+      async sessionRole(tokenHash) {
+        return (
+          get<{ role: Role }>('SELECT role FROM sessions WHERE token_hash = ?', tokenHash)?.role ??
+          null
+        );
+      },
+      async deleteSession(tokenHash) {
+        run('DELETE FROM sessions WHERE token_hash = ?', tokenHash);
+      },
+      async deleteSessions(role, keep = '') {
+        run('DELETE FROM sessions WHERE role = ? AND token_hash != ?', role, keep);
       },
     },
   };

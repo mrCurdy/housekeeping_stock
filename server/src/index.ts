@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { createApp } from './app';
+import { seedPins } from './auth/pins';
 import { loadConfig } from './config';
 import { createContext } from './context';
 import { createDb } from './db';
@@ -9,6 +10,7 @@ async function main() {
   const config = loadConfig();
   const db = await createDb(config);
   await db.init();
+  await seedPins(config, db);
 
   const app = createApp(createContext(config, db));
   const httpServer = createServer(app);
