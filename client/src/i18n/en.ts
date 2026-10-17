@@ -49,6 +49,7 @@ export const en = {
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
     logout: 'Log out',
+    settings: 'Settings',
   },
 
   theme: {
@@ -233,6 +234,47 @@ export const en = {
         `It is taken off the list from this day (${date}). Earlier days keep it, with their ticks.`,
       appliesFrom: (date: string) =>
         `Changes apply from this day (${date}). Earlier days stay as they were.`,
+    },
+  },
+
+  settings: {
+    title: 'Settings',
+    description: 'PINs and the QR code for counting. Only the admin sees this page.',
+    pins: {
+      title: 'PINs',
+      description: 'Each role logs in with its own 4-digit PIN. The two PINs must be different.',
+      admin: 'Admin PIN',
+      worker: 'Worker PIN',
+      adminHint: 'Other devices logged in as admin will be logged out.',
+      workerHint: 'Every worker device will be logged out and needs the new PIN.',
+      newPin: 'New PIN',
+      repeat: 'Repeat the new PIN',
+      useDigits: 'Use 4 digits',
+      mismatch: 'The PINs do not match',
+      mustDiffer: 'The admin and worker PINs must be different',
+      adminChanged: 'Admin PIN changed',
+      workerChanged: 'Worker PIN changed',
+    },
+    qr: {
+      title: 'QR code for counting',
+      description:
+        'Scanning it opens the inventory count for today without a PIN. It can do nothing else.',
+      none: 'There is no QR code yet.',
+      activeSince: (date: string) => `A QR code has worked since ${date}.`,
+      hiddenHint: 'It is only shown when it is made. To print it again, make a new one.',
+      showOnce: 'Print or download it now: it is not shown again after you leave this page.',
+      make: 'Make QR code',
+      remake: 'Make a new QR code',
+      remakeTitle: 'Make a new QR code?',
+      remakeDescription: 'The old QR code stops working, and phones that opened it are logged out.',
+      revoke: 'Revoke',
+      revokeTitle: 'Revoke the QR code?',
+      revokeDescription: 'It stops working, and phones that opened it are logged out.',
+      revoked: 'QR code revoked',
+      image: 'QR code',
+      print: 'Print',
+      download: 'Download PNG',
+      printTitle: 'Scan to count the stock',
     },
   },
 

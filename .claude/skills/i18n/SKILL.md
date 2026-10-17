@@ -56,6 +56,10 @@ The server stays English. `apiErrorMessage(err, t)` in `lib/api.ts` maps error c
 | Task | Ülesanne | Задача |
 | Instructions | Juhend | Инструкция |
 | Note for the next shift | Kommentaar järgmisele vahetusele | Комментарий для следующей смены |
+| Settings | Seaded | Настройки |
+| Admin / Worker (role) | administraator / töötaja | администратор / сотрудник |
+| PIN / QR code | PIN / QR-kood | PIN / QR-код |
+| Revoke | Tühista | Отозвать |
 
 "Room" is ambiguous in English: hotel rooms (departures) and storage rooms (locations) are different words in et and ru. Pick by meaning.
 

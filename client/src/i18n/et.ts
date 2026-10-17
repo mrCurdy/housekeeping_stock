@@ -46,6 +46,7 @@ export const et: Messages = {
     openMenu: 'Ava menüü',
     closeMenu: 'Sulge menüü',
     logout: 'Logi välja',
+    settings: 'Seaded',
   },
 
   theme: {
@@ -231,6 +232,48 @@ export const et: Messages = {
         `See eemaldatakse nimekirjast alates sellest päevast (${date}). Varasematel päevadel jääb see alles koos märgetega.`,
       appliesFrom: (date) =>
         `Muudatused kehtivad alates sellest päevast (${date}). Varasemad päevad jäävad samaks.`,
+    },
+  },
+
+  settings: {
+    title: 'Seaded',
+    description: 'PIN-koodid ja inventuuri QR-kood. Seda lehte näeb ainult administraator.',
+    pins: {
+      title: 'PIN-koodid',
+      description:
+        'Kumbki roll logib sisse oma 4-kohalise PIN-koodiga. Need peavad olema erinevad.',
+      admin: 'Administraatori PIN',
+      worker: 'Töötaja PIN',
+      adminHint: 'Teised administraatori seadmed logitakse välja.',
+      workerHint: 'Kõik töötajate seadmed logitakse välja ja vajavad uut PIN-i.',
+      newPin: 'Uus PIN',
+      repeat: 'Korda uut PIN-i',
+      useDigits: 'Sisesta 4 numbrit',
+      mismatch: 'PIN-koodid ei kattu',
+      mustDiffer: 'Administraatori ja töötaja PIN peavad olema erinevad',
+      adminChanged: 'Administraatori PIN muudetud',
+      workerChanged: 'Töötaja PIN muudetud',
+    },
+    qr: {
+      title: 'Inventuuri QR-kood',
+      description: 'Skaneerimine avab tänase inventuuri ilma PIN-ita. Muud sellega teha ei saa.',
+      none: 'QR-koodi veel pole.',
+      activeSince: (date) => `QR-kood kehtib alates ${date}.`,
+      hiddenHint: 'Koodi näidatakse ainult loomisel. Uuesti printimiseks loo uus.',
+      showOnce: 'Prindi või laadi see kohe alla: pärast lehelt lahkumist seda enam ei näidata.',
+      make: 'Loo QR-kood',
+      remake: 'Loo uus QR-kood',
+      remakeTitle: 'Kas luua uus QR-kood?',
+      remakeDescription:
+        'Vana QR-kood lakkab töötamast ja sellega avatud telefonid logitakse välja.',
+      revoke: 'Tühista',
+      revokeTitle: 'Kas tühistada QR-kood?',
+      revokeDescription: 'See lakkab töötamast ja sellega avatud telefonid logitakse välja.',
+      revoked: 'QR-kood tühistatud',
+      image: 'QR-kood',
+      print: 'Prindi',
+      download: 'Laadi alla PNG',
+      printTitle: 'Skaneeri inventuuri tegemiseks',
     },
   },
 

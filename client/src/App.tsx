@@ -35,6 +35,7 @@ const router = createBrowserRouter([
       // /counter = all rooms; /counter/<roomId> = one room's counting list (bookmark it per floor)
       { path: 'counter/:locationId?', lazy: page(() => import('@/pages/Counter')) },
       { path: 'checklist', lazy: page(() => import('@/pages/Checklist')) },
+      { path: 'settings', lazy: page(() => import('@/pages/Settings')) }, // admin only
       { path: '*', element: <NotFound /> },
     ],
   },

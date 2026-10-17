@@ -1,6 +1,7 @@
-import { Boxes, ClipboardList, ListChecks, LogOut, Menu, Package, X } from 'lucide-react';
+import { todayOnly, type Permission } from '@app/shared';
+import { Boxes, ClipboardList, ListChecks, LogOut, Menu, Package, Settings, X } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
@@ -14,6 +15,8 @@ interface NavItem {
   to: string;
   label: (t: Messages) => string;
   icon: ComponentType<{ className?: string }>;
+  /** Shown only to roles with this permission */
+  perm?: Permission;
 }
 
 /** Add pages to the sidebar here (and their route in App.tsx). */
@@ -21,19 +24,23 @@ const NAV: NavItem[] = [
   { to: '/stock', label: (t) => t.nav.stock, icon: Package },
   { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList },
   { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks },
+  { to: '/settings', label: (t) => t.nav.settings, icon: Settings, perm: 'pins' },
 ];
 
 export function AppShell() {
   const { t } = useI18n();
-  const { logout } = useAuth();
+  const { role, can, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   // Counting and the checklist happen on phones: keep their header free of the admin tools
   const { pathname } = useLocation();
   const counting = pathname.startsWith('/counter') || pathname.startsWith('/checklist');
+  // Counter mode (QR session): only the Counter, with no menu or toolbar
+  const counterOnly = todayOnly(role);
+  if (counterOnly && !pathname.startsWith('/counter')) return <Navigate to="/counter" replace />;
 
   const sidebar = (
     <nav className="flex flex-col gap-1 p-3">
-      {NAV.map(({ to, label, icon: Icon }) => (
+      {NAV.filter((n) => !n.perm || can(n.perm)).map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
@@ -57,10 +64,12 @@ export function AppShell() {
   return (
     <div className="flex h-full overflow-x-clip">
       {/* Desktop sidebar */}
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface md:flex">
-        <Brand />
-        {sidebar}
-      </aside>
+      {!counterOnly && (
+        <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface md:flex">
+          <Brand />
+          {sidebar}
+        </aside>
+      )}
 
       {/* Mobile drawer */}
       {mobileOpen && (
@@ -88,20 +97,24 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            aria-label={t.nav.openMenu}
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold md:hidden">{t.appName}</span>
+          {!counterOnly && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              aria-label={t.nav.openMenu}
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <span className={cn('font-semibold', !counterOnly && 'md:hidden')}>{t.appName}</span>
           <div className="flex-1" />
-          <div className={cn(counting && 'hidden md:block')}>
-            <DataMenu />
-          </div>
+          {!counterOnly && (
+            <div className={cn(counting && 'hidden md:block')}>
+              <DataMenu />
+            </div>
+          )}
           <LanguageSwitcher />
           <ThemeToggle />
           <Button

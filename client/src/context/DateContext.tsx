@@ -1,5 +1,6 @@
-import { addDays, formatDate, parseDateLocal, todayLocal } from '@app/shared';
+import { addDays, formatDate, parseDateLocal, todayLocal, todayOnly } from '@app/shared';
 import { createContext, use, useMemo, useState, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 
 /** Days you can navigate to, relative to today. The Stock overview shows exactly this range. */
 export const DAYS_BACK = 30;
@@ -11,6 +12,8 @@ interface DateState {
   today: string;
   minDate: string;
   maxDate: string;
+  /** Only today can be picked (a QR counter session: `todayOnly(role)`) */
+  locked: boolean;
   canPrev: boolean;
   canNext: boolean;
   /** Selects a day; ignored outside minDate … maxDate */
@@ -22,14 +25,19 @@ interface DateState {
 
 const DateContext = createContext<DateState | null>(null);
 
-/** The selected day, shared by every page (so switching pages keeps it). */
+/**
+ * The selected day, shared by every page (so switching pages keeps it). Roles that may only change
+ * today (`todayOnly`) are locked to today.
+ */
 export function DateProvider({ children }: { children: ReactNode }) {
+  const locked = todayOnly(useAuth().role);
   const [bounds] = useState(() => {
     const t = todayLocal();
     return {
       today: formatDate(t),
-      minDate: formatDate(addDays(t, -DAYS_BACK)),
-      maxDate: formatDate(addDays(t, DAYS_AHEAD)),
+      minDate: formatDate(addDays(t, locked ? 0 : -DAYS_BACK)),
+      maxDate: formatDate(addDays(t, locked ? 0 : DAYS_AHEAD)),
+      locked,
     };
   });
   const [date, setDateState] = useState(bounds.today);

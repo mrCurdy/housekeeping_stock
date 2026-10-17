@@ -3,10 +3,11 @@ import { Button } from '@/components/ui';
 import { formatLongDate, useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 
-/** ‹ date › Today: picks the day every page works on. */
+/** ‹ date › Today: picks the day every page works on. Just the date when it is locked to today. */
 export function DateSwitcher() {
   const { t, locale } = useI18n();
-  const { date, today, canPrev, canNext, prevDay, nextDay, goToToday } = useSelectedDate();
+  const { date, today, locked, canPrev, canNext, prevDay, nextDay, goToToday } = useSelectedDate();
+  if (locked) return null; // the page description already shows the date
   return (
     <div className="flex items-center gap-2">
       <Button

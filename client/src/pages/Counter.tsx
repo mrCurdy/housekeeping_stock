@@ -1,3 +1,4 @@
+import { todayOnly } from '@app/shared';
 import { ClipboardList, Package } from 'lucide-react';
 import { Link, NavLink, useParams } from 'react-router';
 import { DateSwitcher } from '@/components/layout/DateSwitcher';
@@ -20,7 +21,7 @@ import { useCountDrafts } from './counter/useCountDrafts';
 export default function Counter() {
   const { locationId } = useParams();
   const { data, loading, loadError } = useStock();
-  const { can } = useAuth();
+  const { role, can } = useAuth();
   const { date } = useSelectedDate();
   const { t, locale } = useI18n();
   const tx = t.counter;
@@ -82,11 +83,13 @@ export default function Counter() {
             <EmptyState
               icon={<Package />}
               title={tx.noItemsTitle}
-              description={tx.noItemsDescription}
+              description={todayOnly(role) ? t.common.askAdmin : tx.noItemsDescription}
               action={
-                <Link to="/stock" className={buttonVariants({ variant: 'outline' })}>
-                  {tx.goToStock}
-                </Link>
+                !todayOnly(role) && (
+                  <Link to="/stock" className={buttonVariants({ variant: 'outline' })}>
+                    {tx.goToStock}
+                  </Link>
+                )
               }
             />
           ) : room ? (

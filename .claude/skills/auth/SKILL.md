@@ -51,6 +51,13 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
   only convenience; the server guard is what enforces it. Where a worker can't edit, show the value
   as plain text (item/group names) and use `t.common.askAdmin` in empty states.
   Hidden now: item add/rename/remove (`ItemsCard`), group controls and ⚙ (`DeparturesCard`),
-  Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`DataMenu`).
+  Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`DataMenu`),
+  and the Settings NAV entry (`perm: 'pins'` on a `NAV` item in `AppShell`; `/settings` itself
+  redirects without `pins`).
+- Counter mode (`todayOnly(role)`): `AppShell` renders no sidebar, menu or toolbar and redirects
+  every path outside `/counter` there; `DateProvider` sets `locked` (min = max = today) and
+  `DateSwitcher` renders nothing. Test: `client/src/CounterMode.test.tsx` (whole `App`).
+- `pages/Settings.tsx`: PIN forms (`PUT /auth/pins`; a 400 means "same as the other PIN") and the
+  QR card (`GET/POST/DELETE /auth/qr`, drawn by `lib/qr.ts`). Test: `pages/Settings.test.tsx`.
 - Tests: `client/src/test/fetch.ts` `mockApi((method, path, body) => reply)` stubs `fetch`;
   see `context/AuthContext.test.tsx` and `pages/Login.test.tsx`.
