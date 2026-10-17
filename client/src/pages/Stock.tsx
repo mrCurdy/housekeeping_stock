@@ -45,7 +45,8 @@ export default function Stock() {
         <div className="flex flex-col gap-6">
           <div
             className={cn(
-              'grid items-start gap-6',
+              // grid-cols-1 (minmax(0,1fr)) so wide tables scroll inside their card on phones
+              'grid grid-cols-1 items-start gap-6',
               hasGroups && 'lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]',
             )}
           >
