@@ -1,0 +1,237 @@
+# Project structure
+
+Read this instead of exploring the tree. Each line says what a file owns; open only the files your
+change needs. Line counts are approximate and flag the files worth reading in parts (`grep -n`, then
+`sed -n 'A,Bp'`). Never open `client/src/i18n/et.ts`/`ru.ts` (follow the `i18n` skill),
+`package-lock.json`, `dist/` or `data/`.
+
+## Where to change X
+
+| Change                                  | Files (in order)                                                                                                                                                                | Skill        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| New page                                | `client/src/pages/<Page>.tsx` (+ `pages/<page>/` for its parts) → route in `App.tsx` → `NAV` in `components/layout/AppShell.tsx` → `nav.*` text                                 | `ui`, `i18n` |
+| New UI text                             | `client/src/i18n/en.ts`, then `et.ts`/`ru.ts` at the same place                                                                                                                 | `i18n`       |
+| New stored value / field                | `shared/src/types.ts` + `schemas.ts` (`backupSchema`, `normalizeStockData`) → `server/src/db/types.ts` → `db/sqlite/` (migration + method) → route → `StockContext` → component | `sqlite-db`  |
+| New request on existing data            | `shared/src/schemas.ts` (zod body) → `server/src/routes/<area>.ts` with `allow(perm)` → `StockContext` mutation → `server/tests/api.test.ts`                                    | `auth`, `ui` |
+| New permission / hide UI by role        | `shared/src/auth.ts` (`PERMISSIONS`, `MATRIX`) → `allow(perm)` on the route → `useAuth().can(perm)` in the UI                                                                   | `auth`       |
+| Stock rule (totals, consumption)        | `shared/src/stock.ts` + `stock.test.ts` only (pure; server and client both use it)                                                                                              | —            |
+| Checklist rule (task history, ticks)    | `shared/src/checklist.ts` + `checklist.test.ts`                                                                                                                                 | —            |
+| UI component used on more than one page | `client/src/components/ui/<Name>.tsx` + export in `components/ui/index.ts` + a case in `ui.test.tsx`                                                                            | `ui`         |
+| Colour / utility class                  | `client/src/styles/index.css` (tokens on `:root` and `[data-theme='dark']`, `@utility` classes)                                                                                 | `ui`         |
+| Backup / restore format                 | `shared/src/schemas.ts` (`backupSchema`, must still read old files) → `db/sqlite/index.ts` (`snapshot`, `fill`)                                                                 | `sqlite-db`  |
+| Excel export                            | `client/src/lib/excel.ts` (uses `math.series`)                                                                                                                                  | —            |
+| Env setting                             | `server/src/config.ts` → `.env.example` → `docker-compose.yml` → README                                                                                                         | —            |
+| A multi-session change                  | write `docs/plan-<topic>.md` with numbered steps                                                                                                                                | `plan-step`  |
+
+## File map
+
+### `shared/src/` (`@app/shared`, imported as TS source by server and client)
+
+- `types.ts`: `StockData` and its parts (see the data model below).
+- `schemas.ts` (211): the zod request schemas. `backupSchema` reads old-format backups with `''` blanks. `normalizeStockData`/`cleanRecord` make sure only real values get stored. `pruneChecklist` drops ticks and notes older than `CHECKLIST_DAYS`.
+- `auth.ts`: roles, `PERMISSIONS`, `can(role, perm)`, `todayOnly(role)`, `pinSchema`, login/link schemas.
+- `stock.ts` (+ test): `createStockMath(state, { minDateStr })` → `dayFigures`, `calculateTotal`, `autoConsumption`, `roomSum`, `series`.
+- `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`.
+- `dates.ts`: local `YYYY-MM-DD` helpers (`formatDate`, `parseDateLocal`, `addDays`, `todayLocal`, `dateRange`). `index.ts`: barrel.
+
+### `server/src/` (Express 5)
+
+- `index.ts`: start-up order: config → `db.init()` → `seedPins` → listen, then a graceful shutdown. `app.ts`: middleware, `/api` routers, and serving `client/dist` (`/assets` is cached as immutable).
+- `config.ts`: env validated with zod. `context.ts`: `{ config, db }` for the routes.
+- `auth/`:
+  - `pins.ts`: scrypt hashes, `roleForPin`, `seedPins`.
+  - `sessions.ts`: the `sm_session` cookie (a SHA-256 of the token is stored).
+  - `middleware.ts`: `session`, `requireAuth`, `allow(perm)`.
+- `db/types.ts`: the `Db` interface (routes use only this). `db/index.ts`: creates the driver.
+- `db/sqlite/index.ts` (**659**): the whole driver in one closure. Sections, found with `grep -n`:
+  - helpers;
+  - `snapshot` (rows → `StockData`) and `fill` (the reverse);
+  - `prune`, `dailyBackup` (a JSON snapshot each day), `importJson`;
+  - then the repo objects `items`, `records`, `departures`, `counts`, `tasks`, `checklist`, `auth`.
+- `db/sqlite/migrations.ts`: numbered schema migrations.
+- `routes/`:
+  - `auth.ts`: login, me, logout, pins, QR create/revoke, link.
+  - `checklist.ts`: tasks, checks, notes.
+  - `daily.ts`: records, departures, counts.
+  - `setup.ts`: items, groups, locations.
+  - `data.ts`: `GET /data`, `POST /restore`.
+  - `system.ts`: health.
+- `lib/`:
+  - `errors.ts`: `HttpError.*`.
+  - `params.ts`: `param()`, `found()` (null → 404).
+  - `logger.ts`.
+- `middleware/`:
+  - `validate.ts`: `validate(schema)` for the body.
+  - `error.ts`: turns errors into `{ error: { code, message } }`.
+- `tests/`:
+  - `helpers.ts`: app + temp DB per test.
+  - `api.test.ts` (293): the data routes.
+  - `auth.test.ts`, `qr.test.ts`.
+  - `sqlite.test.ts`: the driver, migrations, import and backups.
+
+#### API routes (all under `/api`)
+
+- **`auth`:**
+  - Login and sessions:
+    - `POST /auth/login` `{ pin }` is rate-limited to 10 wrong PINs per 15 min.
+    - `GET /me` → `{ role }`. `POST /logout`.
+    - `PUT /pins` `{ role, pin }` is admin-only. The PINs must differ, and it logs out that role's other sessions.
+  - QR (admin-only):
+    - `GET`, `POST` and `DELETE /qr`.
+    - `POST` answers `{ token }` once, and revokes the old link and its sessions.
+  - `POST /link` `{ token }` opens a `counter` session. That session may only `PUT` today's counts (`todayOnly`).
+- **`checklist`:**
+  - `/tasks`: `POST` and `PATCH /:id` (with `from`), `DELETE /:id/:date`, `PUT /order`.
+  - `PUT /checks/:date/:taskId` `{ done }` returns the day's ticks.
+  - `PUT /notes/:date` `{ text }`.
+- **`setup`:** `/items`, `/groups`, `/locations`, each with POST/PATCH/DELETE.
+- **`daily`:**
+  - `PATCH /records/:itemId/:date`.
+  - `PUT /departures/:groupId/:date`.
+  - `PUT /counts/:date/:locationId/:itemId` returns the whole day's counts.
+- **`data`:** `GET /data`, `POST /restore`. **`system`:** `GET /health`.
+
+#### Server details
+
+- **Env:**
+  - `ADMIN_PIN`/`WORKER_PIN` are the PINs on first start (default 1234/0000).
+  - `SQLITE_PATH` defaults to `data/stock.db`.
+  - `BACKUP_DAYS` sets how long the daily `backups/db-YYYY-MM-DD.json` snapshots are kept. A snapshot is written before the first change of each day.
+- **Old JSON data:** on the first start with an empty database, `JSON_DB_PATH` (the old `data/db.json`) is imported and renamed `db.json.imported`.
+- **Sessions:** the `sm_session` cookie holds a random token (SHA-256 stored), is httpOnly and lasts 1 year. Auth rows live in `db.auth`, not in `StockData` or the backups.
+
+### `client/src/` (React 19, Vite, Tailwind 4, React Router 7)
+
+- `main.tsx`, `App.tsx`: the provider stack (I18n → Theme → Toast → Confirm → Auth → Date → Stock → Router) and the lazy route table.
+- `context/`:
+  - `AuthContext.tsx`: the session check, QR `?key=` exchange, Login screen until signed in. `useAuth()` → `{ role, can, logout }`.
+  - `StockContext.tsx` (**338**): the dataset plus every mutation (`useStock()`), with optimistic updates, `send()` and polling. See the `ui` skill.
+  - `DateContext.tsx`: the selected day (−30…+7, locked in counter mode), plus `formatLongDate`.
+  - `I18nContext.tsx`: `useI18n()` → `{ t, locale, lang, setLang }`.
+  - `ConfirmContext.tsx`: `useConfirm()`. `ToastContext.tsx`: `useToast()`. `ThemeContext.tsx`: light/dark and palettes.
+- `components/ui/`: the UI kit (barrel `index.ts`; props are listed in the `ui` skill). `ui.test.tsx`.
+- `components/`:
+  - `AddForm.tsx`: a "new name" field + Add button.
+  - `ClearableInput.tsx`: a `CommitInput` with × to clear a manual value.
+- `components/layout/`:
+  - `AppShell.tsx`: sidebar, `NAV`, header, counter-mode redirect.
+  - `PageHeader`, `DateSwitcher`, `DataMenu` (Excel / Backup / Restore), `LanguageSwitcher`, `ThemeToggle`, `PaletteToggle`.
+- `pages/`:
+  - `Stock.tsx` + `stock/`:
+    - `DeparturesCard`, `ItemsCard` (192), `OverviewCard`, `GroupItemsModal`, `Legend`;
+    - `useRoomStatus` (the "2/3 rooms" caption).
+  - `Counter.tsx` + `counter/`:
+    - `AllRoomsTable`, `RoomCountList`, `RoomSwitcher`, `ManageRooms`;
+    - `useCountDrafts` (drafts and row states).
+  - `Checklist.tsx` + `checklist/`: `TaskList`, `TaskEditor`, `ShiftNotes`.
+  - `Settings.tsx` (264): `PinForm` and `QrCard` (+ test). `Login.tsx`: the PIN keypad (+ test). `NotFound.tsx`.
+- `lib/`:
+  - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
+  - `numbers.ts`: `parseQty` (≥ 0) and `parseNumber`, both accepting `2,5`.
+  - `cn.ts`, `download.ts`.
+  - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
+- `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
+- `styles/index.css`: tokens, iOS 16px fields, and the `val-*` / `no-spin` utilities.
+- `test/`: `setup.ts` (cleanup) and `fetch.ts` (`mockApi`, `unauthorized`). `CounterMode.test.tsx`, `context/AuthContext.test.tsx`.
+
+### Root
+
+- `deploy.sh`: backup, rebuild, health wait, rollback; deploys the `production` branch.
+- `Dockerfile`, `docker-compose.yml`, `.env.example`.
+- `docs/plan-*.md`: step plans (`plan-step` skill).
+
+## Data model
+
+`StockData` is also the backup file format. It's stored in SQLite tables (see the `sqlite-db` skill).
+
+```
+items:        [{ id, name, multipliers: { [groupId]: qtyPerDeparture } }]
+records:      { [itemId]: { [YYYY-MM-DD]: { c?, i?, m?, mc? } } }
+groups:       [{ id, name }]
+groupRecords: { [groupId]: { [YYYY-MM-DD]: { d } } }
+locations:    [{ id, name }]                                   // rooms where stock is counted
+counts:       { [YYYY-MM-DD]: { [locationId]: { [itemId]: number } } }   // missing = not counted
+tasks:        [{ id, name, description, added?, removed?, earlier?: [{ name, description, until }] }]  // checklist, display order
+checks:       { [YYYY-MM-DD]: { [taskId]: ISO time ticked } }  // missing = not done
+notes:        { [YYYY-MM-DD]: string }                         // note for the next shift
+```
+
+- **Record fields:**
+  - `d`: departures for a group on that day.
+  - `c`: extra consumption, added on top of auto consumption (there's no UI for it at the moment).
+  - `mc`: manual consumption, which replaces auto + extra.
+  - `i`: income.
+  - `m`: a manual stock count, which resets the running total to this value for that day.
+- New IDs are UUIDs. Older data has timestamp IDs (`'1792…'`, `'g_…'`, `'l_…'`). Both are plain strings.
+- Checklist ticks and notes older than `CHECKLIST_DAYS` (30) are deleted by the driver (the `pruneChecklist` rule, on start and with every write). Stock data is never pruned.
+- **Task changes apply from a day onwards** (the day shown on `/checklist`). Earlier days keep their list, wording and ticks.
+  - A task is on day D when `added ≤ D < removed`.
+  - `earlier` holds old wordings, each used before its `until`; the top-level name/description is the current one.
+  - Removing a task on the day it was added deletes it. Otherwise it gets `removed` and loses only its ticks from that day on.
+  - `pruneTasks` forgets history older than 30 days.
+  - Tasks from before this existed have no `added` and show on every past day.
+- **Removing things:**
+  - a group drops its departures and multipliers;
+  - an item drops its records and counts;
+  - a room keeps its counts, which still count in the totals (shown as "Removed rooms").
+
+## Stock calculation
+
+`dayFigures(item, date, prevTotal)` is the single source of the stock rules.
+
+- **End-of-day total**, in order of precedence:
+  1. `m` (typed on the Stock page);
+  2. `roomSum()` (the sum of that day's room counts, including removed rooms);
+  3. the calculation `total = prevTotal + i - consumption`.
+- **Consumption** is `mc` if set, otherwise auto + `c`, where auto = Σ over groups of `multipliers[g] × d`.
+- A manual count `m` is intentionally the end-of-day figure, so that day's income and consumption are ignored (confirmed by the user).
+- Totals are never stored.
+  - `calculateTotal` replays from the earliest record date.
+  - `series(item, toDate)` returns every day in one pass; the Overview and the Excel export use it.
+- Negative totals are shortages (`val-short`).
+
+## Pages
+
+- **`/stock`:**
+  - Departures per group (⚙ opens items-per-departure).
+  - Items with Consumption / Income / Total stock for the selected day. × clears a manual value. Totals from room counts are blue, with a "2/3 rooms" caption.
+  - Then the Overview and the legend. The Overview (`OverviewCard`):
+    - has one column per navigable day and scrolls sideways with item names pinned;
+    - centres the selected day;
+    - shows "—" on days without consumption, income or a count (at the user's request).
+- **`/counter`** shows all rooms (items × rooms + Sum). **`/counter/:locationId`** is one room's list, so each floor bookmarks its own URL.
+  - Typing creates a draft (`useCountDrafts`, kept in `Counter`, so switching rooms keeps unsaved numbers).
+  - Save or Enter calls `setCount`, then focuses the next item.
+  - Row states: empty / draft / saving / saved / error.
+  - Leaving with unsaved drafts triggers `beforeunload`.
+  - Rooms are managed under "Manage rooms".
+- **`/checklist`:**
+  - The same tasks every day, ticked per day (so each day starts empty), with the tick time shown. Tasks with a description open accordion-style.
+  - Below them, "Notes for the next shift" shows the previous day's note read-only above this day's `CommitTextarea`.
+  - "New task" comes first while there are no tasks, and below the list once there are.
+  - ✎ opens a task in place (`TaskEditor`: name, instructions, ↑/↓, remove, all from that day on). It saves only on Save, never on blur, because always-editable name fields led to accidental renames.
+- **`/settings`** (admin only; others are redirected to `/stock`):
+  - The admin and worker PINs (each new PIN typed twice).
+  - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.
+- **Counter mode** (a QR session): `AppShell` drops the sidebar, menu and toolbar and redirects every other path to `/counter`. The date is locked to today.
+- **Header toolbar** (`DataMenu`), hidden on phones on `/counter` and `/checklist`:
+  - **Excel:** a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
+  - **Backup:** a JSON download.
+  - **Restore:** validates with `backupSchema`, asks for confirmation, then replaces everything, counts included.
+
+## Known weak spots
+
+These are known and don't need to be copied. Fix one only when a task touches it.
+
+- **`db/sqlite/index.ts`** is 659 lines in one closure. A split per area (`items.ts`, `tasks.ts`, `auth.ts`…) would make edits cheaper.
+- **`StockContext`:**
+  - Every mutation lives in one `useMemo`, and every edit runs `structuredClone` on the whole dataset.
+  - Every 15 s it polls all of `GET /api/data`.
+  - This is fine for one hotel's data but grows with history, since stock data is never pruned.
+  - Any change re-renders every page that uses `useStock()`.
+- **Placement:**
+  - `AddForm` and `ClearableInput` sit in `components/`, not in `components/ui/`.
+  - `formatLongDate` lives in `DateContext`, not in a `lib/format.ts`.
+  - `Settings.tsx` holds two features (`PinForm`, `QrCard`).
+- **`client/src/lib/errors.ts`** (`fieldErrors`, `errorMessage`) is not imported anywhere: it's dead code.
+- **Client tests** cover login, settings, counter mode, i18n and the UI kit. There are none for the `StockContext` optimistic update and rollback, or for the Stock and Checklist pages.
