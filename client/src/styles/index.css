@@ -177,6 +177,18 @@
   }
 }
 
+/*
+ * iOS zooms in on any field whose text is under 16px when it gets focus (and stays zoomed in,
+ * hiding buttons). Touch screens get 16px text in fields; unlayered so it beats the utilities.
+ */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
 /* Reusable patterns that are not worth a component */
 @utility focus-ring {
   @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-bg;

@@ -130,7 +130,8 @@ export function AppShell() {
           </Button>
         </header>
         <main className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          {/* --keyboard-inset (lib/keyboard.ts) lets the last fields scroll above the iOS keyboard */}
+          <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-[calc(1.5rem+var(--keyboard-inset,0px))] sm:px-6 lg:px-8">
             <Outlet />
           </div>
         </main>
