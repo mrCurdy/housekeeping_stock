@@ -30,7 +30,7 @@ npm workspaces, structured like `boilerplate/` (a separate, untracked checkout o
   - `stock.ts`: `createStockMath(state, { minDateStr })`, the stock rules (pure). `dates.ts`: local-date helpers.
 - `server/src/`: Express 5.
   - `config.ts` validates env with zod. `context.ts` holds `{ config, db }` for the routes.
-  - `db/types.ts`: the repository interface `Db`. Routes only use it. `db/json/index.ts` is the only driver: the whole dataset in memory, atomic writes (tmp + rename) through a promise chain, and before the first write of each day a copy goes to `backups/db-YYYY-MM-DD.json` (pruned after `BACKUP_DAYS`).
+  - `db/types.ts`: the repository interface `Db`. Routes only use it. `db/sqlite/` (better-sqlite3, `SQLITE_PATH`, default `data/stock.db`) is the only driver: every change runs in one transaction, and before the first change of each day a JSON snapshot (Backup format) goes to `backups/db-YYYY-MM-DD.json` (pruned after `BACKUP_DAYS`). On the first start of an empty database, `JSON_DB_PATH` (the old `data/db.json`) is imported and renamed `db.json.imported`. Schema, migrations and how to add a repo method: the `sqlite-db` skill (`.claude/skills/sqlite-db/SKILL.md`).
   - `routes/`: `checklist` (`/api/tasks`: POST and `PATCH /:id` with `from`, `DELETE /:id/:date`, `PUT /order`; `PUT /api/checks/:date/:taskId` `{ done }`, which returns the day's ticks; `PUT /api/notes/:date` `{ text }`), `system` (`/api/health`), `data` (`GET /api/data`, `POST /api/restore`), `setup` (`/api/items`, `/api/groups`, `/api/locations`: POST/PATCH/DELETE), `daily` (`PATCH /api/records/:itemId/:date`, `PUT /api/departures/:groupId/:date`, `PUT /api/counts/:date/:locationId/:itemId`, which returns the whole day's counts). Missing rows → `HttpError.notFound` via `found()` in `lib/params.ts`.
 - `client/src/`: React + Vite + Tailwind 4 + React Router.
   - `App.tsx`: routes `/` → `/stock`, `/stock`, `/counter/:locationId?`, `/checklist`, all lazy-loaded inside `AppShell`. New pages need a route here and an entry in `NAV` (`components/layout/AppShell.tsx`).
@@ -40,7 +40,7 @@ npm workspaces, structured like `boilerplate/` (a separate, untracked checkout o
   - `components/ui/`: the boilerplate UI kit, plus `CommitInput`/`CommitTextarea` (edits freely and saves on blur/Enter/unmount; Escape reverts). Feature components live next to their page (`pages/stock/`, `pages/counter/`).
   - `lib/excel.ts`: the Excel export, dynamically imported (ExcelJS is a ~1 MB chunk). `styles/index.css`: boilerplate tokens + `val-calc`/`val-manual`/`val-rooms`/`val-short` and `no-spin` utilities. Use semantic tokens (`bg-surface`, `text-fg-muted`, `text-primary`…), never raw colours, so dark mode keeps working.
 
-### Data model (`data/db.json` = backup file format)
+### Data model (`StockData` = backup file format; stored in SQLite tables, see the `sqlite-db` skill)
 
 ```
 items:        [{ id, name, multipliers: { [groupId]: qtyPerDeparture } }]
@@ -57,7 +57,7 @@ notes:        { [YYYY-MM-DD]: string }                         // note for the n
 - `d`: departures for a group on that day. `c`: extra consumption, added on top of auto consumption (no UI for it at the moment). `mc`: manual consumption, which replaces auto + extra. `i`: income. `m`: manual stock count, which resets the running total to this value for that day.
 - New IDs are UUIDs. Older data has timestamp IDs (`'1792…'`, `'g_…'`, `'l_…'`); both are plain strings.
 - Dates are local-time `YYYY-MM-DD` strings (`formatDate`), not ISO/UTC, so string comparison sorts them correctly.
-- Checklist ticks and notes older than `CHECKLIST_DAYS` (30) are deleted by the JSON driver (`pruneChecklist`, on start and with every write). Stock data is never pruned.
+- Checklist ticks and notes older than `CHECKLIST_DAYS` (30) are deleted by the driver (the `pruneChecklist` rule, on start and with every write). Stock data is never pruned.
 - Task changes apply from a day onwards (the day shown on `/checklist`); earlier days keep their list, wording and ticks. A task is on day D when `added ≤ D < removed`; `earlier` holds old wordings (each used before its `until`), the top-level name/description is the current one. Rules in `shared/src/checklist.ts` (`tasksOn`, `editTask`, `removeTaskIn`), shared by the server and the client's optimistic updates. Removing a task on the day it was added deletes it; otherwise it gets `removed` and loses only its ticks from that day on. `pruneTasks` (part of `pruneChecklist`) forgets history older than 30 days. Tasks from before this existed have no `added` and show on every past day.
 - Removing a group drops its departures and multipliers. Removing an item drops its records and counts. Removing a room keeps its counts, which still count in the totals (shown as "Removed rooms").
 

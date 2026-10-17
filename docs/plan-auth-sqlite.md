@@ -86,12 +86,13 @@ Work happens in **separate sessions, one step each, tests first**, and is set up
      - Run single test files (`npx vitest run tests/x.test.ts` in the workspace).
      - Tick the step's checkbox, update CLAUDE.md and commit.
      - Rules for saving tokens: grep or `sed -n` instead of reading whole files, never read `boilerplate/` beyond the file a step names, and never read `i18n/et.ts`/`ru.ts` whole.
-- [ ] **1. SQLite driver:**
+- [x] **1. SQLite driver:**
    - Tests first:
      - Switch `server/tests/helpers.ts` to the SQLite temp file, so the existing `api.test.ts` must still pass.
      - Add `server/tests/sqlite.test.ts` covering the import from `db.json`, the daily JSON backup and pruning, checklist pruning, and that `replace()` keeps the order.
    - Then write `db/sqlite/{index,migrations}.ts`, change config and `db/index.ts`, delete `db/json/`, and update the Dockerfile so better-sqlite3 builds or uses prebuilt binaries.
    - Write `.claude/skills/sqlite-db/SKILL.md`: the schema, how to add a migration, row mapping, transactions, and how to add a repo method.
+   - Done. Differences: no foreign keys (restores may reference removed rooms/old tasks; deletes clean up by hand). The auth tables are created now in migration 1. `api.test.ts` changed in two places: health reports `db: 'sqlite'`, and the last test checks only the daily backup (there is no db.json any more). `.env.example`, `docker-compose.yml` and README already switched to `sqlite`, since `DB_DRIVER=json` no longer validates.
 - [ ] **2. Auth on the server:**
    - Tests first:
      - `shared/src/auth.test.ts` for the `can()` matrix and `pinSchema`.

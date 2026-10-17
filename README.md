@@ -53,9 +53,9 @@ The data lives in the `app-data` volume. To move existing data in, open the app 
 Same order as in the boilerplate:
 
 1. Types and zod schemas in `shared/src/`.
-2. A repository method in `server/src/db/types.ts`, implemented in `server/src/db/json/index.ts`.
+2. A repository method in `server/src/db/types.ts`, implemented in `server/src/db/sqlite/index.ts` (see the `sqlite-db` skill).
 3. A route in `server/src/routes/`, mounted in `server/src/app.ts`.
 4. A page in `client/src/pages/`, a route in `client/src/App.tsx`, an entry in `NAV` (`client/src/components/layout/AppShell.tsx`).
 5. Tests in `server/tests/api.test.ts`.
 
-To switch storage later (e.g. SQLite), implement the `Db` interface in `server/src/db/<driver>/`, add a `case` in `db/index.ts` and extend `DB_DRIVER` in `config.ts`. Routes don't change.
+To switch storage later (e.g. Postgres), implement the `Db` interface in `server/src/db/<driver>/`, add a `case` in `db/index.ts` and extend `DB_DRIVER` in `config.ts`. Routes don't change.

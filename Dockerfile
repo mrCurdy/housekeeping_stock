@@ -7,6 +7,8 @@ ENV npm_config_update_notifier=false npm_config_fund=false npm_config_audit=fals
 
 # ---------- build: install everything, compile server + client ----------
 FROM base AS build
+# Toolchain only needed if better-sqlite3 has no prebuilt binary for this platform
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/
 COPY server/package.json server/
@@ -27,7 +29,8 @@ FROM base AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
     CLIENT_DIST=/app/client/dist \
-    DB_DRIVER=json \
+    DB_DRIVER=sqlite \
+    SQLITE_PATH=/app/data/stock.db \
     JSON_DB_PATH=/app/data/db.json
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./

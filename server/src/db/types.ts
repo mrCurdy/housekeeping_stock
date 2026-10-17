@@ -65,7 +65,7 @@ export interface ChecklistRepo {
   setNote(date: string, text: string): Promise<void>;
 }
 
-export type DbDriver = 'json';
+export type DbDriver = 'sqlite';
 
 export interface Db {
   driver: DbDriver;

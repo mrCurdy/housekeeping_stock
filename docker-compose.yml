@@ -15,7 +15,7 @@ services:
       PORT: 3000
       CLIENT_URL: ${PUBLIC_URL:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DB_DRIVER: json
+      DB_DRIVER: sqlite
       BACKUP_DAYS: ${BACKUP_DAYS:-30}
       # true once the app is behind HTTPS (enables HSTS)
       HTTPS_ONLY: ${HTTPS_ONLY:-false}

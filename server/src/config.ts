@@ -6,10 +6,12 @@ const envSchema = z.object({
   CLIENT_URL: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
-  /** Storage driver. Only 'json' for now; add a driver in db/index.ts and extend this enum. */
-  DB_DRIVER: z.enum(['json']).default('json'),
+  /** Storage driver. Only 'sqlite' for now; add a driver in db/index.ts and extend this enum. */
+  DB_DRIVER: z.enum(['sqlite']).default('sqlite'),
+  SQLITE_PATH: z.string().default('../data/stock.db'),
+  /** The old JSON database: imported once into an empty SQLite database, then renamed *.imported. */
   JSON_DB_PATH: z.string().default('../data/db.json'),
-  /** Daily copies of the database file kept in backups/ next to it. 0 = off. */
+  /** Daily JSON copies of the data kept in backups/ next to the database. 0 = off. */
   BACKUP_DAYS: z.coerce.number().int().min(0).default(30),
 
   /**

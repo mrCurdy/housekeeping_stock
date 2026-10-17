@@ -30,7 +30,7 @@ describe('REST API', () => {
 
   it('health is ok', async () => {
     const res = await env.api().get('/api/health').expect(200);
-    expect(res.body).toMatchObject({ status: 'ok', db: 'json' });
+    expect(res.body).toMatchObject({ status: 'ok', db: 'sqlite' });
   });
 
   it('starts empty', async () => {
@@ -280,10 +280,8 @@ describe('REST API', () => {
       await env.api().post('/api/restore').send({ foo: 1 }).expect(400);
     });
 
-    it('writes the database file, and a start-of-day copy before the first change', async () => {
+    it('writes a start-of-day copy before the first change', async () => {
       await env.db.close();
-      const file = JSON.parse(readFileSync(join(env.dir, 'db.json'), 'utf8')) as StockData;
-      expect(file.items[0]!.name).toBe('Pillow case');
       expect(existsSync(join(env.dir, 'backups'))).toBe(true);
       const copies = readdirSync(join(env.dir, 'backups'));
       expect(copies).toHaveLength(1);

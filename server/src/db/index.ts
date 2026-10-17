@@ -5,12 +5,15 @@ export type * from './types';
 
 /** Picks the storage driver from config. Drivers are imported lazily. */
 export async function createDb(
-  config: Pick<Config, 'DB_DRIVER' | 'JSON_DB_PATH' | 'BACKUP_DAYS'>,
+  config: Pick<Config, 'DB_DRIVER' | 'SQLITE_PATH' | 'JSON_DB_PATH' | 'BACKUP_DAYS'>,
 ): Promise<Db> {
   switch (config.DB_DRIVER) {
-    case 'json': {
-      const { createJsonDb } = await import('./json/index');
-      return createJsonDb(config.JSON_DB_PATH, { backupDays: config.BACKUP_DAYS });
+    case 'sqlite': {
+      const { createSqliteDb } = await import('./sqlite/index');
+      return createSqliteDb(config.SQLITE_PATH, {
+        backupDays: config.BACKUP_DAYS,
+        importFrom: config.JSON_DB_PATH,
+      });
     }
   }
 }
