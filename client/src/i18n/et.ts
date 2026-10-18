@@ -66,6 +66,7 @@ export const et: Messages = {
   auth: {
     title: 'Sisesta PIN',
     pin: 'PIN',
+    login: 'Logi sisse',
     clear: 'Kustuta viimane number',
     wrongPin: 'Vale PIN. Proovi uuesti.',
     tooMany: 'Liiga palju valesid katseid. Oota 15 minutit ja proovi uuesti.',

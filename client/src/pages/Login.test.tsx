@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/context/AuthContext';
@@ -43,6 +43,19 @@ describe('Login', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Wrong PIN');
     expect(input).toHaveValue('');
     expect(screen.queryByText('Inside the app')).not.toBeInTheDocument();
+  });
+
+  it('waits for Log in when the whole PIN arrives at once (browser autofill)', async () => {
+    const fetch = mockApi((method, path) => {
+      if (path === '/auth/me') return unauthorized;
+      if (method === 'POST' && path === '/auth/login')
+        return { status: 200, body: { role: 'admin' } };
+    });
+    app();
+    fireEvent.change(await screen.findByLabelText('PIN'), { target: { value: '1234' } });
+    expect(fetch).not.toHaveBeenCalledWith('/api/auth/login', expect.anything());
+    await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    expect(await screen.findByText('Inside the app')).toBeInTheDocument();
   });
 
   it('says so when there were too many wrong PINs', async () => {

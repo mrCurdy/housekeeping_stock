@@ -130,7 +130,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `TaskList` (grip handles via `lib/useDragSort`; ticking the day's last task plays `Salute`), `TaskEditor`, `ShiftNotes`;
     - `noteText.ts` (+ test): the instructions format (`parseNote`, `checkKeys`) and the list editing (`toggleList`, `indent`, `continueList`);
     - `NoteEditor` (the instructions textarea with list buttons), `TaskNote` (instructions shown with tickable checklist lines).
-  - `Settings.tsx`: `PinForm`, `QrCard` and `SaluteCard` (+ test). `Login.tsx`: the PIN keypad (+ test). `NotFound.tsx`.
+  - `Settings.tsx`: `PinForm`, `QrCard` and `SaluteCard` (+ test). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
   - `numbers.ts`: `parseQty` (≥ 0) and `parseNumber`, both accepting `2,5`.

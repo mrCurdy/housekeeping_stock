@@ -69,6 +69,7 @@ export const en = {
   auth: {
     title: 'Enter your PIN',
     pin: 'PIN',
+    login: 'Log in',
     clear: 'Delete last digit',
     wrongPin: 'Wrong PIN. Try again.',
     tooMany: 'Too many wrong tries. Wait 15 minutes and try again.',
