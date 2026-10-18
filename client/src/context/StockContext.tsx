@@ -2,7 +2,8 @@ import {
   createStockMath,
   editTask,
   emptyStockData,
-  isTaskOn,
+  itemCheckKey,
+  moveTaskTo,
   removeTaskIn,
   type BackupInput,
   type DayChecks,
@@ -13,6 +14,8 @@ import {
   type ItemPatchInput,
   type Location,
   type RecordPatchInput,
+  type SettingsPatchInput,
+  type StockCard,
   type StockData,
   type StockMath,
   type Task,
@@ -68,10 +71,15 @@ interface StockApi {
   addTask(name: string, description: string, from: string): Promise<Task | undefined>;
   updateTask(id: string, patch: TaskPatchInput): void;
   removeTask(id: string, from: string): void;
-  /** Moves a task one place up (-1) or down (+1) among the tasks of `date`. */
-  moveTask(id: string, step: -1 | 1, date: string): void;
-  setDone(date: string, taskId: string, done: boolean): void;
+  /** Moves a task to place `to` among the tasks of `date`. */
+  moveTask(id: string, to: number, date: string): void;
+  /** Ticks a task, or one checklist line of its instructions (`item`, its key). */
+  setDone(date: string, taskId: string, done: boolean, item?: string): void;
   setNote(date: string, text: string): void;
+  /** Saves the Stock page's card order (the same for everyone). */
+  setStockCards(order: StockCard[]): void;
+  /** Changes app-wide settings ('' resets one to its default). */
+  updateSettings(patch: SettingsPatchInput): void;
 
   /** Replaces everything with a backup file's contents. Throws on failure. */
   restore(backup: BackupInput): Promise<void>;
@@ -284,30 +292,25 @@ export function StockProvider({ children }: { children: ReactNode }) {
         edit((d) => void removeTaskIn(d, id, from));
         void send(() => api.delete(`/tasks/${id}/${from}`));
       },
-      moveTask: (id, step, date) => {
-        // Swap with the next task shown that day (tasks not on that day's list stay put)
-        const shown = data.tasks.filter((t) => isTaskOn(t, date)).map((t) => t.id);
-        const other = shown[shown.indexOf(id) + step];
-        if (!shown.includes(id) || !other) return;
-        const ids = data.tasks.map((t) => t.id);
-        const from = ids.indexOf(id);
-        const to = ids.indexOf(other);
-        [ids[from], ids[to]] = [ids[to]!, ids[from]!];
+      moveTask: (id, to, date) => {
+        const ids = moveTaskTo(data.tasks, id, to, date);
+        if (!ids) return;
         edit((d) => {
           const byId = new Map(d.tasks.map((t) => [t.id, t]));
           d.tasks = ids.map((i) => byId.get(i)!);
         });
         void send(() => api.put('/tasks/order', { ids }));
       },
-      setDone: (date, taskId, done) => {
+      setDone: (date, taskId, done, item) => {
+        const key = item ? itemCheckKey(taskId, item) : taskId;
         edit((d) => {
           const day = (d.checks[date] ??= {});
-          if (done) day[taskId] = new Date().toISOString();
-          else delete day[taskId];
+          if (done) day[key] = new Date().toISOString();
+          else delete day[key];
         });
         void send(async () => {
           // The response includes what others ticked meanwhile, with the server's times
-          const day = await api.put<DayChecks>(`/checks/${date}/${taskId}`, { done });
+          const day = await api.put<DayChecks>(`/checks/${date}/${taskId}`, { done, item });
           edit((d) => void (d.checks[date] = day));
         });
       },
@@ -317,6 +320,18 @@ export function StockProvider({ children }: { children: ReactNode }) {
           else delete d.notes[date];
         });
         void send(() => api.put(`/notes/${date}`, { text }));
+      },
+      setStockCards: (order) => {
+        edit((d) => void (d.stockCards = order));
+        void send(() => api.put('/stock-cards/order', { order }));
+      },
+      updateSettings: (patch) => {
+        edit((d) => {
+          const saluteText = patch.saluteText?.trim();
+          if (saluteText) d.settings.saluteText = saluteText;
+          else if (patch.saluteText !== undefined) delete d.settings.saluteText;
+        });
+        void send(() => api.patch('/settings', patch));
       },
 
       restore: async (backup) => {

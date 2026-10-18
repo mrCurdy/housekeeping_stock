@@ -87,7 +87,29 @@ export interface StockData {
   checks: Record<string, Record<string, string>>;
   /** { [date]: end-of-day note for the next shift }. Kept CHECKLIST_DAYS. */
   notes: Record<string, string>;
+  /** The Stock page's card order as the admin dragged it. [] = the default (STOCK_CARDS). */
+  stockCards: StockCard[];
+  /** App-wide preferences the admin sets on the Settings page. Unset = the default. */
+  settings: AppSettings;
 }
+
+export interface AppSettings {
+  /** The word the fireworks spell when the day's last task is ticked. Unset = DEFAULT_SALUTE_TEXT. */
+  saluteText?: string;
+}
+
+export const DEFAULT_SALUTE_TEXT = 'Tubli!';
+/** Longer text would not fit across a phone screen as fireworks. */
+export const SALUTE_TEXT_MAX = 12;
+
+/** The cards on the Stock page, in their default order. */
+export const STOCK_CARDS = ['departures', 'items', 'overview'] as const;
+export type StockCard = (typeof STOCK_CARDS)[number];
+
+/** The saved card order completed with the cards it doesn't list, in their default order. */
+export const stockCardOrder = (saved: readonly StockCard[]): StockCard[] => [
+  ...new Set([...saved, ...STOCK_CARDS]),
+];
 
 /** Checklist ticks and notes older than this many days are deleted by the server. */
 export const CHECKLIST_DAYS = 30;
@@ -102,6 +124,8 @@ export const emptyStockData = (): StockData => ({
   tasks: [],
   checks: {},
   notes: {},
+  stockCards: [],
+  settings: {},
 });
 
 export type DayChecks = Record<string, string>;

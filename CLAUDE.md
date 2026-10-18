@@ -16,7 +16,7 @@ The user wants it simple and lightweight but easy to extend.
 
 ```bash
 npm install
-npm run dev                  # server :3000 (tsx watch) + client :5173 (Vite, proxies /api)
+npm run dev                  # server :3000 (tsx watch) + client :5173 (Vite, proxies /api). Develop with this
 npm test                     # shared (stock rules) + server (API) + client (UI) tests, all Vitest
 npm run typecheck && npm run lint
 npx vitest run -t "room"     # a single test, run inside a workspace (shared/, server/ or client/)
@@ -25,6 +25,8 @@ docker compose up --build -d # http://localhost:3000, data in the app-data volum
 ```
 
 Before committing: `npm run lint && npm run typecheck && npm test`.
+
+If the app behaves unlike the code (e.g. the server ignores a new field), check what is serving :3000 before debugging: `curl -s localhost:3000/api/health`. `builtAt` older than the change (or `npm start` running `dist/`) means a stale build. Restart it or use `npm run dev`. From source it shows `commit: "source"`.
 
 ## Where to look
 

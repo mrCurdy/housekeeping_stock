@@ -11,6 +11,7 @@ import {
 import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import {
+  type AppSettings,
   addDays,
   backupSchema,
   CHECKLIST_DAYS,
@@ -24,6 +25,7 @@ import {
   type Group,
   type Item,
   isTaskOn,
+  itemCheckKey,
   type Location,
   type PinRole,
   newTask,
@@ -31,6 +33,8 @@ import {
   pruneTasks,
   removeTaskFrom,
   type Role,
+  type StockCard,
+  stockCardOrder,
   type StockData,
   type Task,
   todayLocal,
@@ -106,6 +110,8 @@ const DATA_TABLES = [
   'tasks',
   'checks',
   'notes',
+  'stock_cards',
+  'settings',
 ] as const;
 type NamedTable = 'items' | 'groups' | 'locations';
 
@@ -141,6 +147,32 @@ export function createSqliteDb(
   };
   const nextPos = (table: NamedTable | 'tasks') =>
     get<{ n: number }>(`SELECT COALESCE(MAX(pos) + 1, 0) AS n FROM ${table}`)!.n;
+
+  const readStockCards = () =>
+    all<{ id: StockCard }>('SELECT id FROM stock_cards ORDER BY pos').map((r) => r.id);
+  const writeStockCards = (order: StockCard[]) => {
+    run('DELETE FROM stock_cards');
+    const stmt = sql.prepare('INSERT INTO stock_cards (id, pos) VALUES (?, ?)');
+    order.forEach((id, pos) => stmt.run(id, pos));
+  };
+
+  /** Settings are key/value rows; a missing row is the default. */
+  const readSettings = (): AppSettings =>
+    Object.fromEntries(
+      all<{ key: string; value: string }>('SELECT key, value FROM settings').map((r) => [
+        r.key,
+        r.value,
+      ]),
+    );
+  const writeSetting = (key: keyof AppSettings, value: string | undefined) => {
+    if (value) {
+      run(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+        key,
+        value,
+      );
+    } else run('DELETE FROM settings WHERE key = ?', key);
+  };
 
   const readTasks = () => all<TaskRow>('SELECT * FROM tasks ORDER BY pos').map(toTask);
   const readTask = (id: string) => {
@@ -202,6 +234,8 @@ export function createSqliteDb(
     for (const r of all<{ date: string; text: string }>('SELECT * FROM notes ORDER BY date')) {
       data.notes[r.date] = r.text;
     }
+    data.stockCards = readStockCards();
+    data.settings = readSettings();
     return data;
   };
 
@@ -255,6 +289,8 @@ export function createSqliteDb(
     }
     const note = sql.prepare('INSERT INTO notes (date, text) VALUES (?, ?)');
     for (const [date, text] of Object.entries(data.notes)) note.run(date, text);
+    writeStockCards(data.stockCards);
+    writeSetting('saluteText', data.settings.saluteText);
   };
 
   /** The same 30-day rule as pruneChecklist(), as SQL deletes plus pruneTasks(). */
@@ -547,7 +583,14 @@ export function createSqliteDb(
           const kept = removeTaskFrom(old, from);
           if (kept) updateTask(kept);
           else run('DELETE FROM tasks WHERE id = ?', id);
-          run('DELETE FROM checks WHERE task_id = ? AND date >= ?', id, from);
+          // The task's tick and its lines' ticks (`<id>#<item>`)
+          run(
+            'DELETE FROM checks WHERE (task_id = ? OR substr(task_id, 1, ?) = ?) AND date >= ?',
+            id,
+            id.length + 1,
+            `${id}#`,
+            from,
+          );
           return true;
         });
       },
@@ -564,18 +607,19 @@ export function createSqliteDb(
     },
 
     checklist: {
-      async setDone(date, taskId, done) {
+      async setDone(date, taskId, done, item) {
         return write(() => {
           const task = readTask(taskId);
           if (!task || !isTaskOn(task, date)) return null;
+          const key = item ? itemCheckKey(taskId, item) : taskId;
           if (done) {
             run(
               'INSERT OR IGNORE INTO checks (date, task_id, at) VALUES (?, ?, ?)',
               date,
-              taskId,
+              key,
               new Date().toISOString(),
             );
-          } else run('DELETE FROM checks WHERE date = ? AND task_id = ?', date, taskId);
+          } else run('DELETE FROM checks WHERE date = ? AND task_id = ?', date, key);
           return dayChecks(date);
         });
       },
@@ -588,6 +632,25 @@ export function createSqliteDb(
               text,
             );
           } else run('DELETE FROM notes WHERE date = ?', date);
+        });
+      },
+    },
+
+    stockCards: {
+      async reorder(order) {
+        return write(() => {
+          const full = stockCardOrder(order);
+          writeStockCards(full);
+          return full;
+        });
+      },
+    },
+
+    settings: {
+      async update(patch) {
+        return write(() => {
+          if (patch.saluteText !== undefined) writeSetting('saluteText', patch.saluteText.trim());
+          return readSettings();
         });
       },
     },

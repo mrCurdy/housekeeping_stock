@@ -48,6 +48,8 @@ const sample = (): StockData => ({
   ],
   checks: { [day(-1)]: { 't-1': '2026-01-01T10:00:00.000Z' } },
   notes: { [day(-1)]: 'Order soap' },
+  stockCards: ['overview', 'items', 'departures'],
+  settings: { saluteText: 'Hurraa!' },
 });
 
 describe('SQLite driver', () => {

@@ -99,6 +99,8 @@ export const et: Messages = {
 
   stock: {
     title: 'Ladu',
+    moveCard: 'Lohista, et kaarti liigutada (või kasuta nooleklahve)',
+    moveCardNamed: (card) => `Liiguta: ${card}`,
     departures: {
       title: 'Lahkumised',
       description: 'Sel päeval vabanenud toad grupiti',
@@ -147,9 +149,11 @@ export const et: Messages = {
     overview: {
       title: 'Ülevaade',
       description:
-        'Laoseis päeva lõpus viimase 30 ja järgmise 7 päeva kohta. Teiste kuupäevade nägemiseks keri külgsuunas; „—“ = midagi pole sisestatud. Päeva avamiseks klõpsa sellel.',
+        'Laoseis päeva lõpus viimase 30 päeva, tänase ja homse kohta (hilisemad päevad, kui neile on midagi sisestatud). Teiste kuupäevade nägemiseks keri külgsuunas; „—“ = midagi pole sisestatud. Päeva avamiseks klõpsa sellel.',
       goToDay: 'Ava see päev',
       nothingEntered: 'Sellel päeval pole midagi sisestatud',
+      showRooms: 'Näita kogust ruumide kaupa',
+      hideRooms: 'Peida kogus ruumide kaupa',
     },
     legend: {
       calculated: 'Arvutatud',
@@ -217,6 +221,7 @@ export const et: Messages = {
     showInstructions: 'Näita juhendit',
     hideInstructions: 'Peida juhend',
     doneAt: (time) => `Tehtud ${time}`,
+    linesDone: (done, total) => `${done}/${total} sammu tehtud`,
     keptDays: 'Märked ja kommentaarid säilivad 30 päeva.',
     notes: {
       title: 'Kommentaar järgmisele vahetusele',
@@ -232,6 +237,16 @@ export const et: Messages = {
       addTask: 'Lisa ülesanne',
       moveUp: 'Liiguta üles',
       moveDown: 'Liiguta alla',
+      dragTask: 'Lohista, et liigutada (või kasuta nooleklahve)',
+      dragTaskNamed: (task) => `Liiguta: ${task}`,
+      format: {
+        toolbar: 'Loendid',
+        bullet: 'Täpploend',
+        number: 'Nummerdatud loend',
+        check: 'Kontrollnimekiri',
+        indent: 'Suurenda taanet',
+        outdent: 'Vähenda taanet',
+      },
       editTask: 'Muuda ülesannet',
       editTaskNamed: (task) => `Muuda ${task}`,
       removeTask: 'Eemalda ülesanne',
@@ -246,7 +261,8 @@ export const et: Messages = {
 
   settings: {
     title: 'Seaded',
-    description: 'PIN-koodid ja inventuuri QR-kood. Seda lehte näeb ainult administraator.',
+    description:
+      'PIN-koodid, inventuuri QR-kood ja ilutulestik. Seda lehte näeb ainult administraator.',
     pins: {
       title: 'PIN-koodid',
       description:
@@ -262,6 +278,14 @@ export const et: Messages = {
       mustDiffer: 'Administraatori ja töötaja PIN peavad olema erinevad',
       adminChanged: 'Administraatori PIN muudetud',
       workerChanged: 'Töötaja PIN muudetud',
+    },
+    salute: {
+      title: 'Ilutulestik',
+      description:
+        'Kui päeva viimane ülesanne on tehtud või ruum on täielikult loetud, kirjutab ilutulestik selle sõna.',
+      text: 'Ilutulestiku tekst',
+      hint: (text) => `Kuni 12 märki. Tühi = „${text}“.`,
+      preview: 'Eelvaade',
     },
     qr: {
       title: 'Inventuuri QR-kood',

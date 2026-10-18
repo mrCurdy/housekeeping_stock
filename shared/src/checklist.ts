@@ -24,6 +24,28 @@ export function taskOn(task: Task, date: string): DayTask {
 export const tasksOn = (tasks: Task[], date: string): DayTask[] =>
   tasks.filter((t) => isTaskOn(t, date)).map((t) => taskOn(t, date));
 
+/**
+ * The `checks` key of one checklist line inside a task's instructions (`item` is the line's key,
+ * made by the client). Lines are ticked per day, like the tasks themselves.
+ */
+export const itemCheckKey = (taskId: string, item: string): string => `${taskId}#${item}`;
+
+/** The task a `checks` key belongs to (the task's own tick, or one of its lines). */
+export const checkTaskId = (key: string): string => key.split('#', 1)[0]!;
+
+/**
+ * The ids of all tasks after moving `id` to place `to` among the tasks of `date` (tasks not on
+ * that day's list stay put). Null when nothing moves.
+ */
+export function moveTaskTo(tasks: Task[], id: string, to: number, date: string): string[] | null {
+  const shown = tasks.filter((t) => isTaskOn(t, date)).map((t) => t.id);
+  const from = shown.indexOf(id);
+  if (from < 0 || to < 0 || to >= shown.length || to === from) return null;
+  const ids = tasks.map((t) => t.id).filter((i) => i !== id);
+  ids.splice(ids.indexOf(shown[to]!) + (to > from ? 1 : 0), 0, id);
+  return ids;
+}
+
 /** A new task that is on the list from `from` onwards. */
 export const newTask = (id: string, name: string, description: string, from: string): Task => ({
   id,
@@ -83,7 +105,8 @@ export function removeTaskFrom(task: Task, from: string): Task | null {
 }
 
 /**
- * Removes the task from `from` onwards in `data` (its ticks from that day on go too).
+ * Removes the task from `from` onwards in `data` (its ticks, and its lines' ticks, from that day on
+ * go too).
  * Returns false when there is no such task.
  */
 export function removeTaskIn(data: StockData, id: string, from: string): boolean {
@@ -94,7 +117,7 @@ export function removeTaskIn(data: StockData, id: string, from: string): boolean
   else data.tasks.splice(i, 1);
   for (const [date, day] of Object.entries(data.checks)) {
     if (date < from) continue;
-    delete day[id];
+    for (const key of Object.keys(day)) if (checkTaskId(key) === id) delete day[key];
     if (!Object.keys(day).length) delete data.checks[date];
   }
   return true;

@@ -102,6 +102,8 @@ export const en = {
 
   stock: {
     title: 'Stock',
+    moveCard: 'Drag to move this card (or use the arrow keys)',
+    moveCardNamed: (card: string) => `Move ${card}`,
     departures: {
       title: 'Departures',
       description: 'Rooms checked out on this day, per group',
@@ -150,9 +152,11 @@ export const en = {
     overview: {
       title: 'Overview',
       description:
-        'End-of-day stock for the last 30 and next 7 days. Scroll sideways for other dates; "—" = nothing entered. Click a day to open it.',
+        'End-of-day stock for the last 30 days, today and tomorrow (later days once something is entered). Scroll sideways for other dates; "—" = nothing entered. Click a day to open it.',
       goToDay: 'Go to this day',
       nothingEntered: 'Nothing entered for this day',
+      showRooms: 'Show the count per room',
+      hideRooms: 'Hide the count per room',
     },
     legend: {
       calculated: 'Calculated',
@@ -219,6 +223,7 @@ export const en = {
     showInstructions: 'Show instructions',
     hideInstructions: 'Hide instructions',
     doneAt: (time: string) => `Done ${time}`,
+    linesDone: (done: number, total: number) => `${done} of ${total} steps done`,
     keptDays: 'Ticks and notes are kept for 30 days.',
     notes: {
       title: 'Notes for the next shift',
@@ -234,6 +239,16 @@ export const en = {
       addTask: 'Add task',
       moveUp: 'Move up',
       moveDown: 'Move down',
+      dragTask: 'Drag to move (or use the arrow keys)',
+      dragTaskNamed: (task: string) => `Move ${task}`,
+      format: {
+        toolbar: 'Lists',
+        bullet: 'Bulleted list',
+        number: 'Numbered list',
+        check: 'Checklist',
+        indent: 'Indent',
+        outdent: 'Outdent',
+      },
       editTask: 'Edit task',
       editTaskNamed: (task: string) => `Edit ${task}`,
       removeTask: 'Remove task',
@@ -248,7 +263,7 @@ export const en = {
 
   settings: {
     title: 'Settings',
-    description: 'PINs and the QR code for counting. Only the admin sees this page.',
+    description: 'PINs, the QR code for counting and the fireworks. Only the admin sees this page.',
     pins: {
       title: 'PINs',
       description: 'Each role logs in with its own 4-digit PIN. The two PINs must be different.',
@@ -263,6 +278,14 @@ export const en = {
       mustDiffer: 'The admin and worker PINs must be different',
       adminChanged: 'Admin PIN changed',
       workerChanged: 'Worker PIN changed',
+    },
+    salute: {
+      title: 'Fireworks',
+      description:
+        'Fireworks spell this word when the last task of the day is ticked or a room is fully counted.',
+      text: 'Fireworks text',
+      hint: (text: string) => `Up to 12 characters. Empty = "${text}".`,
+      preview: 'Preview',
     },
     qr: {
       title: 'QR code for counting',

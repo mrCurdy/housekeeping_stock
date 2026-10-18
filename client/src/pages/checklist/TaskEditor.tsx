@@ -1,14 +1,16 @@
 import type { DayTask } from '@app/shared';
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Button, Input, Textarea } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import { useConfirm } from '@/context/ConfirmContext';
 import { formatLongDate, useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
+import { NoteEditor } from './NoteEditor';
 
 /**
- * One task of the selected day opened for editing: name, instructions, order and removal.
+ * One task of the selected day opened for editing: name, instructions (with lists and
+ * checklists), order and removal.
  * Changes apply from that day on; earlier days keep the list as it was.
  * The text is saved only on Save (or Enter in the name), never on blur; Escape cancels.
  */
@@ -57,13 +59,11 @@ export function TaskEditor({
         className="font-medium"
         autoFocus
       />
-      <Textarea
+      <NoteEditor
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        onChange={setDescription}
         placeholder={tx.instructionsPlaceholder}
-        aria-label={tx.instructions}
-        rows={2}
-        className="min-h-16 text-sm"
+        label={tx.instructions}
       />
       <p className="text-xs text-fg-muted">{tx.appliesFrom(day)}</p>
       <div className="flex items-center gap-1">
@@ -74,7 +74,7 @@ export function TaskEditor({
           title={tx.moveUp}
           aria-label={tx.moveUp}
           disabled={index === 0}
-          onClick={() => moveTask(task.id, -1, date)}
+          onClick={() => moveTask(task.id, index - 1, date)}
         >
           <ArrowUp className="h-4 w-4" />
         </Button>
@@ -85,7 +85,7 @@ export function TaskEditor({
           title={tx.moveDown}
           aria-label={tx.moveDown}
           disabled={index === count - 1}
-          onClick={() => moveTask(task.id, 1, date)}
+          onClick={() => moveTask(task.id, index + 1, date)}
         >
           <ArrowDown className="h-4 w-4" />
         </Button>

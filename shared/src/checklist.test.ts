@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   editTask,
   isTaskOn,
+  itemCheckKey,
+  moveTaskTo,
   newTask,
   pruneTasks,
   removeTaskFrom,
@@ -61,9 +63,12 @@ describe('checklist history', () => {
   it('removing drops the ticks from that day on only', () => {
     const data = emptyStockData();
     data.tasks = [old];
-    data.checks = { '2026-10-16': { a: 't1' }, '2026-10-17': { a: 't2' } };
+    data.checks = {
+      '2026-10-16': { a: 't1' },
+      '2026-10-17': { a: 't2', [itemCheckKey('a', 'x1')]: 't3', b: 't4' },
+    };
     expect(removeTaskIn(data, 'a', '2026-10-17')).toBe(true);
-    expect(data.checks).toEqual({ '2026-10-16': { a: 't1' } });
+    expect(data.checks).toEqual({ '2026-10-16': { a: 't1' }, '2026-10-17': { b: 't4' } });
     expect(tasksOn(data.tasks, '2026-10-16')).toEqual([{ id: 'a', name: 'Beds', description: '' }]);
     expect(tasksOn(data.tasks, '2026-10-17')).toEqual([]);
   });
@@ -84,5 +89,21 @@ describe('checklist history', () => {
       },
     ]);
     expect(pruneTasks(data, '2026-09-17')).toBe(false);
+  });
+
+  it('moves a task to a place among the tasks of the day; hidden tasks stay put', () => {
+    const tasks: Task[] = [
+      { ...old, id: 'a' },
+      { ...old, id: 'gone', removed: '2026-10-01' },
+      { ...old, id: 'b' },
+      { ...old, id: 'c' },
+    ];
+    const day = '2026-10-17';
+    expect(moveTaskTo(tasks, 'c', 0, day)).toEqual(['c', 'a', 'gone', 'b']);
+    expect(moveTaskTo(tasks, 'a', 2, day)).toEqual(['gone', 'b', 'c', 'a']);
+    expect(moveTaskTo(tasks, 'a', 1, day)).toEqual(['gone', 'b', 'a', 'c']);
+    expect(moveTaskTo(tasks, 'a', 0, day)).toBeNull();
+    expect(moveTaskTo(tasks, 'a', 3, day)).toBeNull();
+    expect(moveTaskTo(tasks, 'gone', 0, day)).toBeNull();
   });
 });

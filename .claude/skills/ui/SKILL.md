@@ -62,6 +62,7 @@ Outside the kit:
 
 - `AddForm` (`placeholder`, `label`, `onAdd(name)`): the "new name" line under a list.
 - `ClearableInput`: `CommitInput` props plus `onClear`, showing an × when a manual value overrides a calculated one.
+- `useDragSort(count, onMove)` (`@/lib/useDragSort`): reorder a vertical list by a grip or ↑/↓. Put `rowRef(i)`/`rowStyle(i)` on rows and `handleProps(i)` on a `touch-none` grip button (`TaskList`). Pass `{ free: true }` when rows can sit side by side, and highlight `over` (`Stock.tsx`).
 - `useConfirm()`: `if (await confirm({ title, description, confirmLabel })) …`. It is red by default; pass `danger: false` for a neutral one.
 - `useToast()`: `toast.success|error|info(title, description?)`.
 - `apiErrorMessage(err, t)` turns any request error into text.
@@ -105,6 +106,7 @@ plurals). Never read the et/ru files whole.
 - Client tests live next to the code (`*.test.tsx`).
   - Fake the server with `mockApi((method, path, body) => reply)` from `@/test/fetch`.
   - Wrap the component in only the providers it uses. `Settings.test.tsx` is the pattern: Toast → Confirm → Auth.
+  - A whole page with real data (`StockContext`, routes, roles): set the URL with `window.history.replaceState`, answer `/auth/me` and `/data` in `mockApi`, then `await import('../App')` and render it. `pages/Checklist.test.tsx` is the pattern (it also shows faking row positions for a pointer drag).
   - Call `vi.unstubAllGlobals()` in `afterEach`.
 - Query by role and label (`screen.getByRole('button', { name: … })`) using the English text.
 - Run one file: `cd client && npx vitest run src/pages/<File>.test.tsx | tail -30`.

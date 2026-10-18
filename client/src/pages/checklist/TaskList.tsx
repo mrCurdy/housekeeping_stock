@@ -1,20 +1,25 @@
-import { tasksOn } from '@app/shared';
-import { ChevronDown, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { DEFAULT_SALUTE_TEXT, itemCheckKey, tasksOn } from '@app/shared';
+import { ChevronDown, GripVertical, Pencil } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { Salute } from '@/components/Salute';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
+import { checkKeys } from './noteText';
 import { TaskEditor } from './TaskEditor';
+import { TaskNote } from './TaskNote';
+import { useDragSort } from '@/lib/useDragSort';
 
 /**
- * The day's tasks: tick when done; tasks with instructions open like an accordion.
+ * The day's tasks: tick when done; tasks with instructions open like an accordion, and their
+ * checklist lines are ticked per day too. The grip drags a task to another place (or ↑/↓ on it);
  * ✎ opens a task in place (TaskEditor) to rename, reorder or remove it from this day on.
  */
 export function TaskList() {
-  const { data, setDone } = useStock();
+  const { data, setDone, moveTask } = useStock();
   const { date } = useSelectedDate();
   const { t, locale } = useI18n();
   const tx = t.checklist;
@@ -25,6 +30,11 @@ export function TaskList() {
   const ticks = data.checks[date] ?? {};
   const total = tasks.length;
   const done = tasks.filter((task) => ticks[task.id]).length;
+  const sort = useDragSort(total, (from, to) => moveTask(tasks[from]!.id, to, date));
+  const canTick = useAuth().can('checklist');
+  // Fireworks when the user ticks the day's last task (not when a finished day is opened)
+  const [salute, setSalute] = useState(false);
+  const endSalute = useCallback(() => setSalute(false), []);
 
   const toggle = (id: string) =>
     setOpen((prev) => {
@@ -59,7 +69,11 @@ export function TaskList() {
         {tasks.map((task, index) => {
           if (editing === task.id) {
             return (
-              <li key={task.id} className="border-b border-border last:border-b-0">
+              <li
+                key={task.id}
+                ref={sort.rowRef(index)}
+                className="border-b border-border last:border-b-0"
+              >
                 <TaskEditor
                   task={task}
                   index={index}
@@ -74,10 +88,23 @@ export function TaskList() {
           const name = task.name || tx.unnamedTask;
           const checkId = `task-${task.id}`;
           const panelId = `task-info-${task.id}`;
+          const lines = checkKeys(task.description);
+          const linesDone = lines.filter((key) => ticks[itemCheckKey(task.id, key)]).length;
           const title = (
             <span className="flex flex-col">
               <span className={cn('font-medium', tickedAt && 'text-fg-muted line-through')}>
                 {name}
+                {lines.length > 0 && (
+                  <span
+                    title={tx.linesDone(linesDone, lines.length)}
+                    className={cn(
+                      'ml-2 inline-block text-xs font-normal tabular-nums',
+                      linesDone === lines.length ? 'text-success' : 'text-fg-muted',
+                    )}
+                  >
+                    {linesDone}/{lines.length}
+                  </span>
+                )}
               </span>
               {tickedAt && (
                 <span className="text-xs text-success">{tx.doneAt(time(tickedAt))}</span>
@@ -87,18 +114,38 @@ export function TaskList() {
           return (
             <li
               key={task.id}
+              ref={sort.rowRef(index)}
+              style={sort.rowStyle(index)}
               className={cn(
-                'border-b border-l-4 border-border last:border-b-0',
+                'border-b border-l-4 border-border bg-surface last:border-b-0',
                 tickedAt ? 'border-l-success' : 'border-l-transparent',
+                sort.dragging === index && 'rounded-md shadow-lg ring-1 ring-border',
               )}
             >
-              <div className="flex items-center gap-3 px-5 py-2">
+              <div className={cn('flex items-center gap-3 py-2 pr-5', canEdit ? 'pl-1' : 'pl-5')}>
+                {canEdit && (
+                  <button
+                    type="button"
+                    title={tx.manage.dragTask}
+                    aria-label={tx.manage.dragTaskNamed(name)}
+                    className={cn(
+                      'focus-ring -mr-2 flex h-11 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-fg-muted select-none hover:text-fg',
+                      sort.dragging === index && 'cursor-grabbing',
+                    )}
+                    {...sort.handleProps(index)}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </button>
+                )}
                 <input
                   id={checkId}
                   type="checkbox"
                   aria-label={name}
                   checked={!!tickedAt}
-                  onChange={(e) => setDone(date, task.id, e.target.checked)}
+                  onChange={(e) => {
+                    if (e.target.checked && !tickedAt && done === total - 1) setSalute(true);
+                    setDone(date, task.id, e.target.checked);
+                  }}
                   className="focus-ring h-6 w-6 shrink-0 cursor-pointer rounded border-border accent-primary"
                 />
                 {task.description.trim() ? (
@@ -140,17 +187,24 @@ export function TaskList() {
                 )}
               </div>
               {isOpen && task.description.trim() && (
-                <div
+                <TaskNote
                   id={panelId}
-                  className="animate-fade-in px-5 pb-4 pl-14 text-sm leading-relaxed whitespace-pre-wrap text-fg-muted"
-                >
-                  {task.description}
-                </div>
+                  taskId={task.id}
+                  text={task.description}
+                  ticks={ticks}
+                  onTick={
+                    canTick ? (item, isDone) => setDone(date, task.id, isDone, item) : undefined
+                  }
+                  className={cn('animate-fade-in pr-5 pb-4', canEdit ? 'pl-[4.5rem]' : 'pl-14')}
+                />
               )}
             </li>
           );
         })}
       </ul>
+      {salute && (
+        <Salute text={data.settings.saluteText || DEFAULT_SALUTE_TEXT} onDone={endSalute} />
+      )}
     </div>
   );
 }

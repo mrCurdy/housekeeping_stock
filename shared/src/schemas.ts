@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { pruneTasks } from './checklist';
-import { emptyStockData, type DayRecord, type StockData, type Task } from './types';
+import {
+  emptyStockData,
+  SALUTE_TEXT_MAX,
+  STOCK_CARDS,
+  type AppSettings,
+  type DayRecord,
+  type StockCard,
+  type StockData,
+  type Task,
+} from './types';
 
 /** Request bodies. The server validates with these (validateBody); the client can reuse them. */
 
@@ -55,7 +64,24 @@ export type TaskPatchInput = z.infer<typeof taskPatchSchema>;
 export const taskOrderSchema = z.object({ ids: z.array(z.string()) });
 export type TaskOrderInput = z.infer<typeof taskOrderSchema>;
 
-export const checkSchema = z.object({ done: z.boolean() });
+/** The Stock page's cards in their new order (cards not listed follow in the default order). */
+export const stockCardOrderSchema = z.object({ order: z.array(z.enum(STOCK_CARDS)) });
+export type StockCardOrderInput = z.infer<typeof stockCardOrderSchema>;
+
+/** A partial update of the app settings. '' (or only spaces) resets a value to its default. */
+export const settingsPatchSchema = z.object({
+  saluteText: z.string().trim().max(SALUTE_TEXT_MAX).optional(),
+});
+export type SettingsPatchInput = z.infer<typeof settingsPatchSchema>;
+
+/** `item`: tick one checklist line of the task's instructions instead of the task. */
+export const checkSchema = z.object({
+  done: z.boolean(),
+  item: z
+    .string()
+    .regex(/^[a-z0-9]{1,16}$/)
+    .optional(),
+});
 export type CheckInput = z.infer<typeof checkSchema>;
 
 /** '' clears the note. */
@@ -116,6 +142,11 @@ export const backupSchema = z
       .default([]),
     checks: z.record(z.string(), z.record(z.string(), z.string())).default({}),
     notes: z.record(z.string(), z.string()).default({}),
+    stockCards: z.array(z.enum(STOCK_CARDS)).catch([]).default([]),
+    settings: z
+      .object({ saluteText: z.string().max(SALUTE_TEXT_MAX).optional().catch(undefined) })
+      .catch({})
+      .default({}),
   })
   .transform(normalizeStockData);
 
@@ -134,6 +165,8 @@ export function normalizeStockData(raw: {
   tasks?: Task[];
   checks?: Record<string, Record<string, string>>;
   notes?: Record<string, string>;
+  stockCards?: StockCard[];
+  settings?: AppSettings;
 }): StockData {
   const out = emptyStockData();
   out.items = raw.items.map((i) => ({
@@ -180,6 +213,9 @@ export function normalizeStockData(raw: {
   for (const [date, text] of Object.entries(raw.notes ?? {})) {
     if (text.trim()) out.notes[date] = text;
   }
+  out.stockCards = [...new Set(raw.stockCards ?? [])];
+  const saluteText = raw.settings?.saluteText?.trim();
+  if (saluteText) out.settings.saluteText = saluteText;
   return out;
 }
 

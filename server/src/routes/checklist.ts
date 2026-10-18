@@ -43,14 +43,17 @@ export function tasksRouter({ db }: AppContext) {
 export function checklistRouter({ db }: AppContext) {
   const r = Router();
 
-  /** Ticks / unticks one task. Returns every tick of that day, including other people's. */
+  /**
+   * Ticks / unticks one task, or one checklist line of its instructions (`item`).
+   * Returns every tick of that day, including other people's.
+   */
   r.put(
     '/checks/:date/:taskId',
     allow('checklist'),
     validateBody(checkSchema),
     async (req, res) => {
-      const { done } = req.body as CheckInput;
-      const day = await db.checklist.setDone(dateParam(req), param(req, 'taskId'), done);
+      const { done, item } = req.body as CheckInput;
+      const day = await db.checklist.setDone(dateParam(req), param(req, 'taskId'), done, item);
       res.json(found(day, 'Task'));
     },
   );

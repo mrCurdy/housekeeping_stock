@@ -30,7 +30,8 @@ describe('REST API', () => {
 
   it('health is ok', async () => {
     const res = await env.api().get('/api/health').expect(200);
-    expect(res.body).toMatchObject({ status: 'ok', db: 'sqlite' });
+    // Run from source: no build stamp
+    expect(res.body).toMatchObject({ status: 'ok', db: 'sqlite', builtAt: null, commit: 'source' });
   });
 
   it('starts empty', async () => {
@@ -44,6 +45,8 @@ describe('REST API', () => {
       tasks: [],
       checks: {},
       notes: {},
+      stockCards: [],
+      settings: {},
     });
   });
 
@@ -71,6 +74,35 @@ describe('REST API', () => {
       expect(res.body).toMatchObject({ name: 'Bath towel', multipliers: { [double.id]: 2 } });
       await env.api().patch(`/api/groups/${double.id}`).send({ name: 'TWIN' }).expect(200);
       await env.api().patch('/api/locations/nope').send({ name: 'x' }).expect(404);
+    });
+
+    it('saves the Stock page card order', async () => {
+      const res = await env
+        .api()
+        .put('/api/stock-cards/order')
+        .send({ order: ['overview'] })
+        .expect(200);
+      expect(res.body).toEqual(['overview', 'departures', 'items']);
+      expect((await data()).stockCards).toEqual(['overview', 'departures', 'items']);
+      await env
+        .api()
+        .put('/api/stock-cards/order')
+        .send({ order: ['nope'] })
+        .expect(400);
+    });
+
+    it('saves the salute text; blank resets it', async () => {
+      const res = await env.api().patch('/api/settings').send({ saluteText: ' Hurraa! ' });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ saluteText: 'Hurraa!' });
+      expect((await data()).settings).toEqual({ saluteText: 'Hurraa!' });
+      await env
+        .api()
+        .patch('/api/settings')
+        .send({ saluteText: 'x'.repeat(13) })
+        .expect(400);
+      await env.api().patch('/api/settings').send({ saluteText: '' }).expect(200);
+      expect((await data()).settings).toEqual({});
     });
 
     it('validates input', async () => {
@@ -174,6 +206,26 @@ describe('REST API', () => {
       // Bins was added today: it was not on yesterday's list
       await env.api().put(`/api/checks/${yesterday}/${bins.id}`).send({ done: true }).expect(404);
       await env.api().put(`/api/checks/${yesterday}/${beds.id}`).send({ done: true }).expect(200);
+    });
+
+    it('ticks checklist lines of a task per day; removing the task drops them', async () => {
+      const towels = (await env.api().post('/api/tasks').send({ name: 'Towels', from: yesterday }))
+        .body as { id: string };
+      const url = `/api/checks/${today}/${towels.id}`;
+      const lines = (day: object) => Object.keys(day).filter((k) => k.includes('#'));
+      const res = await env.api().put(url).send({ done: true, item: 'k1' }).expect(200);
+      expect(lines(res.body)).toEqual([`${towels.id}#k1`]);
+      expect(res.body[towels.id]).toBeUndefined(); // the task itself stays unticked
+      await env.api().put(url).send({ done: true, item: 'Bad key!' }).expect(400);
+      await env.api().put(`/api/checks/${today}/nope`).send({ done: true, item: 'k1' }).expect(404);
+      const off = await env.api().put(url).send({ done: false, item: 'k1' });
+      expect(lines(off.body)).toEqual([]);
+      await env.api().put(url).send({ done: true, item: 'k2' }).expect(200);
+      await env.api().put(`/api/checks/${today}/${beds.id}`).send({ done: true, item: 'k2' });
+      await env.api().delete(`/api/tasks/${towels.id}/${today}`).expect(204);
+      expect(lines((await data()).checks[today]!)).toEqual([`${beds.id}#k2`]);
+      await env.api().put(`/api/checks/${today}/${beds.id}`).send({ done: false, item: 'k2' });
+      await env.api().delete(`/api/tasks/${towels.id}/${yesterday}`).expect(204);
     });
 
     it('saves notes; empty clears', async () => {

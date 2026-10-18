@@ -1,4 +1,5 @@
 import type {
+  AppSettings,
   DayChecks,
   DayCounts,
   DayRecord,
@@ -9,6 +10,8 @@ import type {
   PinRole,
   RecordPatchInput,
   Role,
+  StockCard,
+  SettingsPatchInput,
   StockData,
   Task,
   TaskPatchInput,
@@ -61,10 +64,23 @@ export interface TaskRepo {
 }
 
 export interface ChecklistRepo {
-  /** Ticks (stores the current time) or unticks a task; returns that day's ticks. */
-  setDone(date: string, taskId: string, done: boolean): Promise<DayChecks | null>;
+  /**
+   * Ticks (stores the current time) or unticks a task, or one checklist line of its instructions
+   * (`item`); returns that day's ticks.
+   */
+  setDone(date: string, taskId: string, done: boolean, item?: string): Promise<DayChecks | null>;
   /** '' (or only spaces) clears the note. */
   setNote(date: string, text: string): Promise<void>;
+}
+
+export interface StockCardRepo {
+  /** Saves the Stock page's card order (unlisted cards follow in the default order); returns it. */
+  reorder(order: StockCard[]): Promise<StockCard[]>;
+}
+
+export interface SettingsRepo {
+  /** Changes the listed settings ('' resets one to its default); returns all of them. */
+  update(patch: SettingsPatchInput): Promise<AppSettings>;
 }
 
 /** Login storage. Not part of StockData: backups and restores never touch it. */
@@ -107,6 +123,8 @@ export interface Db {
   tasks: TaskRepo;
   /** Ticks and notes older than CHECKLIST_DAYS are deleted (on start and with every change). */
   checklist: ChecklistRepo;
+  stockCards: StockCardRepo;
+  settings: SettingsRepo;
   auth: AuthRepo;
   /** Create tables / files. Must be idempotent. */
   init(): Promise<void>;

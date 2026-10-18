@@ -1,8 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { emptyStockData } from '@app/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/context/AuthContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
+import { DateProvider } from '@/context/DateContext';
+import { StockProvider } from '@/context/StockContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { mockApi } from '@/test/fetch';
 import Settings from './Settings';
@@ -14,7 +17,11 @@ const settings = () =>
     <ToastProvider>
       <ConfirmProvider>
         <AuthProvider>
-          <Settings />
+          <DateProvider>
+            <StockProvider>
+              <Settings />
+            </StockProvider>
+          </DateProvider>
         </AuthProvider>
       </ConfirmProvider>
     </ToastProvider>,
@@ -24,6 +31,7 @@ const settings = () =>
 function adminApi(pins: () => { status: number; body?: unknown } = () => ({ status: 204 })) {
   return mockApi((method, path) => {
     if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
+    if (path === '/data') return { status: 200, body: { ...emptyStockData(), settings: {} } };
     if (path === '/auth/qr' && method === 'GET') return { status: 200, body: { active: false } };
     if (path === '/auth/qr' && method === 'POST') {
       return { status: 201, body: { token: 'tok', createdAt: '2026-10-17T08:00:00.000Z' } };
@@ -90,5 +98,19 @@ describe('Settings: QR code', () => {
     expect(await screen.findByRole('img', { name: 'QR code' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Print' })).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith('/api/auth/qr', expect.objectContaining({ method: 'POST' }));
+  });
+});
+
+describe('Settings: fireworks', () => {
+  it('saves the fireworks text', async () => {
+    const fetch = adminApi();
+    settings();
+    const input = await screen.findByLabelText('Fireworks text');
+    expect(input).toHaveAttribute('placeholder', 'Tubli!');
+    await userEvent.type(input, 'Hurraa!{Enter}');
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/settings',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ saluteText: 'Hurraa!' }) }),
+    );
   });
 });

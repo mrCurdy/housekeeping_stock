@@ -1,5 +1,14 @@
 import { Router } from 'express';
-import { itemPatchSchema, nameSchema, type ItemPatchInput, type NameInput } from '@app/shared';
+import {
+  itemPatchSchema,
+  nameSchema,
+  settingsPatchSchema,
+  stockCardOrderSchema,
+  type ItemPatchInput,
+  type NameInput,
+  type SettingsPatchInput,
+  type StockCardOrderInput,
+} from '@app/shared';
 import type { AppContext } from '../context';
 import type { NamedRepo } from '../db';
 import { found, param } from '../lib/params';
@@ -42,3 +51,21 @@ export function itemsRouter({ db }: AppContext) {
 
 export const groupsRouter = ({ db }: AppContext) => namedRouter(db.groups, 'Group');
 export const locationsRouter = ({ db }: AppContext) => namedRouter(db.locations, 'Room');
+
+/** PUT /order { order }: the order of the cards on the Stock page (the same for everyone). */
+export function stockCardsRouter({ db }: AppContext) {
+  const r = Router();
+  r.put('/order', validateBody(stockCardOrderSchema), async (req, res) => {
+    res.json(await db.stockCards.reorder((req.body as StockCardOrderInput).order));
+  });
+  return r;
+}
+
+/** PATCH / { saluteText? }: app-wide preferences; returns all settings. */
+export function settingsRouter({ db }: AppContext) {
+  const r = Router();
+  r.patch('/', validateBody(settingsPatchSchema), async (req, res) => {
+    res.json(await db.settings.update(req.body as SettingsPatchInput));
+  });
+  return r;
+}
