@@ -197,6 +197,11 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+/* Full-size bar for wide tables you scroll sideways with the mouse */
+@utility scrollbar-thick {
+  scrollbar-width: auto;
+  scrollbar-color: var(--border) transparent;
+}
 
 /* Range thumb for <Slider> (pseudo-elements can't be targeted with utilities cleanly) */
 .slider::-webkit-slider-thumb {

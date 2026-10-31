@@ -1,12 +1,10 @@
 import { Package, Trash2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { AddForm } from '@/components/AddForm';
 import { ClearableInput } from '@/components/ClearableInput';
 import {
   Button,
   Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   CommitInput,
   EmptyState,
   Table,
@@ -25,9 +23,10 @@ import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/cn';
 import { parseNumber, parseQty } from '@/lib/numbers';
 import { useRoomStatus } from './useRoomStatus';
+import { StockCardHeader } from './StockCardHeader';
 
 /** Consumption, income and end-of-day stock of every item on the selected day. */
-export function ItemsCard() {
+export function ItemsCard({ grip }: { grip?: ReactNode }) {
   const { data, math, patchRecord, updateItem, removeItem, addItem, addGroup } = useStock();
   const { date } = useSelectedDate();
   const confirm = useConfirm();
@@ -48,10 +47,11 @@ export function ItemsCard() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{tx.title}</CardTitle>
-        <CardDescription>{tx.description(formatLongDate(date, locale))}</CardDescription>
-      </CardHeader>
+      <StockCardHeader
+        title={tx.title}
+        description={tx.description(formatLongDate(date, locale))}
+        grip={grip}
+      />
       {data.items.length === 0 ? (
         <EmptyState
           icon={<Package />}

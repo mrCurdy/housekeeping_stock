@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyTaskMove,
   editTask,
+  groupOf,
   isTaskOn,
+  itemCheckKey,
+  moveTaskTo,
   newTask,
   pruneTasks,
   removeTaskFrom,
+  removeTaskGroupIn,
   removeTaskIn,
+  taskGroupList,
   taskOn,
+  tasksByGroup,
   tasksOn,
 } from './checklist';
 import { emptyStockData, type Task } from './types';
@@ -61,9 +68,12 @@ describe('checklist history', () => {
   it('removing drops the ticks from that day on only', () => {
     const data = emptyStockData();
     data.tasks = [old];
-    data.checks = { '2026-10-16': { a: 't1' }, '2026-10-17': { a: 't2' } };
+    data.checks = {
+      '2026-10-16': { a: 't1' },
+      '2026-10-17': { a: 't2', [itemCheckKey('a', 'x1')]: 't3', b: 't4' },
+    };
     expect(removeTaskIn(data, 'a', '2026-10-17')).toBe(true);
-    expect(data.checks).toEqual({ '2026-10-16': { a: 't1' } });
+    expect(data.checks).toEqual({ '2026-10-16': { a: 't1' }, '2026-10-17': { b: 't4' } });
     expect(tasksOn(data.tasks, '2026-10-16')).toEqual([{ id: 'a', name: 'Beds', description: '' }]);
     expect(tasksOn(data.tasks, '2026-10-17')).toEqual([]);
   });
@@ -84,5 +94,94 @@ describe('checklist history', () => {
       },
     ]);
     expect(pruneTasks(data, '2026-09-17')).toBe(false);
+  });
+
+  it('moves a task to a place among the tasks of the day; hidden tasks stay put', () => {
+    const tasks: Task[] = [
+      { ...old, id: 'a' },
+      { ...old, id: 'gone', removed: '2026-10-01' },
+      { ...old, id: 'b' },
+      { ...old, id: 'c' },
+    ];
+    const day = '2026-10-17';
+    const move = (id: string, to: number) => moveTaskTo(tasks, [], id, 'default', to, day)?.ids;
+    expect(move('c', 0)).toEqual(['c', 'a', 'gone', 'b']);
+    expect(move('a', 2)).toEqual(['gone', 'b', 'c', 'a']);
+    expect(move('a', 1)).toEqual(['gone', 'b', 'a', 'c']);
+    expect(move('a', 0)).toBeUndefined();
+    expect(move('a', 3)).toBeUndefined();
+    expect(move('gone', 0)).toBeUndefined();
+  });
+});
+
+describe('checklist groups', () => {
+  const groups = [
+    { id: 'g1', name: 'Before 11' },
+    { id: 'g2', name: 'Service' },
+  ];
+  const tasks: Task[] = [
+    { ...old, id: 'a' }, // no group: the first one
+    { ...old, id: 'b', group: 'g2' },
+    { ...old, id: 'c', group: 'gone' }, // unknown group: the first one
+    { ...old, id: 'd', group: 'g2' },
+  ];
+  const day = '2026-10-17';
+
+  it('lists the default group when there are none, and tasks by group', () => {
+    expect(taskGroupList([])).toEqual([{ id: 'default', name: '' }]);
+    expect(groupOf(tasks[2]!, groups)).toBe('g1');
+    // Without a group: the default one wherever it is, not the first
+    const withDefault = [...groups, { id: 'default', name: '' }];
+    expect(groupOf(tasks[0]!, withDefault)).toBe('default');
+    expect(
+      tasksByGroup(tasks, groups, day).map((g) => [g.group.id, g.tasks.map((t) => t.id)]),
+    ).toEqual([
+      ['g1', ['a', 'c']],
+      ['g2', ['b', 'd']],
+    ]);
+  });
+
+  it('moves a task into another group at a place', () => {
+    expect(moveTaskTo(tasks, groups, 'a', 'g2', 1, day)).toEqual({
+      ids: ['b', 'c', 'a', 'd'],
+      group: 'g2',
+    });
+    expect(moveTaskTo(tasks, groups, 'b', 'g1', 2, day)).toEqual({
+      ids: ['a', 'c', 'b', 'd'],
+      group: 'g1',
+    });
+    expect(moveTaskTo(tasks, groups, 'a', 'nope', 0, day)).toBeNull();
+    expect(moveTaskTo(tasks, groups, 'a', 'g2', 3, day)).toBeNull();
+    // Into an empty group
+    const three = [...groups, { id: 'g3', name: '' }];
+    expect(moveTaskTo(tasks, three, 'a', 'g3', 0, day)).toEqual({
+      ids: ['b', 'c', 'd', 'a'],
+      group: 'g3',
+    });
+
+    const data = { ...emptyStockData(), tasks: structuredClone(tasks), taskGroups: groups };
+    applyTaskMove(data, 'a', moveTaskTo(data.tasks, groups, 'a', 'g2', 2, day)!);
+    expect(data.tasks.map((t) => [t.id, groupOf(t, groups)])).toEqual([
+      ['b', 'g2'],
+      ['c', 'g1'],
+      ['d', 'g2'],
+      ['a', 'g2'],
+    ]);
+  });
+
+  it('removing a group moves its tasks to the one above (or below); the last one stays', () => {
+    const data = {
+      ...emptyStockData(),
+      tasks: structuredClone(tasks),
+      taskGroups: [...groups, { id: 'g3', name: 'Evening' }],
+    };
+    data.tasks.push({ ...old, id: 'e', group: 'g3' });
+    expect(removeTaskGroupIn(data, 'g3')).toBe(true);
+    expect(data.tasks.find((t) => t.id === 'e')!.group).toBe('g2');
+    expect(removeTaskGroupIn(data, 'g1')).toBe(true);
+    expect(data.tasks.map((t) => t.group)).toEqual(['g2', 'g2', 'g2', 'g2', 'g2']);
+    expect(removeTaskGroupIn(data, 'g2')).toBe('last');
+    expect(removeTaskGroupIn(data, 'nope')).toBe(false);
+    expect(data.taskGroups).toEqual([{ id: 'g2', name: 'Service' }]);
   });
 });

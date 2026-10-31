@@ -1,6 +1,16 @@
 import { z } from 'zod';
-import { pruneTasks } from './checklist';
-import { emptyStockData, type DayRecord, type StockData, type Task } from './types';
+import { pruneTasks, taskGroupList } from './checklist';
+import {
+  emptyStockData,
+  SALUTE_TEXT_MAX,
+  STOCK_CARDS,
+  type AppSettings,
+  type DayRecord,
+  type StockCard,
+  type StockData,
+  type Task,
+  type TaskGroup,
+} from './types';
 
 /** Request bodies. The server validates with these (validateBody); the client can reuse them. */
 
@@ -41,6 +51,8 @@ export const taskCreateSchema = z.object({
   name,
   description: description.default(''),
   from: dateSchema,
+  /** The group to list it in (missing = the first group). */
+  group: z.string().optional(),
 });
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
 
@@ -51,11 +63,38 @@ export const taskPatchSchema = z.object({
 });
 export type TaskPatchInput = z.infer<typeof taskPatchSchema>;
 
-/** The task ids in their new order (ids not listed keep their place at the end). */
-export const taskOrderSchema = z.object({ ids: z.array(z.string()) });
+/**
+ * The task ids in their new order (ids not listed keep their place at the end). `move` also puts
+ * one task into another group (a drag across group cards).
+ */
+export const taskOrderSchema = z.object({
+  ids: z.array(z.string()),
+  move: z.object({ id: z.string(), group: z.string() }).optional(),
+});
 export type TaskOrderInput = z.infer<typeof taskOrderSchema>;
 
-export const checkSchema = z.object({ done: z.boolean() });
+/** The checklist group ids in their new order (ids not listed keep their place at the end). */
+export const taskGroupOrderSchema = z.object({ ids: z.array(z.string()) });
+export type TaskGroupOrderInput = z.infer<typeof taskGroupOrderSchema>;
+
+/** The Stock page's cards in their new order (cards not listed follow in the default order). */
+export const stockCardOrderSchema = z.object({ order: z.array(z.enum(STOCK_CARDS)) });
+export type StockCardOrderInput = z.infer<typeof stockCardOrderSchema>;
+
+/** A partial update of the app settings. '' (or only spaces) resets a value to its default. */
+export const settingsPatchSchema = z.object({
+  saluteText: z.string().trim().max(SALUTE_TEXT_MAX).optional(),
+});
+export type SettingsPatchInput = z.infer<typeof settingsPatchSchema>;
+
+/** `item`: tick one checklist line of the task's instructions instead of the task. */
+export const checkSchema = z.object({
+  done: z.boolean(),
+  item: z
+    .string()
+    .regex(/^[a-z0-9]{1,16}$/)
+    .optional(),
+});
 export type CheckInput = z.infer<typeof checkSchema>;
 
 /** '' clears the note. */
@@ -111,11 +150,18 @@ export const backupSchema = z
             )
             .optional()
             .catch(undefined),
+          group: z.string().optional().catch(undefined),
         }),
       )
       .default([]),
+    taskGroups: z.array(idName).catch([]).default([]),
     checks: z.record(z.string(), z.record(z.string(), z.string())).default({}),
     notes: z.record(z.string(), z.string()).default({}),
+    stockCards: z.array(z.enum(STOCK_CARDS)).catch([]).default([]),
+    settings: z
+      .object({ saluteText: z.string().max(SALUTE_TEXT_MAX).optional().catch(undefined) })
+      .catch({})
+      .default({}),
   })
   .transform(normalizeStockData);
 
@@ -132,8 +178,11 @@ export function normalizeStockData(raw: {
   groupRecords: Record<string, Record<string, { d?: number | null }>>;
   counts: Record<string, Record<string, Record<string, number | null>>>;
   tasks?: Task[];
+  taskGroups?: TaskGroup[];
   checks?: Record<string, Record<string, string>>;
   notes?: Record<string, string>;
+  stockCards?: StockCard[];
+  settings?: AppSettings;
 }): StockData {
   const out = emptyStockData();
   out.items = raw.items.map((i) => ({
@@ -164,22 +213,31 @@ export function normalizeStockData(raw: {
       }
     }
   }
-  out.tasks = (raw.tasks ?? []).map(({ id, name, description, added, removed, earlier }) => ({
-    id,
-    name,
-    description,
-    ...(added && { added }),
-    ...(removed && { removed }),
-    ...(earlier?.length && {
-      earlier: earlier.map((w) => ({ name: w.name, description: w.description, until: w.until })),
+  // At least one group; a task's group is kept only when it exists
+  out.taskGroups = taskGroupList(raw.taskGroups?.map(({ id, name }) => ({ id, name })));
+  const groupIds = new Set(out.taskGroups.map((g) => g.id));
+  out.tasks = (raw.tasks ?? []).map(
+    ({ id, name, description, added, removed, earlier, group }) => ({
+      id,
+      name,
+      description,
+      ...(added && { added }),
+      ...(removed && { removed }),
+      ...(earlier?.length && {
+        earlier: earlier.map((w) => ({ name: w.name, description: w.description, until: w.until })),
+      }),
+      ...(group && groupIds.has(group) && { group }),
     }),
-  }));
+  );
   for (const [date, byTask] of Object.entries(raw.checks ?? {})) {
     if (Object.keys(byTask).length) out.checks[date] = { ...byTask };
   }
   for (const [date, text] of Object.entries(raw.notes ?? {})) {
     if (text.trim()) out.notes[date] = text;
   }
+  out.stockCards = [...new Set(raw.stockCards ?? [])];
+  const saluteText = raw.settings?.saluteText?.trim();
+  if (saluteText) out.settings.saluteText = saluteText;
   return out;
 }
 

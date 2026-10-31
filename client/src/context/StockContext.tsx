@@ -2,8 +2,12 @@ import {
   createStockMath,
   editTask,
   emptyStockData,
-  isTaskOn,
+  applyTaskMove,
+  itemCheckKey,
+  moveTaskTo,
+  removeTaskGroupIn,
   removeTaskIn,
+  taskGroupList,
   type BackupInput,
   type DayChecks,
   type DayCounts,
@@ -13,9 +17,12 @@ import {
   type ItemPatchInput,
   type Location,
   type RecordPatchInput,
+  type SettingsPatchInput,
+  type StockCard,
   type StockData,
   type StockMath,
   type Task,
+  type TaskGroup,
   type TaskPatchInput,
 } from '@app/shared';
 import {
@@ -65,13 +72,28 @@ interface StockApi {
   /** Saves one room count. Throws on failure (the counting page shows its own error). */
   setCount(date: string, locationId: string, itemId: string, value: number | null): Promise<void>;
   /** Task changes apply from `from` onwards; the days before keep the list as it was. */
-  addTask(name: string, description: string, from: string): Promise<Task | undefined>;
+  addTask(
+    name: string,
+    description: string,
+    from: string,
+    group?: string,
+  ): Promise<Task | undefined>;
   updateTask(id: string, patch: TaskPatchInput): void;
   removeTask(id: string, from: string): void;
-  /** Moves a task one place up (-1) or down (+1) among the tasks of `date`. */
-  moveTask(id: string, step: -1 | 1, date: string): void;
-  setDone(date: string, taskId: string, done: boolean): void;
+  /** Moves a task into `group` (maybe its own), at place `to` among that group's tasks of `date`. */
+  moveTask(id: string, group: string, to: number, date: string): void;
+  /** The checklist's groups (cards). Deleting one moves its tasks to the group above. */
+  addTaskGroup(name: string): Promise<TaskGroup | undefined>;
+  renameTaskGroup(id: string, name: string): void;
+  removeTaskGroup(id: string): void;
+  moveTaskGroup(from: number, to: number): void;
+  /** Ticks a task, or one checklist line of its instructions (`item`, its key). */
+  setDone(date: string, taskId: string, done: boolean, item?: string): void;
   setNote(date: string, text: string): void;
+  /** Saves the Stock page's card order (the same for everyone). */
+  setStockCards(order: StockCard[]): void;
+  /** Changes app-wide settings ('' resets one to its default). */
+  updateSettings(patch: SettingsPatchInput): void;
 
   /** Replaces everything with a backup file's contents. Throws on failure. */
   restore(backup: BackupInput): Promise<void>;
@@ -207,6 +229,11 @@ export function StockProvider({ children }: { children: ReactNode }) {
       },
     );
     const locations = named<Location>('/locations', (d) => d.locations);
+    // Old data (and tests) may have no groups yet: start from the default one
+    const taskGroups = named<TaskGroup>(
+      '/task-groups',
+      (d) => (d.taskGroups = taskGroupList(d.taskGroups)),
+    );
 
     return {
       data,
@@ -269,8 +296,8 @@ export function StockProvider({ children }: { children: ReactNode }) {
         });
       },
 
-      addTask: async (name, description, from) => {
-        const task = await send(() => api.post<Task>('/tasks', { name, description, from }));
+      addTask: async (name, description, from, group) => {
+        const task = await send(() => api.post<Task>('/tasks', { name, description, from, group }));
         if (task) edit((d) => void d.tasks.push(task));
         return task;
       },
@@ -284,30 +311,36 @@ export function StockProvider({ children }: { children: ReactNode }) {
         edit((d) => void removeTaskIn(d, id, from));
         void send(() => api.delete(`/tasks/${id}/${from}`));
       },
-      moveTask: (id, step, date) => {
-        // Swap with the next task shown that day (tasks not on that day's list stay put)
-        const shown = data.tasks.filter((t) => isTaskOn(t, date)).map((t) => t.id);
-        const other = shown[shown.indexOf(id) + step];
-        if (!shown.includes(id) || !other) return;
-        const ids = data.tasks.map((t) => t.id);
-        const from = ids.indexOf(id);
-        const to = ids.indexOf(other);
-        [ids[from], ids[to]] = [ids[to]!, ids[from]!];
-        edit((d) => {
-          const byId = new Map(d.tasks.map((t) => [t.id, t]));
-          d.tasks = ids.map((i) => byId.get(i)!);
-        });
-        void send(() => api.put('/tasks/order', { ids }));
+      moveTask: (id, group, to, date) => {
+        const move = moveTaskTo(data.tasks, data.taskGroups, id, group, to, date);
+        if (!move) return;
+        edit((d) => applyTaskMove(d, id, move));
+        void send(() => api.put('/tasks/order', { ids: move.ids, move: { id, group } }));
       },
-      setDone: (date, taskId, done) => {
+      addTaskGroup: taskGroups.add,
+      renameTaskGroup: taskGroups.rename,
+      removeTaskGroup: (id) => {
+        edit((d) => void removeTaskGroupIn(d, id));
+        void send(() => api.delete(`/task-groups/${id}`));
+      },
+      moveTaskGroup: (from, to) => {
+        const list = taskGroupList(data.taskGroups);
+        const [moved] = list.splice(from, 1);
+        if (!moved || to < 0 || to > list.length) return;
+        list.splice(to, 0, moved);
+        edit((d) => void (d.taskGroups = list));
+        void send(() => api.put('/task-groups/order', { ids: list.map((g) => g.id) }));
+      },
+      setDone: (date, taskId, done, item) => {
+        const key = item ? itemCheckKey(taskId, item) : taskId;
         edit((d) => {
           const day = (d.checks[date] ??= {});
-          if (done) day[taskId] = new Date().toISOString();
-          else delete day[taskId];
+          if (done) day[key] = new Date().toISOString();
+          else delete day[key];
         });
         void send(async () => {
           // The response includes what others ticked meanwhile, with the server's times
-          const day = await api.put<DayChecks>(`/checks/${date}/${taskId}`, { done });
+          const day = await api.put<DayChecks>(`/checks/${date}/${taskId}`, { done, item });
           edit((d) => void (d.checks[date] = day));
         });
       },
@@ -317,6 +350,18 @@ export function StockProvider({ children }: { children: ReactNode }) {
           else delete d.notes[date];
         });
         void send(() => api.put(`/notes/${date}`, { text }));
+      },
+      setStockCards: (order) => {
+        edit((d) => void (d.stockCards = order));
+        void send(() => api.put('/stock-cards/order', { order }));
+      },
+      updateSettings: (patch) => {
+        edit((d) => {
+          const saluteText = patch.saluteText?.trim();
+          if (saluteText) d.settings.saluteText = saluteText;
+          else if (patch.saluteText !== undefined) delete d.settings.saluteText;
+        });
+        void send(() => api.patch('/settings', patch));
       },
 
       restore: async (backup) => {

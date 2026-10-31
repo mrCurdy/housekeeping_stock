@@ -1,8 +1,9 @@
-import { pinSchema, type PinRole } from '@app/shared';
-import { Download, Printer, QrCode, KeyRound } from 'lucide-react';
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { DEFAULT_SALUTE_TEXT, pinSchema, SALUTE_TEXT_MAX, type PinRole } from '@app/shared';
+import { Download, Printer, QrCode, KeyRound, PartyPopper } from 'lucide-react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Salute } from '@/components/Salute';
 import {
   Alert,
   Button,
@@ -11,6 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CommitInput,
   FormField,
   Input,
   Spinner,
@@ -18,10 +20,11 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useI18n } from '@/context/I18nContext';
+import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
 import { ApiError, api, apiErrorMessage } from '@/lib/api';
 
-/** /settings (admin only): the admin and worker PINs, and the QR code for counting. */
+/** /settings (admin only): the admin and worker PINs, the QR code for counting, the fireworks text. */
 export default function Settings() {
   const { can } = useAuth();
   const { t } = useI18n();
@@ -46,6 +49,7 @@ export default function Settings() {
           </CardBody>
         </Card>
         {can('qr') && <QrCard />}
+        {can('setup') && <SaluteCard />}
       </div>
     </>
   );
@@ -259,6 +263,44 @@ function QrCard() {
           </>
         )}
       </CardBody>
+    </Card>
+  );
+}
+
+/** The word the fireworks spell (last task of the day ticked, a room fully counted), with a preview. */
+function SaluteCard() {
+  const { t } = useI18n();
+  const tx = t.settings.salute;
+  const { data, updateSettings } = useStock();
+  const [preview, setPreview] = useState(false);
+  const endPreview = useCallback(() => setPreview(false), []);
+  const text = data.settings.saluteText ?? '';
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <PartyPopper className="h-4 w-4 text-fg-muted" />
+          {tx.title}
+        </CardTitle>
+        <CardDescription>{tx.description}</CardDescription>
+      </CardHeader>
+      <CardBody className="flex flex-wrap items-end gap-3">
+        <FormField label={tx.text} hint={tx.hint(DEFAULT_SALUTE_TEXT)} className="w-full sm:w-64">
+          <CommitInput
+            value={text}
+            maxLength={SALUTE_TEXT_MAX}
+            placeholder={DEFAULT_SALUTE_TEXT}
+            onCommit={(value) => {
+              if (value.trim() !== text) updateSettings({ saluteText: value });
+            }}
+          />
+        </FormField>
+        <Button variant="outline" onClick={() => setPreview(true)} className="sm:mb-6">
+          {tx.preview}
+        </Button>
+      </CardBody>
+      {preview && <Salute text={text || DEFAULT_SALUTE_TEXT} onDone={endPreview} />}
     </Card>
   );
 }

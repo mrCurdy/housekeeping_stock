@@ -69,4 +69,24 @@ export const migrations: { id: number; name: string; sql: string }[] = [
       CREATE TABLE qr_links (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL);
     `,
   },
+  {
+    id: 2,
+    name: 'stock cards',
+    sql: 'CREATE TABLE stock_cards (id TEXT PRIMARY KEY, pos INTEGER NOT NULL);',
+  },
+  {
+    id: 3,
+    name: 'settings',
+    sql: 'CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);',
+  },
+  {
+    id: 4,
+    name: 'checklist groups',
+    sql: `
+      CREATE TABLE task_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, pos INTEGER NOT NULL);
+      INSERT INTO task_groups (id, name, pos) VALUES ('default', '', 0);
+      ALTER TABLE tasks ADD COLUMN group_id TEXT;
+      UPDATE tasks SET group_id = 'default';
+    `,
+  },
 ];

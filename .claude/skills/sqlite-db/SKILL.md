@@ -8,8 +8,10 @@ description: Change Stock Monitor's SQLite storage (server/src/db/sqlite/) — a
 Files: `server/src/db/types.ts` (the `Db` interface, the only thing routes see),
 `server/src/db/sqlite/migrations.ts` (schema), `server/src/db/sqlite/index.ts` (the driver),
 `server/tests/sqlite.test.ts` (driver tests; `api.test.ts` is the regression suite through the API).
+`api.test.ts` uses one DB for the whole file: a new test there creates its own records, since earlier
+tests' data is still present.
 
-## Schema (migration 1)
+## Schema (migrations 1–4)
 
 | table | columns | notes |
 |---|---|---|
@@ -20,9 +22,12 @@ Files: `server/src/db/types.ts` (the `Db` interface, the only thing routes see),
 | `departures` | `group_id, date, d` | no 0 rows |
 | `locations` | `id, name, pos` | |
 | `counts` | `date, location_id, item_id, value` | `location_id` may be a removed room |
-| `tasks` | `id, name, description, added, removed, earlier_json, pos` | `earlier` as JSON text |
+| `tasks` | `id, name, description, added, removed, earlier_json, group_id, pos` | `earlier` as JSON text; `group_id` (migration 4) = its `task_groups` row |
+| `task_groups` | `id, name, pos` | checklist group cards (migration 4); never empty (`writeTaskGroups` puts back `default`), so `isEmpty()` skips it |
 | `checks` | `date, task_id, at` | `at` = ISO time ticked |
 | `notes` | `date, text` | no blank notes |
+| `stock_cards` | `id, pos` | the Stock page's card order (migration 2); empty = default |
+| `settings` | `key, value` | `StockData.settings` (migration 3); a missing row = the default; a new setting needs no migration, only `writeSetting` in `fill()` |
 | `pins`, `sessions`, `qr_links` | auth (`db.auth`, see the `auth` skill) | not part of `StockData` / backups; written without `write()`; `sessions.link_id` = the QR link a counter session came from |
 
 There are **no foreign keys**, on purpose: a restored backup may hold counts of removed rooms or

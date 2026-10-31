@@ -16,7 +16,8 @@ interface LoginProps {
 
 /**
  * The PIN screen: a keypad, plus a numeric field for typing. It submits as soon as the 4th digit is
- * entered and clears the PIN on a wrong one.
+ * typed and clears the PIN on a wrong one. A PIN that arrives whole (the browser's saved password,
+ * a paste) waits for the Log in button or Enter, so autofill can't log straight back in after logout.
  */
 export default function Login({ onSubmit, notice }: LoginProps) {
   const { t } = useI18n();
@@ -25,11 +26,15 @@ export default function Login({ onSubmit, notice }: LoginProps) {
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  const change = async (next: string) => {
+  const change = (next: string) => {
     next = next.replace(/\D/g, '').slice(0, LENGTH);
+    const typed = next.length === pin.length + 1;
     setPin(next);
     if (next.length > 0) setError(undefined);
-    if (next.length < LENGTH) return;
+    if (typed && next.length === LENGTH) void submit(next);
+  };
+
+  const submit = async (next: string) => {
     setBusy(true);
     try {
       await onSubmit(next); // on success this screen unmounts
@@ -56,19 +61,28 @@ export default function Login({ onSubmit, notice }: LoginProps) {
         </div>
         <h1 className="text-lg font-semibold">{t.auth.title}</h1>
 
-        <input
-          ref={input}
-          aria-label={t.auth.pin}
-          type="password"
-          inputMode="numeric"
-          autoComplete="current-password"
-          autoFocus
-          maxLength={LENGTH}
-          value={pin}
-          disabled={busy}
-          onChange={(e) => change(e.target.value)}
-          className="focus-ring h-12 w-40 rounded-md border border-border bg-surface text-center text-2xl tracking-[0.5em]"
-        />
+        <form
+          className="flex flex-col items-center gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (pin.length === LENGTH && !busy) void submit(pin);
+          }}
+        >
+          <input
+            ref={input}
+            aria-label={t.auth.pin}
+            type="password"
+            inputMode="numeric"
+            autoComplete="current-password"
+            autoFocus
+            maxLength={LENGTH}
+            value={pin}
+            disabled={busy}
+            onChange={(e) => change(e.target.value)}
+            className="focus-ring h-12 w-40 rounded-md border border-border bg-surface text-center text-2xl tracking-[0.5em]"
+          />
+          {pin.length === LENGTH && !busy && <Button type="submit">{t.auth.login}</Button>}
+        </form>
 
         {message && (
           <Alert tone="danger" className="w-full">
@@ -87,7 +101,7 @@ export default function Login({ onSubmit, notice }: LoginProps) {
             size="lg"
             aria-label={t.auth.clear}
             disabled={busy || pin === ''}
-            onClick={() => setPin(pin.slice(0, -1))}
+            onClick={() => change(pin.slice(0, -1))}
           >
             <Delete className="h-5 w-5" />
           </Button>

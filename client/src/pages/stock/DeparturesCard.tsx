@@ -1,19 +1,7 @@
 import { Settings, X } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { AddForm } from '@/components/AddForm';
-import {
-  Button,
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CommitInput,
-  Table,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
-} from '@/components/ui';
+import { Button, Card, CommitInput, Table, TBody, Td, Th, THead, Tr } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useSelectedDate } from '@/context/DateContext';
@@ -21,9 +9,16 @@ import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
 import { parseQty } from '@/lib/numbers';
+import { StockCardHeader } from './StockCardHeader';
 
 /** Rooms checked out on the selected day, per group. Departures × items per group = consumption. */
-export function DeparturesCard({ onEditGroup }: { onEditGroup: (groupId: string) => void }) {
+export function DeparturesCard({
+  onEditGroup,
+  grip,
+}: {
+  onEditGroup: (groupId: string) => void;
+  grip?: ReactNode;
+}) {
   const { data, setDepartures, renameGroup, removeGroup, addGroup } = useStock();
   const { date } = useSelectedDate();
   const confirm = useConfirm();
@@ -34,10 +29,7 @@ export function DeparturesCard({ onEditGroup }: { onEditGroup: (groupId: string)
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{tx.title}</CardTitle>
-        <CardDescription>{tx.description}</CardDescription>
-      </CardHeader>
+      <StockCardHeader title={tx.title} description={tx.description} grip={grip} />
       <Table>
         <THead>
           <tr>

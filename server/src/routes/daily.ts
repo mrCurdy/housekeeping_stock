@@ -64,12 +64,7 @@ export function dailyRouter({ db }: AppContext) {
       if (todayOnly(req.role) && date !== formatDate(todayLocal())) {
         throw HttpError.forbidden('This login can only count today');
       }
-      const day = await db.counts.set(
-        date,
-        param(req, 'locationId'),
-        param(req, 'itemId'),
-        value,
-      );
+      const day = await db.counts.set(date, param(req, 'locationId'), param(req, 'itemId'), value);
       res.json(found(day, 'Room or item'));
     },
   );

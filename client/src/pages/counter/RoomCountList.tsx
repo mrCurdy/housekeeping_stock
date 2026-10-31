@@ -1,5 +1,6 @@
-import type { Location } from '@app/shared';
-import { useRef, useState } from 'react';
+import { DEFAULT_SALUTE_TEXT, type Location } from '@app/shared';
+import { useCallback, useRef, useState } from 'react';
+import { Salute } from '@/components/Salute';
 import { Alert, Button, Input } from '@/components/ui';
 import { useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
@@ -17,7 +18,10 @@ const rowTone: Record<CountState, string> = {
   error: 'border-l-danger bg-danger-soft',
 };
 
-/** One room's list: type a number, Save (or Enter) stores it and jumps to the next item. */
+/**
+ * One room's list: type a number, Save (or Enter) stores it and jumps to the next item.
+ * Saving the room's last uncounted item plays the fireworks.
+ */
 export function RoomCountList({
   room,
   counted,
@@ -34,6 +38,8 @@ export function RoomCountList({
   const [error, setError] = useState('');
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const total = data.items.length;
+  const [salute, setSalute] = useState(false);
+  const endSalute = useCallback(() => setSalute(false), []);
 
   const submit = async (index: number) => {
     const item = data.items[index]!;
@@ -43,9 +49,12 @@ export function RoomCountList({
       setError(tx.invalid);
       return;
     }
+    // Read before saving: re-saving a counted item never sets off the fireworks again
+    const completes = data.counts[date]?.[room.id]?.[item.id] == null && counted === total - 1;
     drafts.setStatus(key, 'saving');
     try {
       await setCount(date, room.id, item.id, value);
+      if (completes) setSalute(true);
       drafts.clearDraft(key);
       drafts.setStatus(key, null);
       setError('');
@@ -135,6 +144,9 @@ export function RoomCountList({
           );
         })}
       </ul>
+      {salute && (
+        <Salute text={data.settings.saluteText || DEFAULT_SALUTE_TEXT} onDone={endSalute} />
+      )}
     </div>
   );
 }

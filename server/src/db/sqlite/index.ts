@@ -11,6 +11,7 @@ import {
 import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import {
+  type AppSettings,
   addDays,
   backupSchema,
   CHECKLIST_DAYS,
@@ -22,17 +23,24 @@ import {
   emptyStockData,
   formatDate,
   type Group,
+  groupOf,
   type Item,
   isTaskOn,
+  itemCheckKey,
   type Location,
   type PinRole,
   newTask,
   normalizeStockData,
   pruneTasks,
   removeTaskFrom,
+  removeTaskGroupIn,
   type Role,
+  type StockCard,
+  stockCardOrder,
   type StockData,
   type Task,
+  type TaskGroup,
+  taskGroupList,
   todayLocal,
 } from '@app/shared';
 import { logger } from '../../lib/logger';
@@ -75,6 +83,7 @@ interface TaskRow {
   added: string | null;
   removed: string | null;
   earlier_json: string | null;
+  group_id: string | null;
 }
 
 const toTask = (r: TaskRow): Task => ({
@@ -84,6 +93,7 @@ const toTask = (r: TaskRow): Task => ({
   ...(r.added && { added: r.added }),
   ...(r.removed && { removed: r.removed }),
   ...(r.earlier_json && { earlier: JSON.parse(r.earlier_json) as Task['earlier'] }),
+  ...(r.group_id && { group: r.group_id }),
 });
 const taskParams = (t: Task) => ({
   id: t.id,
@@ -92,6 +102,7 @@ const taskParams = (t: Task) => ({
   added: t.added ?? null,
   removed: t.removed ?? null,
   earlier_json: t.earlier?.length ? JSON.stringify(t.earlier) : null,
+  group_id: t.group ?? null,
 });
 
 /** Tables holding the dataset (not the auth tables), in the order `replace()` fills them. */
@@ -104,10 +115,13 @@ const DATA_TABLES = [
   'locations',
   'counts',
   'tasks',
+  'task_groups',
   'checks',
   'notes',
+  'stock_cards',
+  'settings',
 ] as const;
-type NamedTable = 'items' | 'groups' | 'locations';
+type NamedTable = 'items' | 'groups' | 'locations' | 'task_groups';
 
 /**
  * SQLite store (better-sqlite3, synchronous). Every change runs in one transaction.
@@ -142,6 +156,32 @@ export function createSqliteDb(
   const nextPos = (table: NamedTable | 'tasks') =>
     get<{ n: number }>(`SELECT COALESCE(MAX(pos) + 1, 0) AS n FROM ${table}`)!.n;
 
+  const readStockCards = () =>
+    all<{ id: StockCard }>('SELECT id FROM stock_cards ORDER BY pos').map((r) => r.id);
+  const writeStockCards = (order: StockCard[]) => {
+    run('DELETE FROM stock_cards');
+    const stmt = sql.prepare('INSERT INTO stock_cards (id, pos) VALUES (?, ?)');
+    order.forEach((id, pos) => stmt.run(id, pos));
+  };
+
+  /** Settings are key/value rows; a missing row is the default. */
+  const readSettings = (): AppSettings =>
+    Object.fromEntries(
+      all<{ key: string; value: string }>('SELECT key, value FROM settings').map((r) => [
+        r.key,
+        r.value,
+      ]),
+    );
+  const writeSetting = (key: keyof AppSettings, value: string | undefined) => {
+    if (value) {
+      run(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+        key,
+        value,
+      );
+    } else run('DELETE FROM settings WHERE key = ?', key);
+  };
+
   const readTasks = () => all<TaskRow>('SELECT * FROM tasks ORDER BY pos').map(toTask);
   const readTask = (id: string) => {
     const row = get<TaskRow>('SELECT * FROM tasks WHERE id = ?', id);
@@ -149,16 +189,24 @@ export function createSqliteDb(
   };
   const insertTask = (t: Task, pos: number) =>
     run(
-      `INSERT INTO tasks (id, name, description, added, removed, earlier_json, pos)
-       VALUES (@id, @name, @description, @added, @removed, @earlier_json, @pos)`,
+      `INSERT INTO tasks (id, name, description, added, removed, earlier_json, group_id, pos)
+       VALUES (@id, @name, @description, @added, @removed, @earlier_json, @group_id, @pos)`,
       { ...taskParams(t), pos },
     );
   const updateTask = (t: Task) =>
     run(
       `UPDATE tasks SET name = @name, description = @description, added = @added,
-       removed = @removed, earlier_json = @earlier_json WHERE id = @id`,
+       removed = @removed, earlier_json = @earlier_json, group_id = @group_id WHERE id = @id`,
       taskParams(t),
     );
+  /** Never empty: an empty table reads as the default group. */
+  const readTaskGroups = () =>
+    taskGroupList(all<NamedRow>('SELECT id, name FROM task_groups ORDER BY pos'));
+  const writeTaskGroups = (groups: TaskGroup[]) => {
+    run('DELETE FROM task_groups');
+    const stmt = sql.prepare('INSERT INTO task_groups (id, name, pos) VALUES (?, ?, ?)');
+    taskGroupList(groups).forEach((g, pos) => stmt.run(g.id, g.name, pos));
+  };
   const dayChecks = (date: string): DayChecks =>
     Object.fromEntries(
       all<{ task_id: string; at: string }>(
@@ -194,6 +242,7 @@ export function createSqliteDb(
       ((data.counts[r.date] ??= {})[r.location_id] ??= {})[r.item_id] = r.value;
     }
     data.tasks = readTasks();
+    data.taskGroups = readTaskGroups();
     for (const r of all<{ date: string; task_id: string; at: string }>(
       'SELECT * FROM checks ORDER BY rowid',
     )) {
@@ -202,6 +251,8 @@ export function createSqliteDb(
     for (const r of all<{ date: string; text: string }>('SELECT * FROM notes ORDER BY date')) {
       data.notes[r.date] = r.text;
     }
+    data.stockCards = readStockCards();
+    data.settings = readSettings();
     return data;
   };
 
@@ -249,12 +300,15 @@ export function createSqliteDb(
       }
     }
     data.tasks.forEach((t, pos) => insertTask(t, pos));
+    writeTaskGroups(data.taskGroups);
     const check = sql.prepare('INSERT INTO checks (date, task_id, at) VALUES (?, ?, ?)');
     for (const [date, byTask] of Object.entries(data.checks)) {
       for (const [taskId, at] of Object.entries(byTask)) check.run(date, taskId, at);
     }
     const note = sql.prepare('INSERT INTO notes (date, text) VALUES (?, ?)');
     for (const [date, text] of Object.entries(data.notes)) note.run(date, text);
+    writeStockCards(data.stockCards);
+    writeSetting('saluteText', data.settings.saluteText);
   };
 
   /** The same 30-day rule as pruneChecklist(), as SQL deletes plus pruneTasks(). */
@@ -303,7 +357,9 @@ export function createSqliteDb(
     })();
   };
 
-  const isEmpty = () => DATA_TABLES.every((t) => !get(`SELECT 1 FROM ${t} LIMIT 1`));
+  // task_groups always holds the default group, so it doesn't count
+  const isEmpty = () =>
+    DATA_TABLES.every((t) => t === 'task_groups' || !get(`SELECT 1 FROM ${t} LIMIT 1`));
 
   const importJson = (path: string) => {
     const parsed = backupSchema.safeParse(JSON.parse(readFileSync(path, 'utf8')));
@@ -314,7 +370,7 @@ export function createSqliteDb(
   };
 
   /** create / rename / delete for the { id, name } lists; `onDelete` drops dependent rows. */
-  const namedRepo = <T extends Group | Location>(
+  const namedRepo = <T extends Group | Location | TaskGroup>(
     table: NamedTable,
     onDelete: (id: string) => void,
   ): NamedRepo<T> => ({
@@ -524,9 +580,11 @@ export function createSqliteDb(
     },
 
     tasks: {
-      async create(name, description, from) {
+      async create(name, description, from, group) {
         return write(() => {
-          const task = newTask(randomUUID(), name, description, from);
+          // Stored explicitly (an unknown or missing group = the default one)
+          const listed = groupOf({ group }, readTaskGroups());
+          const task = newTask(randomUUID(), name, description, from, listed);
           insertTask(task, nextPos('tasks'));
           return task;
         });
@@ -547,15 +605,27 @@ export function createSqliteDb(
           const kept = removeTaskFrom(old, from);
           if (kept) updateTask(kept);
           else run('DELETE FROM tasks WHERE id = ?', id);
-          run('DELETE FROM checks WHERE task_id = ? AND date >= ?', id, from);
+          // The task's tick and its lines' ticks (`<id>#<item>`)
+          run(
+            'DELETE FROM checks WHERE (task_id = ? OR substr(task_id, 1, ?) = ?) AND date >= ?',
+            id,
+            id.length + 1,
+            `${id}#`,
+            from,
+          );
           return true;
         });
       },
-      async reorder(ids) {
+      async reorder(ids, move) {
         return write(() => {
           const rank = new Map(ids.map((id, n) => [id, n]));
           const at = (id: string) => rank.get(id) ?? Infinity;
           const tasks = readTasks().sort((a, b) => at(a.id) - at(b.id)); // stable: unlisted keep order
+          const task = move && tasks.find((t) => t.id === move.id);
+          if (task && readTaskGroups().some((g) => g.id === move.group)) {
+            task.group = move.group;
+            updateTask(task);
+          }
           const stmt = sql.prepare('UPDATE tasks SET pos = ? WHERE id = ?');
           tasks.forEach((t, pos) => stmt.run(pos, t.id));
           return tasks;
@@ -563,19 +633,43 @@ export function createSqliteDb(
       },
     },
 
+    taskGroups: {
+      ...namedRepo<TaskGroup>('task_groups', () => {}),
+      async delete(id) {
+        return write(() => {
+          const data = { ...emptyStockData(), tasks: readTasks(), taskGroups: readTaskGroups() };
+          const done = removeTaskGroupIn(data, id);
+          if (done !== true) return done;
+          writeTaskGroups(data.taskGroups);
+          data.tasks.forEach(updateTask);
+          return true;
+        });
+      },
+      async reorder(ids) {
+        return write(() => {
+          const rank = new Map(ids.map((id, n) => [id, n]));
+          const at = (id: string) => rank.get(id) ?? Infinity;
+          const groups = readTaskGroups().sort((a, b) => at(a.id) - at(b.id));
+          writeTaskGroups(groups);
+          return groups;
+        });
+      },
+    },
+
     checklist: {
-      async setDone(date, taskId, done) {
+      async setDone(date, taskId, done, item) {
         return write(() => {
           const task = readTask(taskId);
           if (!task || !isTaskOn(task, date)) return null;
+          const key = item ? itemCheckKey(taskId, item) : taskId;
           if (done) {
             run(
               'INSERT OR IGNORE INTO checks (date, task_id, at) VALUES (?, ?, ?)',
               date,
-              taskId,
+              key,
               new Date().toISOString(),
             );
-          } else run('DELETE FROM checks WHERE date = ? AND task_id = ?', date, taskId);
+          } else run('DELETE FROM checks WHERE date = ? AND task_id = ?', date, key);
           return dayChecks(date);
         });
       },
@@ -588,6 +682,25 @@ export function createSqliteDb(
               text,
             );
           } else run('DELETE FROM notes WHERE date = ?', date);
+        });
+      },
+    },
+
+    stockCards: {
+      async reorder(order) {
+        return write(() => {
+          const full = stockCardOrder(order);
+          writeStockCards(full);
+          return full;
+        });
+      },
+    },
+
+    settings: {
+      async update(patch) {
+        return write(() => {
+          if (patch.saluteText !== undefined) writeSetting('saluteText', patch.saluteText.trim());
+          return readSettings();
         });
       },
     },
