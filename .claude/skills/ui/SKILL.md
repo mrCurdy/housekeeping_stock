@@ -62,7 +62,8 @@ Outside the kit:
 
 - `AddForm` (`placeholder`, `label`, `onAdd(name)`): the "new name" line under a list.
 - `ClearableInput`: `CommitInput` props plus `onClear`, showing an × when a manual value overrides a calculated one.
-- `useDragSort(count, onMove)` (`@/lib/useDragSort`): reorder a vertical list by a grip or ↑/↓. Put `rowRef(i)`/`rowStyle(i)` on rows and `handleProps(i)` on a `touch-none` grip button (`TaskList`). Pass `{ free: true }` when rows can sit side by side, and highlight `over` (`Stock.tsx`).
+- `useDragSort(count, onMove)` (`@/lib/useDragSort`): reorder a vertical list by a grip or ↑/↓. Put `rowRef(i)`/`rowStyle(i)` on rows and `handleProps(i)` on a `touch-none` grip button (the checklist group cards in `Checklist.tsx`). Pass `{ free: true }` when rows can sit side by side, and highlight `over` (`Stock.tsx`).
+- `useListsDragSort(counts, onMove)` (`@/lib/useListsDragSort`): the same over several lists, rows can move between them (`TaskList` inside `TaskGroupCard`); `listRef(l)` on each list's whole area, `target` for the drop line.
 - `useConfirm()`: `if (await confirm({ title, description, confirmLabel })) …`. It is red by default; pass `danger: false` for a neutral one.
 - `useToast()`: `toast.success|error|info(title, description?)`.
 - `apiErrorMessage(err, t)` turns any request error into text.

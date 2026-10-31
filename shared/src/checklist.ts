@@ -1,4 +1,11 @@
-import type { DayTask, StockData, Task, TaskWording } from './types';
+import {
+  DEFAULT_TASK_GROUP_ID,
+  type DayTask,
+  type StockData,
+  type Task,
+  type TaskGroup,
+  type TaskWording,
+} from './types';
 
 /**
  * The checklist history rules (pure). Adding, editing and removing a task apply from a given day
@@ -33,26 +40,98 @@ export const itemCheckKey = (taskId: string, item: string): string => `${taskId}
 /** The task a `checks` key belongs to (the task's own tick, or one of its lines). */
 export const checkTaskId = (key: string): string => key.split('#', 1)[0]!;
 
+/** The checklist's groups: the stored ones, or the default group when there are none. */
+export const taskGroupList = (groups: readonly TaskGroup[] | undefined): TaskGroup[] =>
+  groups?.length ? [...groups] : [{ id: DEFAULT_TASK_GROUP_ID, name: '' }];
+
 /**
- * The ids of all tasks after moving `id` to place `to` among the tasks of `date` (tasks not on
- * that day's list stay put). Null when nothing moves.
+ * The group a task is listed in: its own; without one (or a gone one) the default group, or the
+ * first group once the default one is deleted. Not simply "the first": reordering the cards must
+ * not move tasks.
  */
-export function moveTaskTo(tasks: Task[], id: string, to: number, date: string): string[] | null {
-  const shown = tasks.filter((t) => isTaskOn(t, date)).map((t) => t.id);
-  const from = shown.indexOf(id);
-  if (from < 0 || to < 0 || to >= shown.length || to === from) return null;
+export function groupOf(task: Pick<Task, 'group'>, groups: readonly TaskGroup[] | undefined) {
+  const list = taskGroupList(groups);
+  const known = (id: string | undefined) => !!id && list.some((g) => g.id === id);
+  if (known(task.group)) return task.group!;
+  return known(DEFAULT_TASK_GROUP_ID) ? DEFAULT_TASK_GROUP_ID : list[0]!.id;
+}
+
+/** The tasks of one day per group, in group order (every group is listed, maybe empty). */
+export function tasksByGroup(
+  tasks: Task[],
+  groups: readonly TaskGroup[] | undefined,
+  date: string,
+): { group: TaskGroup; tasks: DayTask[] }[] {
+  const list = taskGroupList(groups);
+  const out = list.map((group) => ({ group, tasks: [] as DayTask[] }));
+  const at = new Map(list.map((g, i) => [g.id, i]));
+  for (const t of tasks) {
+    if (isTaskOn(t, date)) out[at.get(groupOf(t, list))!]!.tasks.push(taskOn(t, date));
+  }
+  return out;
+}
+
+/**
+ * Moving task `id` into `group`, at place `to` among that group's tasks of `date` (tasks not on
+ * that day's list stay put): the ids of all tasks in their new order, and the task's group.
+ * Null when nothing moves.
+ */
+export function moveTaskTo(
+  tasks: Task[],
+  groups: readonly TaskGroup[] | undefined,
+  id: string,
+  group: string,
+  to: number,
+  date: string,
+): { ids: string[]; group: string } | null {
+  const task = tasks.find((t) => t.id === id);
+  if (!task || !isTaskOn(task, date) || !taskGroupList(groups).some((g) => g.id === group)) {
+    return null;
+  }
+  const inGroup = tasks.filter((t) => isTaskOn(t, date) && groupOf(t, groups) === group);
+  const others = inGroup.filter((t) => t.id !== id).map((t) => t.id);
+  if (to < 0 || to > others.length) return null;
+  if (groupOf(task, groups) === group && inGroup.findIndex((t) => t.id === id) === to) return null;
   const ids = tasks.map((t) => t.id).filter((i) => i !== id);
-  ids.splice(ids.indexOf(shown[to]!) + (to > from ? 1 : 0), 0, id);
-  return ids;
+  if (to < others.length) ids.splice(ids.indexOf(others[to]!), 0, id);
+  else if (others.length) ids.splice(ids.indexOf(others[others.length - 1]!) + 1, 0, id);
+  else ids.push(id);
+  return { ids, group };
+}
+
+/** Applies a `moveTaskTo` result to `data`. */
+export function applyTaskMove(data: StockData, id: string, move: { ids: string[]; group: string }) {
+  const byId = new Map(data.tasks.map((t) => [t.id, t]));
+  const rank = new Map(move.ids.map((i, n) => [i, n]));
+  const at = (i: string) => rank.get(i) ?? Infinity;
+  data.tasks = [...byId.values()].sort((a, b) => at(a.id) - at(b.id));
+  const task = byId.get(id);
+  if (task) task.group = move.group;
+}
+
+/**
+ * Deletes group `id` from `data`; its tasks move to the group above it (the next one when it is
+ * the first). 'last' when it is the only group (never deleted), false when there is no such group.
+ */
+export function removeTaskGroupIn(data: StockData, id: string): boolean | 'last' {
+  const list = taskGroupList(data.taskGroups);
+  const i = list.findIndex((g) => g.id === id);
+  if (i < 0) return false;
+  if (list.length === 1) return 'last';
+  const target = list[i === 0 ? 1 : i - 1]!.id;
+  for (const t of data.tasks) if (groupOf(t, list) === id) t.group = target;
+  data.taskGroups = list.filter((g) => g.id !== id);
+  return true;
 }
 
 /** A new task that is on the list from `from` onwards. */
-export const newTask = (id: string, name: string, description: string, from: string): Task => ({
-  id,
-  name,
-  description,
-  added: from,
-});
+export const newTask = (
+  id: string,
+  name: string,
+  description: string,
+  from: string,
+  group?: string,
+): Task => ({ id, name, description, added: from, ...(group && { group }) });
 
 const spans = (task: Task): Span[] => {
   const starts = [task.added, ...(task.earlier ?? []).map((w) => w.until)];

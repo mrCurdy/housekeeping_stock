@@ -31,7 +31,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `schemas.ts` (211): the zod request schemas. `backupSchema` reads old-format backups with `''` blanks. `normalizeStockData`/`cleanRecord` make sure only real values get stored. `pruneChecklist` drops ticks and notes older than `CHECKLIST_DAYS`.
 - `auth.ts`: roles, `PERMISSIONS`, `can(role, perm)`, `todayOnly(role)`, `pinSchema`, login/link schemas.
 - `stock.ts` (+ test): `createStockMath(state, { minDateStr })` → `dayFigures`, `calculateTotal`, `autoConsumption`, `roomSum`, `series`.
-- `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`, `moveTaskTo` (drag/arrow reorder), `itemCheckKey`/`checkTaskId` (ticks of checklist lines).
+- `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`, `itemCheckKey`/`checkTaskId` (ticks of checklist lines). Groups: `taskGroupList` (never empty), `groupOf`, `tasksByGroup`, `moveTaskTo` + `applyTaskMove` (drag/arrow reorder, also into another group), `removeTaskGroupIn`.
 - `dates.ts`: local `YYYY-MM-DD` helpers (`formatDate`, `parseDateLocal`, `addDays`, `todayLocal`, `dateRange`). `index.ts`: barrel.
 
 ### `server/src/` (Express 5)
@@ -52,7 +52,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `db/sqlite/migrations.ts`: numbered schema migrations.
 - `routes/`:
   - `auth.ts`: login, me, logout, pins, QR create/revoke, link.
-  - `checklist.ts`: tasks, checks, notes.
+  - `checklist.ts`: tasks, task groups, checks, notes.
   - `daily.ts`: records, departures, counts.
   - `setup.ts`: items, groups, locations, the Stock page's card order (`PUT /stock-cards/order`) and the app settings (`PATCH /settings`).
   - `data.ts`: `GET /data`, `POST /restore`.
@@ -82,7 +82,8 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `POST` answers `{ token }` once, and revokes the old link and its sessions.
   - `POST /link` `{ token }` opens a `counter` session. That session may only `PUT` today's counts (`todayOnly`).
 - **`checklist`:**
-  - `/tasks`: `POST` and `PATCH /:id` (with `from`), `DELETE /:id/:date`, `PUT /order`.
+  - `/tasks`: `POST` (with `from`, optional `group`) and `PATCH /:id` (with `from`), `DELETE /:id/:date`, `PUT /order` `{ ids, move?: { id, group } }`.
+  - `/task-groups` (`tasks` permission): `POST`, `PATCH /:id` `{ name }`, `PUT /order` `{ ids }`, `DELETE /:id` (its tasks move to the group above, or below for the first; the last group → 409).
   - `PUT /checks/:date/:taskId` `{ done, item? }` returns the day's ticks. `item` ticks one checklist line of the task's instructions instead.
   - `PUT /notes/:date` `{ text }`.
 - **`setup`:** `/items`, `/groups`, `/locations`, each with POST/PATCH/DELETE.
@@ -127,14 +128,15 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `AllRoomsTable`, `RoomCountList` (plays `Salute` when the room is fully counted), `RoomSwitcher`, `ManageRooms`;
     - `useCountDrafts` (drafts and row states).
   - `Checklist.tsx` (+ test) + `checklist/`:
-    - `TaskList` (grip handles via `lib/useDragSort`; ticking the day's last task plays `Salute`), `TaskEditor`, `ShiftNotes`;
+    - `TaskGroupCard` (one group: name with ✎ rename/delete, progress, its `TaskList`, "New task"), `TaskList` (grip handles via `lib/useListsDragSort`; ticking the group's last task calls `onAllDone`, the page plays `Salute`), `TaskEditor`, `ShiftNotes`;
     - `noteText.ts` (+ test): the instructions format (`parseNote`, `checkKeys`) and the list editing (`toggleList`, `indent`, `continueList`);
     - `NoteEditor` (the instructions textarea with list buttons), `TaskNote` (instructions shown with tickable checklist lines).
   - `Settings.tsx`: `PinForm`, `QrCard` and `SaluteCard` (+ test). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
   - `numbers.ts`: `parseQty` (≥ 0) and `parseNumber`, both accepting `2,5`.
-  - `useDragSort.ts`: drag-a-grip (or ↑/↓) reordering; a vertical list (`TaskList`), or with `free` rows that may sit side by side, dropped on the row under the pointer (the Stock page cards).
+  - `useDragSort.ts`: drag-a-grip (or ↑/↓) reordering; a vertical list (the checklist group cards), or with `free` rows that may sit side by side, dropped on the row under the pointer (the Stock page cards).
+  - `useListsDragSort.ts`: the same over several lists (the tasks of the checklist group cards): a row dragged onto another list's area lands there (`target` shows the drop line); ↑/↓ past a list's edge goes to the neighbouring list.
   - `cn.ts`, `download.ts`.
   - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
 - `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
@@ -158,7 +160,8 @@ groups:       [{ id, name }]
 groupRecords: { [groupId]: { [YYYY-MM-DD]: { d } } }
 locations:    [{ id, name }]                                   // rooms where stock is counted
 counts:       { [YYYY-MM-DD]: { [locationId]: { [itemId]: number } } }   // missing = not counted
-tasks:        [{ id, name, description, added?, removed?, earlier?: [{ name, description, until }] }]  // checklist, display order
+tasks:        [{ id, name, description, added?, removed?, earlier?: [{ name, description, until }], group? }]  // checklist, display order within a group
+taskGroups:   [{ id, name }]                                   // checklist group cards, display order; never empty ('default', name '' = "Tasks")
 checks:       { [YYYY-MM-DD]: { [taskId | taskId#lineKey]: ISO time ticked } }  // missing = not done
 notes:        { [YYYY-MM-DD]: string }                         // note for the next shift
 stockCards:   ['departures' | 'items' | 'overview']            // Stock page card order; [] = default, missing cards follow (stockCardOrder)
@@ -178,6 +181,7 @@ settings:     { saluteText? }                                   // app-wide pref
   - `earlier` holds old wordings, each used before its `until`; the top-level name/description is the current one.
   - Removing a task on the day it was added deletes it. Otherwise it gets `removed` and loses only its ticks from that day on.
   - `pruneTasks` forgets history older than 30 days.
+  - Groups and a task's group are not tracked per day: a rename or a move shows on past days too. A task without a (known) group is in the `default` group, or the first group once that is deleted (`groupOf`); new tasks store their group.
   - Tasks from before this existed have no `added` and show on every past day.
 - **Task instructions** are plain text with note-app lists, nested by 2 spaces: `- item`, `1. item`, `- [ ] item` (`noteText.ts`).
   - A checklist line is ticked per day under `checks[date]['<taskId>#<key>']`. The key is a hash of the line's text (plus its occurrence), so rewording a line clears its tick.
@@ -223,11 +227,12 @@ settings:     { saluteText? }                                   // app-wide pref
 - **`/checklist`:**
   - The same tasks every day, ticked per day (so each day starts empty), with the tick time shown. Tasks with a description open accordion-style.
   - Below them, "Notes for the next shift" shows the previous day's note read-only above this day's `CommitTextarea`.
-  - "New task" comes first while there are no tasks, and below the list once there are.
+  - Tasks are split into group cards ("Before 11", "Service"…), one `default` group to start with. Each card shows its own progress. With `tasks` permission: "Add group" below the cards; ✎ in a card's header renames it or deletes it (confirmed; its tasks move to the group above; the only group can't be deleted); the header grip drags the card (or ↑/↓). Workers don't see empty groups.
+  - "New task" in each card adds to that group. While the whole checklist is empty the one card shows the empty state.
   - ✎ opens a task in place (`TaskEditor`: name, instructions, ↑/↓, remove, all from that day on). It saves only on Save, never on blur, because always-editable name fields led to accidental renames.
   - The instructions editor (`NoteEditor`) has buttons for bulleted / numbered lists, checklists, indent and outdent. Enter continues a list, Enter on an empty item ends it, Tab/Shift+Tab indent list lines.
-  - When the user ticks the day's last task (not when a finished day is opened or polled), fireworks spell `settings.saluteText` (default "Tubli!"). Checklist lines inside instructions don't count.
-  - With `tasks` permission each row has a grip: drag it (mouse or touch; the page scrolls near the screen edges) or press ↑/↓ on it. The order is global (`PUT /tasks/order`), not per day.
+  - When the user ticks a group's last task (not when a finished day is opened or polled), fireworks spell `settings.saluteText` (default "Tubli!"). Checklist lines inside instructions don't count.
+  - With `tasks` permission each row has a grip: drag it (mouse or touch; the page scrolls near the screen edges), also onto another group's card (it gets a ring and a drop line), or press ↑/↓ on it (past a card's edge it moves to the neighbouring group). The order and the group are global (`PUT /tasks/order`), not per day.
 - **`/settings`** (admin only; others are redirected to `/stock`):
   - The admin and worker PINs (each new PIN typed twice).
   - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.

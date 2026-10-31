@@ -50,7 +50,22 @@ export interface Task {
   removed?: string;
   /** Older wordings, oldest first. Each applied on the days before its `until`. */
   earlier?: TaskWording[];
+  /** The `TaskGroup` it is listed in. Missing or unknown = the default group (`groupOf`). */
+  group?: string;
 }
+
+/**
+ * A part of the day's checklist ("Before 11", "Service"…), shown as its own card. Groups are not
+ * tracked per day: a rename or a task moved to another group shows on past days too.
+ */
+export interface TaskGroup {
+  id: string;
+  /** '' = unnamed (the default group); the client shows a translated title instead. */
+  name: string;
+}
+
+/** The group every checklist starts with. */
+export const DEFAULT_TASK_GROUP_ID = 'default';
 
 export interface TaskWording {
   name: string;
@@ -81,8 +96,10 @@ export interface StockData {
   groupRecords: Record<string, Record<string, DepartureRecord>>;
   /** { [date]: { [locationId]: { [itemId]: count } } }; missing = not counted */
   counts: Record<string, Record<string, Record<string, number>>>;
-  /** Daily checklist tasks, in display order. */
+  /** Daily checklist tasks, in display order (within their group). */
   tasks: Task[];
+  /** The checklist's groups, in display order. Never empty (see `taskGroupList`). */
+  taskGroups: TaskGroup[];
   /** { [date]: { [taskId]: ISO time it was ticked } }; missing = not done. Kept CHECKLIST_DAYS. */
   checks: Record<string, Record<string, string>>;
   /** { [date]: end-of-day note for the next shift }. Kept CHECKLIST_DAYS. */
@@ -94,7 +111,7 @@ export interface StockData {
 }
 
 export interface AppSettings {
-  /** The word the fireworks spell when the day's last task is ticked. Unset = DEFAULT_SALUTE_TEXT. */
+  /** The word the fireworks spell when a checklist group's last task is ticked. Unset = DEFAULT_SALUTE_TEXT. */
   saluteText?: string;
 }
 
@@ -122,6 +139,7 @@ export const emptyStockData = (): StockData => ({
   groupRecords: {},
   counts: {},
   tasks: [],
+  taskGroups: [{ id: DEFAULT_TASK_GROUP_ID, name: '' }],
   checks: {},
   notes: {},
   stockCards: [],

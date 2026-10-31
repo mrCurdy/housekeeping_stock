@@ -10,6 +10,7 @@ import {
   type Location,
   type StockData,
   type Task,
+  type TaskGroup,
 } from '@app/shared';
 import { setup, type TestEnv } from './helpers';
 
@@ -43,6 +44,7 @@ describe('REST API', () => {
       groupRecords: {},
       counts: {},
       tasks: [],
+      taskGroups: [{ id: 'default', name: '' }],
       checks: {},
       notes: {},
       stockCards: [],
@@ -189,6 +191,7 @@ describe('REST API', () => {
         description: 'Fold corners',
         added: yesterday,
         earlier: [{ name: 'Beds', description: 'Fold', until: today }],
+        group: 'default',
       });
     });
 
@@ -251,6 +254,7 @@ describe('REST API', () => {
         id: linen.id,
         name: 'Linen',
         description: '',
+        group: 'default',
       });
       await env
         .api()
@@ -285,6 +289,49 @@ describe('REST API', () => {
       await env.api().delete(`/api/tasks/${bins.id}/${today}`).expect(204);
       expect(await task(bins.id)).toBeUndefined();
       await env.api().delete(`/api/tasks/${bins.id}/${today}`).expect(404);
+    });
+
+    it('manages groups: create, rename, reorder, move a task in, delete', async () => {
+      const groups = async () => (await data()).taskGroups;
+      const service = (
+        await env.api().post('/api/task-groups').send({ name: ' Service ' }).expect(201)
+      ).body as TaskGroup;
+      expect(service.name).toBe('Service');
+      await env.api().patch(`/api/task-groups/${service.id}`).send({ name: 'Bar' }).expect(200);
+      await env.api().patch('/api/task-groups/nope').send({ name: 'x' }).expect(404);
+      await env
+        .api()
+        .put('/api/task-groups/order')
+        .send({ ids: [service.id] })
+        .expect(200);
+      expect((await groups()).map((g) => g.name)).toEqual(['Bar', '']);
+
+      const trays = (
+        await env
+          .api()
+          .post('/api/tasks')
+          .send({ name: 'Trays', from: today, group: service.id })
+          .expect(201)
+      ).body as Task;
+      expect(trays.group).toBe(service.id);
+      const ids = (await data()).tasks.map((t) => t.id);
+      await env
+        .api()
+        .put('/api/tasks/order')
+        .send({ ids, move: { id: trays.id, group: 'default' } })
+        .expect(200);
+      expect((await task(trays.id))!.group).toBe('default');
+
+      const other = (
+        await env.api().post('/api/tasks').send({ name: 'Cups', from: today, group: service.id })
+      ).body as Task;
+      // The first group: its tasks go to the one below
+      await env.api().delete(`/api/task-groups/${service.id}`).expect(204);
+      expect(await groups()).toEqual([{ id: 'default', name: '' }]);
+      expect((await task(other.id))!.group).toBe('default');
+      await env.api().delete(`/api/task-groups/${service.id}`).expect(404);
+      const last = await env.api().delete('/api/task-groups/default').expect(409);
+      expect(last.body.error.code).toBe('CONFLICT');
     });
   });
 

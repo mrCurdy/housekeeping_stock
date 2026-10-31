@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { pruneTasks } from './checklist';
+import { pruneTasks, taskGroupList } from './checklist';
 import {
   emptyStockData,
   SALUTE_TEXT_MAX,
@@ -9,6 +9,7 @@ import {
   type StockCard,
   type StockData,
   type Task,
+  type TaskGroup,
 } from './types';
 
 /** Request bodies. The server validates with these (validateBody); the client can reuse them. */
@@ -50,6 +51,8 @@ export const taskCreateSchema = z.object({
   name,
   description: description.default(''),
   from: dateSchema,
+  /** The group to list it in (missing = the first group). */
+  group: z.string().optional(),
 });
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
 
@@ -60,9 +63,19 @@ export const taskPatchSchema = z.object({
 });
 export type TaskPatchInput = z.infer<typeof taskPatchSchema>;
 
-/** The task ids in their new order (ids not listed keep their place at the end). */
-export const taskOrderSchema = z.object({ ids: z.array(z.string()) });
+/**
+ * The task ids in their new order (ids not listed keep their place at the end). `move` also puts
+ * one task into another group (a drag across group cards).
+ */
+export const taskOrderSchema = z.object({
+  ids: z.array(z.string()),
+  move: z.object({ id: z.string(), group: z.string() }).optional(),
+});
 export type TaskOrderInput = z.infer<typeof taskOrderSchema>;
+
+/** The checklist group ids in their new order (ids not listed keep their place at the end). */
+export const taskGroupOrderSchema = z.object({ ids: z.array(z.string()) });
+export type TaskGroupOrderInput = z.infer<typeof taskGroupOrderSchema>;
 
 /** The Stock page's cards in their new order (cards not listed follow in the default order). */
 export const stockCardOrderSchema = z.object({ order: z.array(z.enum(STOCK_CARDS)) });
@@ -137,9 +150,11 @@ export const backupSchema = z
             )
             .optional()
             .catch(undefined),
+          group: z.string().optional().catch(undefined),
         }),
       )
       .default([]),
+    taskGroups: z.array(idName).catch([]).default([]),
     checks: z.record(z.string(), z.record(z.string(), z.string())).default({}),
     notes: z.record(z.string(), z.string()).default({}),
     stockCards: z.array(z.enum(STOCK_CARDS)).catch([]).default([]),
@@ -163,6 +178,7 @@ export function normalizeStockData(raw: {
   groupRecords: Record<string, Record<string, { d?: number | null }>>;
   counts: Record<string, Record<string, Record<string, number | null>>>;
   tasks?: Task[];
+  taskGroups?: TaskGroup[];
   checks?: Record<string, Record<string, string>>;
   notes?: Record<string, string>;
   stockCards?: StockCard[];
@@ -197,16 +213,22 @@ export function normalizeStockData(raw: {
       }
     }
   }
-  out.tasks = (raw.tasks ?? []).map(({ id, name, description, added, removed, earlier }) => ({
-    id,
-    name,
-    description,
-    ...(added && { added }),
-    ...(removed && { removed }),
-    ...(earlier?.length && {
-      earlier: earlier.map((w) => ({ name: w.name, description: w.description, until: w.until })),
+  // At least one group; a task's group is kept only when it exists
+  out.taskGroups = taskGroupList(raw.taskGroups?.map(({ id, name }) => ({ id, name })));
+  const groupIds = new Set(out.taskGroups.map((g) => g.id));
+  out.tasks = (raw.tasks ?? []).map(
+    ({ id, name, description, added, removed, earlier, group }) => ({
+      id,
+      name,
+      description,
+      ...(added && { added }),
+      ...(removed && { removed }),
+      ...(earlier?.length && {
+        earlier: earlier.map((w) => ({ name: w.name, description: w.description, until: w.until })),
+      }),
+      ...(group && groupIds.has(group) && { group }),
     }),
-  }));
+  );
   for (const [date, byTask] of Object.entries(raw.checks ?? {})) {
     if (Object.keys(byTask).length) out.checks[date] = { ...byTask };
   }

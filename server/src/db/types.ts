@@ -14,6 +14,7 @@ import type {
   SettingsPatchInput,
   StockData,
   Task,
+  TaskGroup,
   TaskPatchInput,
 } from '@app/shared';
 
@@ -55,12 +56,26 @@ export interface CountRepo {
 
 export interface TaskRepo {
   /** Changes apply from the day `from` onwards; earlier days keep the list as it was. */
-  create(name: string, description: string, from: string): Promise<Task>;
+  create(name: string, description: string, from: string, group?: string): Promise<Task>;
   update(id: string, patch: TaskPatchInput): Promise<Task | null>;
   /** Takes the task off the list from `from` on (dropping its ticks from then on). */
   delete(id: string, from: string): Promise<boolean>;
-  /** Puts the listed tasks first, in that order. Returns the whole list. */
-  reorder(ids: string[]): Promise<Task[]>;
+  /**
+   * Puts the listed tasks first, in that order, and `move.id` into group `move.group` (ignored
+   * when either is unknown). Returns the whole list.
+   */
+  reorder(ids: string[], move?: { id: string; group: string }): Promise<Task[]>;
+}
+
+/** The checklist's groups. There is always at least one. */
+export interface TaskGroupRepo extends Omit<NamedRepo<TaskGroup>, 'delete'> {
+  /**
+   * Deletes a group; its tasks move to the group above it (or below, for the first one).
+   * 'last' (nothing deleted) when it is the only group.
+   */
+  delete(id: string): Promise<boolean | 'last'>;
+  /** Puts the listed groups first, in that order. Returns all groups. */
+  reorder(ids: string[]): Promise<TaskGroup[]>;
 }
 
 export interface ChecklistRepo {
@@ -121,6 +136,7 @@ export interface Db {
   departures: DepartureRepo;
   counts: CountRepo;
   tasks: TaskRepo;
+  taskGroups: TaskGroupRepo;
   /** Ticks and notes older than CHECKLIST_DAYS are deleted (on start and with every change). */
   checklist: ChecklistRepo;
   stockCards: StockCardRepo;

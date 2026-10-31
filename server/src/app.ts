@@ -10,7 +10,7 @@ import type { AppContext } from './context';
 import { logger } from './lib/logger';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { authRouter } from './routes/auth';
-import { checklistRouter, tasksRouter } from './routes/checklist';
+import { checklistRouter, taskGroupsRouter, tasksRouter } from './routes/checklist';
 import { dailyRouter } from './routes/daily';
 import { dataRouter } from './routes/data';
 import {
@@ -72,6 +72,7 @@ export function createApp(ctx: AppContext) {
   api.use('/stock-cards', allow('setup'), stockCardsRouter(ctx));
   api.use('/settings', allow('setup'), settingsRouter(ctx));
   api.use('/tasks', allow('tasks'), tasksRouter(ctx));
+  api.use('/task-groups', allow('tasks'), taskGroupsRouter(ctx));
   api.use('/', checklistRouter(ctx));
   // Register new feature routers here.
   api.use(notFoundHandler);

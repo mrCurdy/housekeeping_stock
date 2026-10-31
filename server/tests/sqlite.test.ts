@@ -36,7 +36,7 @@ const sample = (): StockData => ({
   // l-gone is a removed room: its counts stay
   counts: { [day(-1)]: { 'l-1': { 'z-item': 7 }, 'l-gone': { 'a-item': 2.5 } } },
   tasks: [
-    { id: 't-2', name: 'Mop', description: '' },
+    { id: 't-2', name: 'Mop', description: '', group: 'tg-2' },
     {
       id: 't-1',
       name: 'Bins',
@@ -45,6 +45,10 @@ const sample = (): StockData => ({
       earlier: [{ name: 'Trash', description: '', until: day(-2) }],
     },
     { id: 't-3', name: 'Gone', description: '', added: day(-10), removed: day(-3) },
+  ],
+  taskGroups: [
+    { id: 'tg-2', name: 'Service' },
+    { id: 'default', name: '' },
   ],
   checks: { [day(-1)]: { 't-1': '2026-01-01T10:00:00.000Z' } },
   notes: { [day(-1)]: 'Order soap' },
@@ -95,6 +99,26 @@ describe('SQLite driver', () => {
     expect(snap.groups.map((g) => g.id)).toEqual(['g-b', 'g-a']);
     expect(snap.locations.map((l) => l.id)).toEqual(['l-2', 'l-1']);
     expect(snap.tasks.map((t) => t.id)).toEqual(['t-2', 't-1', 't-3']);
+    expect(snap.taskGroups.map((g) => g.id)).toEqual(['tg-2', 'default']);
+  });
+
+  it('starts with one checklist group; deleting moves tasks and keeps the last one', async () => {
+    const db = await open();
+    expect((await db.snapshot()).taskGroups).toEqual([{ id: 'default', name: '' }]);
+    const service = await db.taskGroups.create('Service');
+    const task = await db.tasks.create('Trays', '', today, service.id);
+    expect(task.group).toBe(service.id);
+    expect((await db.tasks.create('Bad', '', today, 'nope')).group).toBe('default');
+    expect(await db.taskGroups.reorder([service.id])).toEqual([
+      service,
+      { id: 'default', name: '' },
+    ]);
+    expect(await db.taskGroups.delete(service.id)).toBe(true);
+    const snap = await db.snapshot();
+    expect(snap.taskGroups).toEqual([{ id: 'default', name: '' }]);
+    expect(snap.tasks.find((t) => t.id === task.id)!.group).toBe('default');
+    expect(await db.taskGroups.delete('default')).toBe('last');
+    expect(await db.taskGroups.delete('nope')).toBe(false);
   });
 
   it('replace() replaces the old data and new rows go last', async () => {

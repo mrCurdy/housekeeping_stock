@@ -17,7 +17,7 @@ interface Box {
 }
 
 /** How close to the top or bottom of the screen a drag starts scrolling the page. */
-const EDGE = 64;
+export const EDGE = 64;
 
 /**
  * Reordering a vertical list (tasks, the Stock page's cards) by dragging a handle (mouse, touch or pen), or with ↑/↓ on the

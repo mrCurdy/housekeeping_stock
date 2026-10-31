@@ -258,6 +258,24 @@ export const et: Messages = {
       appliesFrom: (date) =>
         `Muudatused kehtivad alates sellest päevast (${date}). Varasemad päevad jäävad samaks.`,
     },
+    groups: {
+      defaultName: 'Ülesanded',
+      newGroup: 'Uus grupp (nt Enne 11)',
+      addGroup: 'Lisa grupp',
+      name: 'Grupi nimi',
+      edit: 'Muuda gruppi',
+      editNamed: (group) => `Muuda gruppi ${group}`,
+      remove: 'Kustuta grupp',
+      removeNamed: (group) => `Kustuta grupp ${group}`,
+      removeTitle: (group) => `Kas kustutada grupp „${group}“?`,
+      removeDescription: (target) =>
+        `Selle ülesanded liiguvad gruppi „${target}“ kõigil päevadel. Märked jäävad alles.`,
+      lastGroup: 'Ainsat gruppi ei saa kustutada',
+      drag: 'Lohista grupi liigutamiseks (või kasuta nooleklahve)',
+      dragNamed: (group) => `Liiguta gruppi ${group}`,
+      empty: 'Siin pole veel ülesandeid. Lisa allpool või lohista ülesanne siia.',
+      emptyForWorker: 'Siin pole ülesandeid.',
+    },
   },
 
   settings: {
@@ -283,7 +301,7 @@ export const et: Messages = {
     salute: {
       title: 'Ilutulestik',
       description:
-        'Kui päeva viimane ülesanne on tehtud või ruum on täielikult loetud, kirjutab ilutulestik selle sõna.',
+        'Kui kontrollnimekirja grupi viimane ülesanne on tehtud või ruum on täielikult loetud, kirjutab ilutulestik selle sõna.',
       text: 'Ilutulestiku tekst',
       hint: (text) => `Kuni 12 märki. Tühi = „${text}“.`,
       preview: 'Eelvaade',

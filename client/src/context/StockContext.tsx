@@ -2,9 +2,12 @@ import {
   createStockMath,
   editTask,
   emptyStockData,
+  applyTaskMove,
   itemCheckKey,
   moveTaskTo,
+  removeTaskGroupIn,
   removeTaskIn,
+  taskGroupList,
   type BackupInput,
   type DayChecks,
   type DayCounts,
@@ -19,6 +22,7 @@ import {
   type StockData,
   type StockMath,
   type Task,
+  type TaskGroup,
   type TaskPatchInput,
 } from '@app/shared';
 import {
@@ -68,11 +72,21 @@ interface StockApi {
   /** Saves one room count. Throws on failure (the counting page shows its own error). */
   setCount(date: string, locationId: string, itemId: string, value: number | null): Promise<void>;
   /** Task changes apply from `from` onwards; the days before keep the list as it was. */
-  addTask(name: string, description: string, from: string): Promise<Task | undefined>;
+  addTask(
+    name: string,
+    description: string,
+    from: string,
+    group?: string,
+  ): Promise<Task | undefined>;
   updateTask(id: string, patch: TaskPatchInput): void;
   removeTask(id: string, from: string): void;
-  /** Moves a task to place `to` among the tasks of `date`. */
-  moveTask(id: string, to: number, date: string): void;
+  /** Moves a task into `group` (maybe its own), at place `to` among that group's tasks of `date`. */
+  moveTask(id: string, group: string, to: number, date: string): void;
+  /** The checklist's groups (cards). Deleting one moves its tasks to the group above. */
+  addTaskGroup(name: string): Promise<TaskGroup | undefined>;
+  renameTaskGroup(id: string, name: string): void;
+  removeTaskGroup(id: string): void;
+  moveTaskGroup(from: number, to: number): void;
   /** Ticks a task, or one checklist line of its instructions (`item`, its key). */
   setDone(date: string, taskId: string, done: boolean, item?: string): void;
   setNote(date: string, text: string): void;
@@ -215,6 +229,11 @@ export function StockProvider({ children }: { children: ReactNode }) {
       },
     );
     const locations = named<Location>('/locations', (d) => d.locations);
+    // Old data (and tests) may have no groups yet: start from the default one
+    const taskGroups = named<TaskGroup>(
+      '/task-groups',
+      (d) => (d.taskGroups = taskGroupList(d.taskGroups)),
+    );
 
     return {
       data,
@@ -277,8 +296,8 @@ export function StockProvider({ children }: { children: ReactNode }) {
         });
       },
 
-      addTask: async (name, description, from) => {
-        const task = await send(() => api.post<Task>('/tasks', { name, description, from }));
+      addTask: async (name, description, from, group) => {
+        const task = await send(() => api.post<Task>('/tasks', { name, description, from, group }));
         if (task) edit((d) => void d.tasks.push(task));
         return task;
       },
@@ -292,14 +311,25 @@ export function StockProvider({ children }: { children: ReactNode }) {
         edit((d) => void removeTaskIn(d, id, from));
         void send(() => api.delete(`/tasks/${id}/${from}`));
       },
-      moveTask: (id, to, date) => {
-        const ids = moveTaskTo(data.tasks, id, to, date);
-        if (!ids) return;
-        edit((d) => {
-          const byId = new Map(d.tasks.map((t) => [t.id, t]));
-          d.tasks = ids.map((i) => byId.get(i)!);
-        });
-        void send(() => api.put('/tasks/order', { ids }));
+      moveTask: (id, group, to, date) => {
+        const move = moveTaskTo(data.tasks, data.taskGroups, id, group, to, date);
+        if (!move) return;
+        edit((d) => applyTaskMove(d, id, move));
+        void send(() => api.put('/tasks/order', { ids: move.ids, move: { id, group } }));
+      },
+      addTaskGroup: taskGroups.add,
+      renameTaskGroup: taskGroups.rename,
+      removeTaskGroup: (id) => {
+        edit((d) => void removeTaskGroupIn(d, id));
+        void send(() => api.delete(`/task-groups/${id}`));
+      },
+      moveTaskGroup: (from, to) => {
+        const list = taskGroupList(data.taskGroups);
+        const [moved] = list.splice(from, 1);
+        if (!moved || to < 0 || to > list.length) return;
+        list.splice(to, 0, moved);
+        edit((d) => void (d.taskGroups = list));
+        void send(() => api.put('/task-groups/order', { ids: list.map((g) => g.id) }));
       },
       setDone: (date, taskId, done, item) => {
         const key = item ? itemCheckKey(taskId, item) : taskId;

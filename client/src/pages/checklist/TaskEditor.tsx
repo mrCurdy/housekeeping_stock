@@ -16,13 +16,16 @@ import { NoteEditor } from './NoteEditor';
  */
 export function TaskEditor({
   task,
+  group,
   index,
   count,
   onClose,
 }: {
   task: DayTask;
+  /** The group it is listed in; ↑/↓ move it within that group */
+  group: string;
   index: number;
-  /** Tasks on that day's list */
+  /** Tasks of that group on that day's list */
   count: number;
   onClose: () => void;
 }) {
@@ -74,7 +77,7 @@ export function TaskEditor({
           title={tx.moveUp}
           aria-label={tx.moveUp}
           disabled={index === 0}
-          onClick={() => moveTask(task.id, index - 1, date)}
+          onClick={() => moveTask(task.id, group, index - 1, date)}
         >
           <ArrowUp className="h-4 w-4" />
         </Button>
@@ -85,7 +88,7 @@ export function TaskEditor({
           title={tx.moveDown}
           aria-label={tx.moveDown}
           disabled={index === count - 1}
-          onClick={() => moveTask(task.id, index + 1, date)}
+          onClick={() => moveTask(task.id, group, index + 1, date)}
         >
           <ArrowDown className="h-4 w-4" />
         </Button>

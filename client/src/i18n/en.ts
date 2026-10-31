@@ -260,6 +260,24 @@ export const en = {
       appliesFrom: (date: string) =>
         `Changes apply from this day (${date}). Earlier days stay as they were.`,
     },
+    groups: {
+      defaultName: 'Tasks',
+      newGroup: 'New group (e.g. Before 11)',
+      addGroup: 'Add group',
+      name: 'Group name',
+      edit: 'Edit group',
+      editNamed: (group: string) => `Edit group ${group}`,
+      remove: 'Delete group',
+      removeNamed: (group: string) => `Delete group ${group}`,
+      removeTitle: (group: string) => `Delete the group "${group}"?`,
+      removeDescription: (target: string) =>
+        `Its tasks move to "${target}", on every day. Their ticks are kept.`,
+      lastGroup: 'The only group cannot be deleted',
+      drag: 'Drag to move the group (or use the arrow keys)',
+      dragNamed: (group: string) => `Move group ${group}`,
+      empty: 'No tasks here yet. Add one below or drag a task here.',
+      emptyForWorker: 'No tasks here.',
+    },
   },
 
   settings: {
@@ -283,7 +301,7 @@ export const en = {
     salute: {
       title: 'Fireworks',
       description:
-        'Fireworks spell this word when the last task of the day is ticked or a room is fully counted.',
+        'Fireworks spell this word when the last task of a checklist group is ticked or a room is fully counted.',
       text: 'Fireworks text',
       hint: (text: string) => `Up to 12 characters. Empty = "${text}".`,
       preview: 'Preview',
