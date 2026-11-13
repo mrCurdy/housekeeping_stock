@@ -136,6 +136,9 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `TaskGroupCard` (one group: name with ✎ rename/delete, progress, its `TaskList`, "New task"), `TaskList` (grip handles via `lib/useListsDragSort`; ticking the group's last task calls `onAllDone`, the page plays `Salute`), `TaskEditor`, `ShiftNotes`;
     - `noteText.ts` (+ test): the instructions format (`parseNote`, `checkKeys`) and the list editing (`toggleList`, `indent`, `continueList`);
     - `NoteEditor` (the instructions textarea with list buttons), `TaskNote` (instructions shown with tickable checklist lines).
+  - `Rooms.tsx` (+ test) + `rooms/`:
+    - `RoomCard` (number, type, the note (`CommitTextarea`), every master unit with a status `Select`, the general-cleaning line with Cleaned and the history expander (last 10), ✎ number/type/delete), `NewRoomForm` (number + type; a taken number shows an error before sending), `WhoDialog` (name prefilled from `localStorage['rooms.who']`, optional note);
+    - `roomText.ts`: `roomExists`, `typeOptions`, `cleaningText` (today / yesterday / N days ago).
   - `Settings.tsx` (+ test): the page and the admin redirect; `settings/`: `PinForm`, `QrCard`, `SaluteCard`. `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
@@ -249,6 +252,12 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
   - The instructions editor (`NoteEditor`) has buttons for bulleted / numbered lists, checklists, indent and outdent. Enter continues a list, Enter on an empty item ends it, Tab/Shift+Tab indent list lines.
   - When the user ticks a group's last task (not when a finished day is opened or polled), fireworks spell `settings.saluteText` (default "Tubli!"). Checklist lines inside instructions don't count.
   - With `tasks` permission each row has a grip: drag it (mouse or touch; the page scrolls near the screen edges), also onto another group's card (it gets a ring and a drop line), or press ↑/↓ on it (past a card's edge it moves to the neighbouring group). The order and the group are global (`PUT /tasks/order`), not per day.
+- **`/rooms`** (`rooms` permission: admin and worker): one card per room, sorted by number (`sortRooms`), in a 1/2/3-column grid.
+  - A card: number, type, its note (saved on blur), each master unit with its status (missing = the first) tinted in the status colour, with the note, who and when of the last change.
+  - Changing a status or pressing Cleaned opens `WhoDialog` (name required, note only for a status). Cancel sends nothing.
+  - The cleaning line: "No general cleaning yet" (red) or "Cleaned N days ago · Name", counted from the real today, green / yellow / red by `cleanThresholds(settings)`. "Cleaning history" lists the last 10.
+  - ✎ edits the number and type, or deletes the card (confirmed). A number another card has shows an error.
+  - Without units: a notice (the admin gets an "Open Settings" link). Without rooms: an empty state under "Add room".
 - **`/settings`** (admin only; others are redirected to `/stock`):
   - The admin and worker PINs (each new PIN typed twice).
   - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.

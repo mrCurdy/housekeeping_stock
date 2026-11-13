@@ -78,6 +78,7 @@ Outside the kit:
 
 ## Styling
 
+- A "who did it" step before a change: `pages/rooms/WhoDialog.tsx` (a `Modal` with a `<form id>` and the submit button in `footer` via `form={id}`). A per-device remembered value goes in `localStorage` inside try/catch.
 - Room status colours: take the classes from `ROOM_COLOR_CLASSES[color]` (`@/lib/roomColors`), never build `bg-status-${c}` strings (Tailwind can't find them).
 - Use semantic tokens only: `bg-surface`, `bg-surface-2`, `text-fg`, `text-fg-muted`, `border-border`, `text-primary`, `bg-primary-soft`, and `success|warning|danger|info` (+ `-soft`). Raw colours break dark mode. Merge classes with `cn()`.
 - **Stock figures:**
@@ -94,7 +95,7 @@ Outside the kit:
 
 ## Roles and modes
 
-- `useAuth().can('setup' | 'tasks' | 'restore' | 'pins' | 'qr' | 'daily' | 'checklist' | 'count')` hides the controls a role can't use (see `ItemsCard`: `setup` shows rename/remove/add).
+- `useAuth().can('setup' | 'tasks' | 'restore' | 'pins' | 'qr' | 'daily' | 'checklist' | 'count' | 'rooms')` hides the controls a role can't use (see `ItemsCard`: `setup` shows rename/remove/add).
 - Hiding is only cosmetic: the route needs `allow(perm)` as well.
 - A counter (QR) session is `todayOnly(role)`. It sees only `/counter`, and its date is locked to today.
 

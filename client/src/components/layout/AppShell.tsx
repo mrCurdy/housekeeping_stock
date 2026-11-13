@@ -1,5 +1,15 @@
 import { todayOnly, type Permission } from '@app/shared';
-import { Boxes, ClipboardList, ListChecks, LogOut, Menu, Package, Settings, X } from 'lucide-react';
+import {
+  Boxes,
+  ClipboardList,
+  DoorOpen,
+  ListChecks,
+  LogOut,
+  Menu,
+  Package,
+  Settings,
+  X,
+} from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@/components/ui';
@@ -25,6 +35,7 @@ const NAV: NavItem[] = [
   { to: '/stock', label: (t) => t.nav.stock, icon: Package },
   { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList },
   { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks },
+  { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'rooms' },
   { to: '/settings', label: (t) => t.nav.settings, icon: Settings, perm: 'pins' },
 ];
 

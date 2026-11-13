@@ -140,7 +140,14 @@ teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { gree
     `[data-theme='dark']`), exposed as Tailwind colours (`bg-status-green`), plus a small map
     `client/src/lib/roomColors.ts` (colour id → classes).
 
-- [ ] **5. The Rooms page** (skills `ui`, `i18n`)
+- [x] **5. The Rooms page** (skills `ui`, `i18n`)
+  - Done. Differences: the status "dropdown" is a native `Select` per unit (the row is tinted with
+    the status colour); `NewRoomForm` and the ✎ editor check a taken number locally (`roomExists`)
+    and show "Room N already exists", so `addRoom` keeps its plain `send`. Helpers in
+    `pages/rooms/roomText.ts` (`roomExists`, `typeOptions`, `cleaningText`). The page has no
+    `DateSwitcher` (days count from the real today). The default statuses (OK / Needs attention /
+    Needs fixing) show their English names from `DEFAULT_ROOM_STATUSES` in every language; step 6
+    may translate them while none is stored. "Your name" is stored under `localStorage['rooms.who']`.
   - `pages/Rooms.tsx` + `pages/rooms/`: `RoomCard` (number, type, the room note (`CommitTextarea`,
     placeholder "Add a note about this room"), unit rows with a status
     dropdown/chips, cleaning line + Cleaned, cleaning history expander, ✎ number/type, delete
