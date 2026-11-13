@@ -539,6 +539,7 @@ describe('rooms compact tiles', () => {
 
     await user.click(tile('2'));
     expect(card('2')).toHaveClass('col-span-full');
+    expect(card('2')).toHaveClass('sm:max-w-xl');
     expect(tile('10')).toBeInTheDocument();
     expect(screen.getAllByRole('article')).toHaveLength(1);
 

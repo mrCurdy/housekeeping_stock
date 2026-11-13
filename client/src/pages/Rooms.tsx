@@ -114,7 +114,7 @@ export default function Rooms() {
                   <RoomCard
                     key={room.id}
                     room={room}
-                    className="col-span-full"
+                    className="col-span-full w-full sm:max-w-xl sm:justify-self-center"
                     onClose={() => setOpenId(null)}
                   />
                 ) : (
