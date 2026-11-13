@@ -20,6 +20,7 @@ npm run dev                  # server :3000 (tsx watch) + client :5173 (Vite, pr
 npm test                     # shared (stock rules) + server (API) + client (UI) tests, all Vitest
 npm run typecheck && npm run lint
 npm test -w server -- -t "room"   # a single test (or `npx vitest run -t "room"` inside shared/, server/ or client/)
+npm run seed                 # demo hotel data into an empty DB (`-- --force` replaces it; old data → data/backups/pre-seed-*.json)
 npm run build && npm start   # production (start sets NODE_ENV=production): the server also serves client/dist
 docker compose up --build -d # http://localhost:3000, data in the app-data volume
 ```

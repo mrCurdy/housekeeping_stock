@@ -25,14 +25,15 @@ On the first start the PINs are admin **1234** and worker **0000** (or `ADMIN_PI
 
 Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` (one card per hotel room: each unit's status, a note, and when it last had a general cleaning), `/settings` (admin: PINs, the counting QR code and the room cards' units, statuses, types and cleaning thresholds).
 
-| Command             | What it does                                                           |
-| ------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`       | Server (tsx watch) + client (Vite) together                            |
-| `npm run build`     | Bundle server (`server/dist`) and client (`client/dist`)               |
-| `npm start`         | Run the built server in production mode (also serves the client build) |
-| `npm test`          | Stock-rule tests, API tests, UI component tests                        |
-| `npm run typecheck` | `tsc --noEmit` in every workspace                                      |
-| `npm run lint`      | ESLint (`npm run format` for Prettier)                                 |
+| Command             | What it does                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`       | Server (tsx watch) + client (Vite) together                                                                                      |
+| `npm run build`     | Bundle server (`server/dist`) and client (`client/dist`)                                                                         |
+| `npm start`         | Run the built server in production mode (also serves the client build)                                                           |
+| `npm test`          | Stock-rule tests, API tests, UI component tests                                                                                  |
+| `npm run seed`      | Fill an empty database with demo hotel data (`-- --force` replaces existing data, saved to `data/backups/pre-seed-*.json` first) |
+| `npm run typecheck` | `tsc --noEmit` in every workspace                                                                                                |
+| `npm run lint`      | ESLint (`npm run format` for Prettier)                                                                                           |
 
 Optional settings are in `.env.example` (copy to `.env`).
 
