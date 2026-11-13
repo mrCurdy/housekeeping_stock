@@ -129,7 +129,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `TaskGroupCard` (one group: name with ✎ rename/delete, progress, its `TaskList`, "New task"), `TaskList` (grip handles via `lib/useListsDragSort`; ticking the group's last task calls `onAllDone`, the page plays `Salute`), `TaskEditor`, `ShiftNotes`;
     - `noteText.ts` (+ test): the instructions format (`parseNote`, `checkKeys`) and the list editing (`toggleList`, `indent`, `continueList`);
     - `NoteEditor` (the instructions textarea with list buttons), `TaskNote` (instructions shown with tickable checklist lines).
-  - `Settings.tsx`: `PinForm`, `QrCard` and `SaluteCard` (+ test). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
+  - `Settings.tsx` (+ test): the page and the admin redirect; `settings/`: `PinForm`, `QrCard`, `SaluteCard`. `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
   - `format.ts`: `formatLongDate(date, locale)` ("Sat, 17 Oct 2026").
@@ -252,5 +252,4 @@ These are known and don't need to be copied. Fix one only when a task touches it
   - Every 15 s it polls all of `GET /api/data`.
   - This is fine for one hotel's data but grows with history, since stock data is never pruned.
   - Any change re-renders every page that uses `useStock()`.
-- **Placement:** `Settings.tsx` holds three features (`PinForm`, `QrCard`, `SaluteCard`).
 - **Client tests** cover login, settings, counter mode (incl. the room-done fireworks), the checklist (reorder, line ticks, list editing), i18n and the UI kit. `StockContext.test.tsx` covers the optimistic update, rollback and polling. `Stock.test.tsx` covers the card order and the Overview's per-room rows.

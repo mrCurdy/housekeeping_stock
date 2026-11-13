@@ -72,7 +72,7 @@ Outside the kit:
 
 - Numbers and names inside tables → `CommitInput`.
 - Text where an accidental change would hurt (task names) → plain `Input`s with an explicit Save button (`TaskEditor.tsx`).
-- Several fields that are checked together (PINs) → a `<form>` with `FormField`s (`Settings.tsx` `PinForm`).
+- Several fields that are checked together (PINs) → a `<form>` with `FormField`s (`pages/settings/PinForm.tsx`).
 
 ## Styling
 

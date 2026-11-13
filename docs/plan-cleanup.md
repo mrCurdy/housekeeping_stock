@@ -31,9 +31,10 @@ figure** (totals, the counter page, the Overview).
   - Docs: update the file map in `docs/structure.md` and the "Outside the kit" part of the `ui` skill (now in the kit). Delete the matching weak-spot lines.
   - Done differently: inside `components/ui/` the two files import their neighbours by relative path (`./Button`, `./CommitInput`), not via the barrel, to avoid a cycle.
 
-- [ ] **2. Split Settings** (skill `ui`)
+- [x] **2. Split Settings** (skill `ui`)
   - Move `PinForm` and `QrCard` from `pages/Settings.tsx` into `pages/settings/PinForm.tsx` and `pages/settings/QrCard.tsx`. `Settings.tsx` keeps only the page and the admin redirect.
   - Tests: `pages/Settings.test.tsx` must pass unchanged. That's the proof it's a pure move.
+  - Done differently: `SaluteCard` moved too (`pages/settings/SaluteCard.tsx`), so `Settings.tsx` really keeps only the page.
 
 - [x] **3. Tests for StockContext** (skill `ui`; tests only, no behaviour change)
   - New `client/src/context/StockContext.test.tsx`. Use `mockApi` and a small consumer component that calls `useStock()`. Use the providers I18n → Toast → Date → Stock, and the setup from `Settings.test.tsx`.
