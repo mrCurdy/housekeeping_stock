@@ -11,6 +11,7 @@ import { useToast } from '@/context/ToastContext';
 import { apiErrorMessage } from '@/lib/api';
 import { backupCounts, hasData } from '@/lib/backup';
 import { downloadBlob } from '@/lib/download';
+import { hasExcelData } from '@/lib/excelRows';
 
 /** Settings card: Excel history, Backup (JSON download) and Restore (JSON upload, `can('restore')`). */
 export function DataCard() {
@@ -24,7 +25,7 @@ export function DataCard() {
   const [exporting, setExporting] = useState(false);
 
   const exportExcel = async () => {
-    if (data.items.length === 0) return toast.info(t.data.noData);
+    if (!hasExcelData(data)) return toast.info(t.data.noData);
     setExporting(true);
     try {
       const { exportExcel } = await import('@/lib/excel');

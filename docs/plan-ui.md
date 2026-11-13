@@ -80,7 +80,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
 
   - Done: `hasData`/`backupCounts` in `client/src/lib/backup.ts`. `restoreDescription(file, counts)` takes a `BackupCounts` object and lists the non-zero counts separated by commas (no "and", so no per-language joining); a file with nothing says it is empty. The server needed no change (new restore test passes as is).
 
-- [ ] **3. Excel: a "Cleanings" sheet** (skills `ui`, `i18n`)
+- [x] **3. Excel: a "Cleanings" sheet** (skills `ui`, `i18n`)
   - New pure `cleaningSheet(data, today)` next to `lib/excel.ts` (e.g. `lib/excelRows.ts`, +
     test, so the rows are tested without ExcelJS): rows in `sortByLevel` order with room number,
     type name, latest cleaning date (local `YYYY-MM-DD`), days ago (`cleaningLevel`), who, earlier
@@ -93,6 +93,8 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Tests: `cleaningSheet` order, a never-cleaned room, days ago, earlier dates; Excel with
     rooms but no items no longer says "No data".
   - Docs: `docs/structure.md` (`excel.ts` line and the Settings section), README's Excel line.
+
+  - Done: `lib/excelRows.ts` also has `hasExcelData(data)` (items or rooms), used by `DataCard`. Items without days of data still give "No history" unless rooms exist. A never-cleaned room's date cell is red italic.
 
 ## Token rules for these sessions
 

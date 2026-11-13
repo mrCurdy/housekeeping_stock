@@ -160,6 +160,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `roomColors.ts`: `ROOM_COLOR_CLASSES`, room status colour id → `dot`/`text`/`soft`/`border` classes (`bg-status-green`…). `roomColors.test.ts` checks every colour has its tokens.
   - `backup.ts` (+ test): `hasData(data)` (anything to back up: stock, checklist or room setup) and `backupCounts(data)` (what Restore's confirmation lists).
   - `cn.ts`, `download.ts`.
+  - `excelRows.ts` (+ test): `hasExcelData(data)` (items or room cards: the Excel button's "nothing to export" rule) and `cleaningSheet(data, today, never)`, the "Cleanings" sheet's rows, tested without ExcelJS.
   - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
 - `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
 - `styles/index.css`: tokens (incl. the 10 room status colours `--status-<colour>` and `-soft`, light and dark), iOS 16px fields, and the `val-*` / `no-spin` utilities.
@@ -281,7 +282,7 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
   - The admin and worker PINs (each new PIN typed twice).
   - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.
   - **Data and backups** (`DataCard`; Settings is admin-only, so workers have no Excel or Backup):
-    - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
+    - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist (both only with items and days with data), and a "Cleanings" sheet when room cards exist: one row per room, level by level (`sortByLevel`), with number, type, last general cleaning, days ago, who and the earlier kept dates (newest first); never cleaned → "never", days and who empty. It says "No data" only with neither items nor room cards.
     - **Backup:** a JSON download of everything, room cards, unit statuses and cleanings included. Refused ("No data to back up yet") only when `hasData` is false.
     - **Restore** (`restore` permission): validates with `backupSchema`, asks for confirmation (the file's items, departure groups, count locations and room cards with how many have cleanings, counts of 0 left out), then replaces everything: counts, room statuses and cleanings included.
   - The fireworks text (up to 12 characters, blank = "Tubli!"), with a Preview button. Saved for everyone (`PATCH /settings`, `setup` permission).

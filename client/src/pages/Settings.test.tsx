@@ -336,6 +336,19 @@ describe('Settings: data and backups', () => {
     expect(JSON.parse(await blob.text()).rooms).toEqual([{ id: 'r1', number: '101' }]);
   });
 
+  it('Excel with rooms but no items downloads a workbook', async () => {
+    dataApi({ ...emptyStockData(), rooms: [{ id: 'r1', number: '101' }] });
+    settings();
+    await waitFor(
+      async () => {
+        await userEvent.click(screen.getByRole('button', { name: 'Excel' }));
+        expect(download).toHaveBeenCalled();
+      },
+      { timeout: 10_000 },
+    );
+    expect(download.mock.calls[0]?.[1]).toMatch(/\.xlsx$/);
+  }, 15_000);
+
   it('Backup with nothing at all says there is no data', async () => {
     dataApi(emptyStockData());
     settings();
