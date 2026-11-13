@@ -51,6 +51,7 @@ export const en = {
     logout: 'Log out',
     settings: 'Settings',
     rooms: 'Room statuses',
+    cleaning: 'Cleaning',
   },
 
   theme: {
@@ -335,6 +336,15 @@ export const en = {
       closeRoom: (number: string) => `Close room ${number}`,
       unitsStatus: (status: string) => `Units: ${status}`,
     },
+  },
+
+  cleaning: {
+    title: 'Cleaning',
+    description: 'Days since each room’s last general cleaning. Tap a room to register one.',
+    dirtyFirst: 'Dirty first',
+    cleanedToday: 'Cleaned today',
+    /** A tile's accessible name: the room and its cleaning in words (`cleaningText`) */
+    tile: (number: string, state: string) => `Room ${number}: ${state}`,
   },
 
   settings: {

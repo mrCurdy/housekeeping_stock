@@ -48,6 +48,7 @@ export const ru: Messages = {
     logout: 'Выйти',
     settings: 'Настройки',
     rooms: 'Статусы номеров',
+    cleaning: 'Уборка',
   },
 
   theme: {
@@ -331,6 +332,15 @@ export const ru: Messages = {
       closeRoom: (number) => `Закрыть номер ${number}`,
       unitsStatus: (status) => `Части: ${status}`,
     },
+  },
+
+  cleaning: {
+    title: 'Уборка',
+    description:
+      'Дней с последней генеральной уборки каждого номера. Нажмите на номер, чтобы отметить уборку.',
+    dirtyFirst: 'Сначала грязные',
+    cleanedToday: 'Убрано сегодня',
+    tile: (number, state) => `Номер ${number}: ${state}`,
   },
 
   settings: {

@@ -23,7 +23,7 @@ npm run dev        # client http://localhost:5173 · API http://localhost:3000
 
 On the first start the PINs are admin **1234** and worker **0000** (or `ADMIN_PIN`/`WORKER_PIN` from `.env`); change them under **Settings**. A browser stays logged in until **Logout**.
 
-Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` ("Room statuses", admin: one card per hotel room with each unit's status and a note; search, level filter and an attention sort), `/settings` (admin: PINs, the counting QR code, adding rooms and the room cards' units, statuses, types and cleaning thresholds).
+Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` ("Room statuses", admin: one card per hotel room with each unit's status and a note; search, level filter and an attention sort), `/cleaning` (admin and worker: every room as a tile with the days since its last general cleaning; tap to register one, a "Dirty first" sort), `/settings` (admin: PINs, the counting QR code, adding rooms and the room cards' units, statuses, types and cleaning thresholds).
 
 | Command             | What it does                                                                                                                     |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |

@@ -35,7 +35,7 @@ export default function Rooms() {
   const [search, setSearch] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
 
-  if (!can('setup')) return <Navigate to="/stock" replace />;
+  if (!can('setup')) return <Navigate to="/cleaning" replace />;
   const rooms = viewRooms(data, { ...view, search });
   // the open tile closes when the filters or search hide it (it stays closed if it comes back)
   if (openId !== null && !rooms.some((r) => r.id === openId)) setOpenId(null);

@@ -104,7 +104,7 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     kept `rooms.history` (the `CleaningHistory` list's aria-label) and the `cleanedToday`/… texts
     (`cleaningText`, for step 4). The worker "ask the admin" branches in `Rooms.tsx` are gone.
 
-- [ ] **4. Cleaning page** (skills `ui`, `i18n`, `auth`)
+- [x] **4. Cleaning page** (skills `ui`, `i18n`, `auth`)
   - New `pages/Cleaning.tsx` (+ test), lazy route `/cleaning` in `App.tsx`, `NAV` entry
     "Cleaning" (icon `Brush`, `perm: 'cleaning'`) next to "Room statuses". Change step 3's `/rooms`
     redirect for non-admins to `/cleaning`.
@@ -127,6 +127,12 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     to change X" row for rooms), README's page list, the `ui` skill if it lists pages.
   - Manual check with `npm run dev` (or say it wasn't done): worker PIN 0000 marks a room cleaned
     from a tile on phone width; admin sees both pages; dark mode colours readable.
+  - Done. `CleaningDialog` is `WhoDialog` with new optional `description`, `children` and
+    `confirmLabel` props; the level buttons moved to `rooms/LevelFilter.tsx` (with `toggleProps`),
+    shared by `RoomFilters` and `CleaningFilters`. `/cleaning` also redirects a role without
+    `cleaning` to `/stock`. Tile name "Room 101: Cleaned 12 days ago · Anna" (`cleaning.tile`). Empty
+    and no-match texts reuse `rooms.*` / `common.askAdmin`. Manual check with `npm run dev` not done
+    (agent run): only the automated tests cover it.
 
 ## Token rules for these sessions
 

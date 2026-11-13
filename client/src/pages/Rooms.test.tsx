@@ -33,7 +33,7 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
     this.open = false;
   };
-  Element.prototype.scrollTo ??= () => {}; // a worker is redirected to the Stock overview
+  Element.prototype.scrollTo ??= () => {}; // a worker is redirected to the Cleaning page
   window.history.replaceState(null, '', '/rooms');
   localStorage.clear();
 });
@@ -492,12 +492,13 @@ describe('rooms compact tiles', () => {
   });
 });
 
-// Last: the App's router is created once per file and keeps the /stock it was redirected to.
+// Last: the App's router is created once per file and keeps the /cleaning it was redirected to.
 describe('rooms page for a worker', () => {
   it('a worker opening /rooms is redirected, and has no Room statuses NAV entry', async () => {
     mockApp('worker', rooms());
     await renderApp();
-    await waitFor(() => expect(window.location.pathname).toBe('/stock'));
+    await waitFor(() => expect(window.location.pathname).toBe('/cleaning'));
     expect(screen.queryByRole('link', { name: 'Room statuses' })).toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Cleaning' }).length).toBeGreaterThan(0);
   });
 });

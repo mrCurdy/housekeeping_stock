@@ -2,6 +2,7 @@ import { EyeOff, Grid3x3, Rows2 } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
+import { LevelFilter, toggleProps } from './LevelFilter';
 import type { RoomSort } from './roomView';
 import type { RoomMode, StoredRoomView } from './useRoomView';
 
@@ -30,36 +31,10 @@ export function RoomFilters({
 }) {
   const tx = useI18n().t.rooms.filter;
   const id = useId();
-  const toggle = (on: boolean) => ({
-    variant: on ? ('primary' as const) : ('outline' as const),
-    size: 'sm' as const,
-    'aria-pressed': on,
-  });
 
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-      <div
-        role="group"
-        aria-labelledby={`${id}-level`}
-        className="flex flex-wrap items-center gap-2"
-      >
-        <span id={`${id}-level`} className="text-sm text-fg-muted">
-          {tx.level}
-        </span>
-        <Button {...toggle(view.level === null)} onClick={() => onChange({ level: null })}>
-          {tx.all}
-        </Button>
-        {levels.map((level) => (
-          <Button
-            key={level}
-            {...toggle(view.level === level)}
-            className="min-w-9"
-            onClick={() => onChange({ level })}
-          >
-            {level}
-          </Button>
-        ))}
-      </div>
+      <LevelFilter levels={levels} level={view.level} onChange={(level) => onChange({ level })} />
 
       <div
         role="group"
@@ -72,7 +47,7 @@ export function RoomFilters({
         {SORTS.map((sort) => (
           <Button
             key={sort}
-            {...toggle(view.sort === sort)}
+            {...toggleProps(view.sort === sort)}
             onClick={() => onChange({ sort: view.sort === sort ? 'number' : sort })}
           >
             {tx[sort]}
@@ -82,7 +57,7 @@ export function RoomFilters({
 
       {showHideGreen && (
         <Button
-          {...toggle(view.hideGreen)}
+          {...toggleProps(view.hideGreen)}
           leftIcon={<EyeOff className="h-4 w-4" />}
           onClick={() => onChange({ hideGreen: !view.hideGreen })}
         >
@@ -103,7 +78,7 @@ export function RoomFilters({
           return (
             <Button
               key={mode}
-              {...toggle(view.mode === mode)}
+              {...toggleProps(view.mode === mode)}
               size="icon-sm"
               aria-label={label}
               title={label}

@@ -1,6 +1,7 @@
 import { todayOnly, type Permission } from '@app/shared';
 import {
   Boxes,
+  Brush,
   ClipboardList,
   DoorOpen,
   ListChecks,
@@ -36,6 +37,7 @@ const NAV: NavItem[] = [
   { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList },
   { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks },
   { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'setup' },
+  { to: '/cleaning', label: (t) => t.nav.cleaning, icon: Brush, perm: 'cleaning' },
   { to: '/settings', label: (t) => t.nav.settings, icon: Settings, perm: 'pins' },
 ];
 

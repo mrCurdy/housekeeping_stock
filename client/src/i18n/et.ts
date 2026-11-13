@@ -48,6 +48,7 @@ export const et: Messages = {
     logout: 'Logi välja',
     settings: 'Seaded',
     rooms: 'Tubade olek',
+    cleaning: 'Koristus',
   },
 
   theme: {
@@ -332,6 +333,14 @@ export const et: Messages = {
       closeRoom: (number) => `Sulge tuba ${number}`,
       unitsStatus: (status) => `Osad: ${status}`,
     },
+  },
+
+  cleaning: {
+    title: 'Koristus',
+    description: 'Päevi iga toa viimasest suurpuhastusest. Puuduta tuba, et see kirja panna.',
+    dirtyFirst: 'Mustemad ees',
+    cleanedToday: 'Koristatud täna',
+    tile: (number, state) => `Tuba ${number}: ${state}`,
   },
 
   settings: {

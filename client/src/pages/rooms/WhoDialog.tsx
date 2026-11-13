@@ -1,5 +1,5 @@
 import { ROOM_NOTE_MAX } from '@app/shared';
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Button, FormField, Input, Modal, Textarea } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
 
@@ -24,16 +24,23 @@ function rememberName(name: string) {
 
 /**
  * "Who did it" before a room change: a required name (prefilled with the last one typed on this
- * device) and, with `withNote`, an optional note. Cancel changes nothing.
+ * device) and, with `withNote`, an optional note. Cancel changes nothing. `children` show above the
+ * name (the cleaning dialog's latest cleaning and history); `confirmLabel` replaces "Confirm".
  */
 export function WhoDialog({
   title,
+  description,
+  confirmLabel,
   withNote = false,
+  children,
   onCancel,
   onConfirm,
 }: {
   title: string;
+  description?: string;
+  confirmLabel?: string;
   withNote?: boolean;
+  children?: ReactNode;
   onCancel: () => void;
   onConfirm: (by: string, note: string) => void;
 }) {
@@ -49,6 +56,7 @@ export function WhoDialog({
       open
       onClose={onCancel}
       title={title}
+      description={description}
       size="sm"
       footer={
         <>
@@ -56,7 +64,7 @@ export function WhoDialog({
             {t.common.cancel}
           </Button>
           <Button type="submit" form={formId} disabled={!by}>
-            {t.common.confirm}
+            {confirmLabel ?? t.common.confirm}
           </Button>
         </>
       }
@@ -71,6 +79,7 @@ export function WhoDialog({
           onConfirm(by, note.trim());
         }}
       >
+        {children}
         <FormField label={tx.name}>
           <Input
             value={name}
