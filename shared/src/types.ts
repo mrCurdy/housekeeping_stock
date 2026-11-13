@@ -128,8 +128,13 @@ export const stockCardOrder = (saved: readonly StockCard[]): StockCard[] => [
   ...new Set([...saved, ...STOCK_CARDS]),
 ];
 
+/**
+ * The history window: the date switcher goes back this many days, and the server deletes older
+ * checklist ticks/notes and (2 days before that) stock data.
+ */
+export const HISTORY_DAYS = 30;
 /** Checklist ticks and notes older than this many days are deleted by the server. */
-export const CHECKLIST_DAYS = 30;
+export const CHECKLIST_DAYS = HISTORY_DAYS;
 
 export const emptyStockData = (): StockData => ({
   items: [],

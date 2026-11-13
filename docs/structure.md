@@ -27,10 +27,11 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 
 ### `shared/src/` (`@app/shared`, imported as TS source by server and client)
 
-- `types.ts`: `StockData` and its parts (see the data model below).
+- `types.ts`: `StockData` and its parts (see the data model below). `HISTORY_DAYS` (30) is the one history window: the date switcher (`DAYS_BACK`), `CHECKLIST_DAYS` and stock pruning use it.
 - `schemas.ts` (211): the zod request schemas. `backupSchema` reads old-format backups with `''` blanks. `normalizeStockData`/`cleanRecord` make sure only real values get stored. `pruneChecklist` drops ticks and notes older than `CHECKLIST_DAYS`.
 - `auth.ts`: roles, `PERMISSIONS`, `can(role, perm)`, `todayOnly(role)`, `pinSchema`, login/link schemas.
 - `stock.ts` (+ test): `createStockMath(state, { minDateStr })` → `dayFigures`, `calculateTotal`, `autoConsumption`, `roomSum`, `series`.
+- `prune.ts` (+ test): `pruneStock(data, keepFrom)` drops stock data before `keepFrom` and turns the day before it into a carried-over count (`m` = that day's total), so no later figure changes. Not called yet (the driver will).
 - `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`, `itemCheckKey`/`checkTaskId` (ticks of checklist lines). Groups: `taskGroupList` (never empty), `groupOf`, `tasksByGroup`, `moveTaskTo` + `applyTaskMove` (drag/arrow reorder, also into another group), `removeTaskGroupIn`.
 - `dates.ts`: local `YYYY-MM-DD` helpers (`formatDate`, `parseDateLocal`, `addDays`, `todayLocal`, `dateRange`). `index.ts`: barrel.
 

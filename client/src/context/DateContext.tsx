@@ -1,9 +1,16 @@
-import { addDays, formatDate, parseDateLocal, todayLocal, todayOnly } from '@app/shared';
+import {
+  addDays,
+  formatDate,
+  HISTORY_DAYS,
+  parseDateLocal,
+  todayLocal,
+  todayOnly,
+} from '@app/shared';
 import { createContext, use, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 
 /** Days you can navigate to, relative to today. The Stock overview shows exactly this range. */
-export const DAYS_BACK = 30;
+export const DAYS_BACK = HISTORY_DAYS;
 export const DAYS_AHEAD = 7;
 
 interface DateState {

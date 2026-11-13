@@ -58,7 +58,7 @@ figure** (totals, the counter page, the Overview).
   - CLAUDE.md "Rules" and the "Stock calculation" part of `docs/structure.md`: replace "replays from the earliest record date" with "replays from the latest count".
   - Done differently: CLAUDE.md "Rules" never mentioned the replay, so only `docs/structure.md` changed. `series` is unchanged: it already is one forward pass where each count resets the total, so it can't get cheaper while returning every day. An extra test (a `Proxy` on departures) proves `calculateTotal` reads nothing before the latest count.
 
-- [ ] **5. The pruning rule, pure** (`shared/`)
+- [x] **5. The pruning rule, pure** (`shared/`)
   - `shared/src/types.ts`:
     - add `HISTORY_DAYS = 30`;
     - make `CHECKLIST_DAYS` an alias of it, or replace it;
@@ -74,6 +74,7 @@ figure** (totals, the counter page, the Overview).
     - (c) A removed room's counts before K are gone, and the totals are still equal.
     - (d) An item with no history is untouched.
     - (e) A day after `keepFrom` is never touched.
+  - Done differently: in a new `shared/src/prune.ts`. `CHECKLIST_DAYS` is an alias of `HISTORY_DAYS`. The carried-over total is computed for every item (not only those with records before `keepFrom`), because departures consume items that have no records. Emptied `records[item]`/`groupRecords[group]` maps are deleted. The "nothing to do" check is `date < K` (matching step 6's cheap SQL check); rows dated exactly K wait for the next day.
 
 - [ ] **6. Prune in the SQLite driver** (skill `sqlite-db`)
   - `createSqliteDb` gets an option `today?: () => string` (default `formatDate(todayLocal())`), so tests can move the clock. Use it in `prune()` and `dailyBackup()`.
