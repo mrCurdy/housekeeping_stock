@@ -10,7 +10,7 @@ A small tool for tracking daily housekeeping stock (linens, amenities, …) in a
 | Shared  | `@app/shared`: types, zod schemas, the stock rules                                           |
 | Tooling | TypeScript, npm workspaces, Vitest, ESLint, Prettier, Docker                                 |
 
-Structure and conventions come from the full-stack boilerplate (`boilerplate/`, reference only), without sockets, user accounts or the Postgres/MySQL drivers.
+Structure and conventions come from the full-stack boilerplate (`../boilerplate`, reference only), without sockets, user accounts or the Postgres/MySQL drivers.
 
 ## Quick start
 

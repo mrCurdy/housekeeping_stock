@@ -1,6 +1,6 @@
 ---
 name: sqlite-db
-description: Change Stock Monitor's SQLite storage (server/src/db/sqlite/) — add a table or column (migration), a repo method, or change how StockData maps to rows. Use whenever a change touches the database schema, server/src/db/types.ts or the sqlite driver.
+description: Change Fomka's SQLite storage (server/src/db/sqlite/) — add a table or column (migration), a repo method, or change how StockData maps to rows. Use whenever a change touches the database schema, server/src/db/types.ts or the sqlite driver.
 ---
 
 # SQLite storage
@@ -53,7 +53,7 @@ with a default, then update the row interface, `snapshot()` and `fill()`.
 ## Transactions and side effects
 
 Every change goes through `write(fn)`:
-1. the daily backup (`backups/db-YYYY-MM-DD.json`, the start-of-day `snapshot()` in the
+1. the daily backup (`data/backups/db-YYYY-MM-DD.json`, i.e. `backups/` next to the DB file; the start-of-day `snapshot()` in the
    Backup/Restore format; pruned after `BACKUP_DAYS`; failures are only logged);
 2. `fn` and `prune()` (checklist ticks/notes/task history older than `CHECKLIST_DAYS`) in one
    `sql.transaction`.

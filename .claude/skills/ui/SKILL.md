@@ -15,8 +15,8 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
 1. **shared/**: the type in `types.ts`, a zod body schema in `schemas.ts` (and in `backupSchema` if it's stored).
 2. **server**:
    - a `Db` method (`sqlite-db` skill);
-   - a route in `routes/<area>.ts` with `validate(schema)` and `allow(perm)` (`auth` skill);
-   - a test in `server/tests/api.test.ts`.
+   - a route in `routes/<area>.ts` with `validateBody(schema)` and `allow(perm)` (`auth` skill);
+   - a test in a new `server/tests/<feature>.test.ts` (setup: `tests/helpers.ts`).
 3. **`StockContext.tsx`**: add the method to `StockApi` and implement it like its neighbours:
    ```ts
    setThing: (id, value) => {

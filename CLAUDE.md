@@ -19,12 +19,16 @@ npm install
 npm run dev                  # server :3000 (tsx watch) + client :5173 (Vite, proxies /api). Develop with this
 npm test                     # shared (stock rules) + server (API) + client (UI) tests, all Vitest
 npm run typecheck && npm run lint
-npx vitest run -t "room"     # a single test, run inside a workspace (shared/, server/ or client/)
+npm test -w server -- -t "room"   # a single test (or `npx vitest run -t "room"` inside shared/, server/ or client/)
 npm run build && npm start   # production (start sets NODE_ENV=production): the server also serves client/dist
 docker compose up --build -d # http://localhost:3000, data in the app-data volume
 ```
 
-Before committing: `npm run lint && npm run typecheck && npm test`.
+Before committing: `npm run lint && npm run typecheck && npm test` (`npm run format` for Prettier).
+
+First-start PINs: admin `1234`, worker `0000` (or `ADMIN_PIN`/`WORKER_PIN` from `.env`, see `.env.example`). The DB is `data/stock.db`.
+
+Deploying: the `production` branch is the deployable one; `./deploy.sh` on the server pulls it, copies the DB to `backups/stock-<time>.db`, rebuilds the Docker image and rolls back if the health check fails.
 
 If the app behaves unlike the code (e.g. the server ignores a new field), check what is serving :3000 before debugging: `curl -s localhost:3000/api/health`. `builtAt` older than the change (or `npm start` running `dist/`) means a stale build. Restart it or use `npm run dev`. From source it shows `commit: "source"`.
 
@@ -40,7 +44,7 @@ If the app behaves unlike the code (e.g. the server ignores a new field), check 
 
 ## Architecture
 
-npm workspaces, structured like `boilerplate/`. That's an untracked checkout of a full-stack TypeScript template, kept for reference only: don't modify it unless asked (the real one is `~/Projects/boilerplate`). Socket.io, the Postgres/MySQL drivers, user accounts and the appearance customizer were left out on purpose. Auth is a small PIN/role layer of its own.
+npm workspaces, structured like the full-stack TypeScript template in `../boilerplate` (`~/Projects/boilerplate`, next to this repo). It's for reference only: don't modify it unless asked. Socket.io, the Postgres/MySQL drivers, user accounts and the appearance customizer were left out on purpose. Auth is a small PIN/role layer of its own.
 
 - **`shared/src/`** (`@app/shared`, imported as TS source by both sides):
   - types and zod schemas (`StockData` is also the backup format);
@@ -48,7 +52,7 @@ npm workspaces, structured like `boilerplate/`. That's an untracked checkout of 
   - the pure rules: `createStockMath` (stock) and the `checklist.ts` task history, used by both the server and the client's optimistic updates.
 - **`server/src/`** (Express 5):
   - `config.ts` validates the env with zod.
-  - Routes use only the `Db` interface (`db/types.ts`). Its one driver is `db/sqlite/`: every change runs in one transaction, and a daily JSON snapshot goes to `backups/`.
+  - Routes use only the `Db` interface (`db/types.ts`). Its one driver is `db/sqlite/`: every change runs in one transaction, and before the first change of each day a JSON snapshot goes to `data/backups/db-YYYY-MM-DD.json`.
   - `auth/` has the PIN hashes, the session cookie and the `allow(perm)` guard. Every `/api` route except `health`, `auth/login` and `auth/link` needs a session.
   - A missing row → `HttpError.notFound` via `found()`.
 - **`client/src/`** (React, Vite, Tailwind 4, React Router):
@@ -56,6 +60,8 @@ npm workspaces, structured like `boilerplate/`. That's an untracked checkout of 
   - `StockContext` holds the dataset and every mutation. A change shows on screen at once, sends one small request, and on failure shows a toast and reloads. It also polls every 15 s.
   - `DateContext` holds the selected day. `I18nContext` serves en/et/ru.
   - Pages are lazy routes in `App.tsx`, listed in `NAV` in `AppShell.tsx`. The UI kit is `components/ui/`.
+
+A new feature goes through the layers in this order: types/zod in `shared/src/` → a method on `Db` (`db/types.ts`) and in `db/sqlite/index.ts` → a route in `server/src/routes/`, mounted in `app.ts`, with `allow(perm)` → page, route in `App.tsx`, `NAV` entry → text in en/et/ru, tests in `server/tests/`.
 
 ## Rules
 

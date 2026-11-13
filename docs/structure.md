@@ -98,7 +98,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - **Env:**
   - `ADMIN_PIN`/`WORKER_PIN` are the PINs on first start (default 1234/0000).
   - `SQLITE_PATH` defaults to `data/stock.db`.
-  - `BACKUP_DAYS` sets how long the daily `backups/db-YYYY-MM-DD.json` snapshots are kept. A snapshot is written before the first change of each day.
+  - `BACKUP_DAYS` sets how long the daily `data/backups/db-YYYY-MM-DD.json` snapshots are kept. A snapshot is written before the first change of each day.
 - **Old JSON data:** on the first start with an empty database, `JSON_DB_PATH` (the old `data/db.json`) is imported and renamed `db.json.imported`.
 - **Sessions:** the `sm_session` cookie holds a random token (SHA-256 stored), is httpOnly and lasts 1 year. Auth rows live in `db.auth`, not in `StockData` or the backups.
 

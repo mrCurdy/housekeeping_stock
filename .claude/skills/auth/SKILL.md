@@ -1,6 +1,6 @@
 ---
 name: auth
-description: Stock Monitor's PIN login and roles (admin, worker, counter). Use when adding or changing an API route (it needs a guard), when hiding UI by role, or when changing the role matrix, PINs, sessions or QR access.
+description: Fomka's PIN login and roles (admin, worker, counter). Use when adding or changing an API route (it needs a guard), when hiding UI by role, or when changing the role matrix, PINs, sessions or QR access.
 ---
 
 # Auth: roles, guards, hiding UI

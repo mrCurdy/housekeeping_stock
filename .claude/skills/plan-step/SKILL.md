@@ -24,7 +24,7 @@ One session = one step. Its context starts cold, so only load what that step nee
 6. **Record the step:**
    - tick its checkbox in the plan, and add a line under it for any decision that differs from
      the plan;
-   - update the CLAUDE.md sections it affects (architecture, data model, pages);
+   - update `docs/structure.md` where the step changes it (file map, data model, pages), and CLAUDE.md only for architecture or rules;
    - update or create the skill the step names;
    - commit with a message that names the step (`Step 2: PIN auth on the server`).
 7. **Stop.** Report in 3–5 lines what was done, and anything left over for the next step. Don't
@@ -32,7 +32,7 @@ One session = one step. Its context starts cold, so only load what that step nee
 
 ## Ways to save tokens
 
-- Never read `boilerplate/` except the exact file a step names, and then only the relevant part.
+- Never read `../boilerplate/` except the exact file a step names, and then only the relevant part.
 - Never read `client/src/i18n/et.ts` or `ru.ts` whole. Follow the `i18n` skill and use `grep -n` to
   find where keys go.
 - Don't read `package-lock.json`, `node_modules/`, `dist/` or `data/`.

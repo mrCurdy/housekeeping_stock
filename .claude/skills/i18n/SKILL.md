@@ -1,9 +1,9 @@
 ---
 name: i18n
-description: Add or change user-visible text in Stock Monitor so it exists in all three languages (English, Estonian, Russian), or add a new language. Use whenever a change adds or edits UI text (labels, buttons, toasts, confirm dialogs, tooltips, aria-labels, placeholders, empty states, Excel headers), when adding a page or component with text, or when the user asks to translate or fix a translation.
+description: Add or change user-visible text in Fomka so it exists in all three languages (English, Estonian, Russian), or add a new language. Use whenever a change adds or edits UI text (labels, buttons, toasts, confirm dialogs, tooltips, aria-labels, placeholders, empty states, Excel headers), when adding a page or component with text, or when the user asks to translate or fix a translation.
 ---
 
-# Translating Stock Monitor (en / et / ru)
+# Translating Fomka (en / et / ru)
 
 The client has no i18n library. All UI text lives in typed dictionaries:
 
