@@ -47,7 +47,7 @@ export const ru: Messages = {
     closeMenu: 'Закрыть меню',
     logout: 'Выйти',
     settings: 'Настройки',
-    rooms: 'Номера',
+    rooms: 'Статусы номеров',
   },
 
   theme: {
@@ -279,8 +279,8 @@ export const ru: Messages = {
   },
 
   rooms: {
-    title: 'Номера',
-    description: 'Что нужно в каждом номере и когда была последняя генеральная уборка',
+    title: 'Статусы номеров',
+    description: 'Что нужно в каждом номере: статус каждой части',
     empty: 'Номеров пока нет',
     emptyHint: 'Добавьте номера в настройках.',
     noUnits: 'Части номера ещё не настроены',
@@ -300,7 +300,6 @@ export const ru: Messages = {
     cleanedYesterday: (by) => `Убрано вчера · ${by}`,
     cleanedDaysAgo: (days, by) =>
       `Убрано ${p(days, { one: 'день', few: 'дня', many: 'дней', other: 'дня' })} назад · ${by}`,
-    cleaned: 'Убрано',
     history: 'История уборок',
     edit: (number) => `Изменить номер ${number}`,
     remove: (number) => `Удалить номер ${number}`,
@@ -309,7 +308,6 @@ export const ru: Messages = {
     defaultStatus: { ok: 'В порядке', attention: 'Требует внимания', fix: 'Нужен ремонт' },
     who: {
       statusTitle: (unit, status) => `${unit}: ${status}`,
-      cleanTitle: (number) => `Генеральная уборка номера ${number}`,
       name: 'Ваше имя',
       note: 'Заметка',
       notePlaceholder: 'Что нужно сделать? (необязательно)',

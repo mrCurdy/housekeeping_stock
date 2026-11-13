@@ -14,17 +14,18 @@ import { roomLevels, viewRooms } from './rooms/roomView';
 import { useRoomView } from './rooms/useRoomView';
 
 /**
- * /rooms: one card per hotel room (level by level) with its unit statuses and last general
- * cleaning, under a search and a filter bar (level, sort, hide-green, full cards or compact tiles;
- * `rooms/roomView.ts`). In compact mode one tile at a time opens as its full card. Rooms
- * are added, and units, statuses, types and thresholds set up, by the admin in Settings.
+ * /rooms ("Room statuses", admin only; anyone else is redirected): one card per hotel room (level
+ * by level) with its note and unit statuses, under a search and a filter bar (level, the attention
+ * sort, hide-green, full cards or compact tiles; `rooms/roomView.ts`). In compact mode one tile at
+ * a time opens as its full card. Rooms are added, and units, statuses, types and thresholds set
+ * up, in Settings. General cleanings are on `/cleaning`.
  */
 export default function Rooms() {
   const { data, loading, loadError, reload } = useStock();
   const { can } = useAuth();
   const { t } = useI18n();
   const tx = t.rooms;
-  const settingsLink = can('setup') && (
+  const settingsLink = (
     <Link to="/settings" className={buttonVariants({ variant: 'outline' })}>
       {tx.openSettings}
     </Link>
@@ -63,7 +64,7 @@ export default function Rooms() {
               <EmptyState
                 icon={<LayoutList />}
                 title={tx.noUnits}
-                description={can('setup') ? tx.noUnitsHint : t.common.askAdmin}
+                description={tx.noUnitsHint}
                 action={settingsLink}
               />
             </Card>
@@ -84,7 +85,7 @@ export default function Rooms() {
               <EmptyState
                 icon={<DoorOpen />}
                 title={tx.empty}
-                description={can('setup') ? tx.emptyHint : t.common.askAdmin}
+                description={tx.emptyHint}
                 action={data.roomUnits.length > 0 && settingsLink}
               />
             </Card>

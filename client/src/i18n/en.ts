@@ -50,7 +50,7 @@ export const en = {
     closeMenu: 'Close menu',
     logout: 'Log out',
     settings: 'Settings',
-    rooms: 'Rooms',
+    rooms: 'Room statuses',
   },
 
   theme: {
@@ -282,8 +282,8 @@ export const en = {
   },
 
   rooms: {
-    title: 'Rooms',
-    description: 'What each room needs, and when it last had a general cleaning',
+    title: 'Room statuses',
+    description: 'What each room needs: the status of every unit',
     empty: 'No rooms yet',
     emptyHint: 'Add the rooms in Settings.',
     noUnits: 'No room units set up yet',
@@ -303,7 +303,6 @@ export const en = {
     cleanedYesterday: (by: string) => `Cleaned yesterday · ${by}`,
     cleanedDaysAgo: (days: number, by: string) =>
       `Cleaned ${p(days, { one: 'day', other: 'days' })} ago · ${by}`,
-    cleaned: 'Cleaned',
     history: 'Cleaning history',
     edit: (number: string) => `Edit room ${number}`,
     remove: (number: string) => `Delete room ${number}`,
@@ -313,7 +312,6 @@ export const en = {
     defaultStatus: { ok: 'OK', attention: 'Needs attention', fix: 'Needs fixing' },
     who: {
       statusTitle: (unit: string, status: string) => `${unit}: ${status}`,
-      cleanTitle: (number: string) => `General cleaning of room ${number}`,
       name: 'Your name',
       note: 'Note',
       notePlaceholder: 'What needs doing? (optional)',

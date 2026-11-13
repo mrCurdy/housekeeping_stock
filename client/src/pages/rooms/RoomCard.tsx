@@ -1,34 +1,21 @@
-import {
-  cleanThresholds,
-  cleaningLevel,
-  formatDate,
-  latestCleaning,
-  ROOM_NOTE_MAX,
-  roomStatusList,
-  unitStatusOf,
-  type Room,
-} from '@app/shared';
-import { ChevronDown, Pencil, Sparkles, Trash2, X } from 'lucide-react';
+import { ROOM_NOTE_MAX, roomStatusList, unitStatusOf, type Room } from '@app/shared';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Card, CardTitle, CommitTextarea, Input, Select } from '@/components/ui';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
-import { formatLongDate } from '@/lib/format';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
-import { cleaningText, roomExists, statusName, typeOptions } from './roomText';
+import { roomExists, statusName, typeOptions } from './roomText';
 import { WhoDialog } from './WhoDialog';
 
-/** Shown in the history expander. */
-const HISTORY_SHOWN = 10;
-
-type Pending = { unitId: string; statusId: string } | 'clean' | null;
+type Pending = { unitId: string; statusId: string } | null;
 
 /**
  * One room card: number and type (✎ edits them or deletes the card), its note, every master unit
- * with its status, and the general-cleaning line with "Cleaned" and the cleaning history.
- * Status changes and cleanings first ask who did it (`WhoDialog`). Opened from a compact tile it
+ * with its status (admin only: the `/rooms` page). A status change first asks who did it
+ * (`WhoDialog`). General cleanings live on the `/cleaning` page, not here. Opened from a compact tile it
  * gets `onClose` (an × that turns it back into the tile) and a `className` for the grid.
  */
 export function RoomCard({
@@ -40,13 +27,12 @@ export function RoomCard({
   onClose?: () => void;
   className?: string;
 }) {
-  const { data, updateRoom, removeRoom, setUnitStatus, markCleaned } = useStock();
+  const { data, updateRoom, removeRoom, setUnitStatus } = useStock();
   const { t, locale } = useI18n();
   const tx = t.rooms;
   const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const statuses = roomStatusList(data);
   const statusOptions = statuses.map((s) => ({
@@ -54,10 +40,6 @@ export function RoomCard({
     label: statusName(s, tx.defaultStatus),
   }));
   const type = data.roomTypes.find((rt) => rt.id === room.type);
-  const cleanings = data.cleanings[room.id] ?? [];
-  const last = latestCleaning(data, room.id);
-  // "Days ago" counts from the real today, not the date switcher's day
-  const level = cleaningLevel(last?.date, formatDate(new Date()), cleanThresholds(data.settings));
   const when = (at: string) =>
     new Date(at).toLocaleString(locale, {
       day: 'numeric',
@@ -78,12 +60,8 @@ export function RoomCard({
     }
   };
 
-  const pendingUnit =
-    pending && pending !== 'clean'
-      ? data.roomUnits.find((u) => u.id === pending.unitId)
-      : undefined;
-  const pendingStatus =
-    pending && pending !== 'clean' ? statuses.find((s) => s.id === pending.statusId) : undefined;
+  const pendingUnit = pending && data.roomUnits.find((u) => u.id === pending.unitId);
+  const pendingStatus = pending && statuses.find((s) => s.id === pending.statusId);
 
   return (
     <article aria-label={tx.roomNamed(room.number)} className={cn('min-w-0', className)}>
@@ -177,68 +155,9 @@ export function RoomCard({
             </ul>
           )}
         </div>
-
-        <div className="flex flex-col gap-2 border-t border-border px-5 py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                'h-2.5 w-2.5 shrink-0 rounded-full',
-                ROOM_COLOR_CLASSES[level.color].dot,
-              )}
-            />
-            <span
-              className={cn(
-                'min-w-0 flex-1 text-sm font-medium',
-                ROOM_COLOR_CLASSES[level.color].text,
-              )}
-            >
-              {cleaningText(level.days, last?.by ?? '', tx)}
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              leftIcon={<Sparkles className="h-4 w-4" />}
-              onClick={() => setPending('clean')}
-            >
-              {tx.cleaned}
-            </Button>
-          </div>
-          {cleanings.length > 0 && (
-            <>
-              <button
-                type="button"
-                aria-expanded={historyOpen}
-                className="focus-ring flex items-center gap-1 self-start rounded text-xs text-fg-muted hover:text-fg"
-                onClick={() => setHistoryOpen((open) => !open)}
-              >
-                <ChevronDown
-                  className={cn('h-3.5 w-3.5 transition-transform', historyOpen && 'rotate-180')}
-                />
-                {tx.history}
-              </button>
-              {historyOpen && (
-                <ol className="flex flex-col gap-0.5 text-xs text-fg-muted">
-                  {cleanings.slice(0, HISTORY_SHOWN).map((c, i) => (
-                    <li key={`${c.date}-${i}`}>{tx.setBy(formatLongDate(c.date, locale), c.by)}</li>
-                  ))}
-                </ol>
-              )}
-            </>
-          )}
-        </div>
       </Card>
 
-      {pending === 'clean' && (
-        <WhoDialog
-          title={tx.who.cleanTitle(room.number)}
-          onCancel={() => setPending(null)}
-          onConfirm={(by) => {
-            markCleaned(room.id, by);
-            setPending(null);
-          }}
-        />
-      )}
-      {pending && pending !== 'clean' && pendingUnit && pendingStatus && (
+      {pending && pendingUnit && pendingStatus && (
         <WhoDialog
           title={tx.who.statusTitle(pendingUnit.name, statusName(pendingStatus, tx.defaultStatus))}
           withNote

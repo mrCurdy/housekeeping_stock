@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { addDays, formatDate, type StockData } from '@app/shared';
-import { mockApp, stockFixture, today } from '@/test/fixtures';
+import { mockApp, stockFixture } from '@/test/fixtures';
 
 const daysAgo = (n: number) => formatDate(addDays(new Date(), -n));
 
@@ -54,9 +54,19 @@ describe('rooms page', () => {
     await renderApp();
     await screen.findByRole('heading', { level: 3, name: '2' });
     expect(titles()).toEqual(['10', '2']);
+    expect(screen.getAllByRole('link', { name: 'Room statuses' }).length).toBeGreaterThan(0);
     expect(within(card('2')).getByText('Double')).toBeInTheDocument();
     expect(within(card('2')).getByRole('textbox', { name: 'Room note 2' })).toHaveValue('Sea view');
-    expect(within(card('10')).getByText('No general cleaning yet')).toBeInTheDocument();
+  });
+
+  it('a card has no cleaning line, Cleaned button or history', async () => {
+    mockApp('admin', rooms({ cleanings: { r10: [{ date: daysAgo(1), by: 'Ann' }] } }));
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '10' });
+    expect(within(card('10')).queryByText(/Cleaned/)).toBeNull();
+    expect(within(card('2')).queryByText('No general cleaning yet')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cleaned' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cleaning history' })).toBeNull();
   });
 
   it('has no add-room form (rooms are added in Settings)', async () => {
@@ -120,81 +130,18 @@ describe('rooms page', () => {
     expect(within(card('10')).getByText(/Mari/)).toBeInTheDocument();
   });
 
-  it('needs a name before confirming', async () => {
+  it('needs a name before confirming a status', async () => {
     mockApp('admin', rooms());
     const user = userEvent.setup();
     await renderApp();
 
-    await user.click(
-      within(await screen.findByRole('article', { name: 'Room 10' })).getByRole('button', {
-        name: 'Cleaned',
-      }),
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Status of Bed in room 10' }),
+      'fix',
     );
     expect(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirm' }),
     ).toBeDisabled();
-  });
-
-  it('Cleaned → "Cleaned today · Name", and the name is remembered', async () => {
-    const fetch = mockApp('admin', rooms(), (method, path) =>
-      method === 'POST' && path === '/rooms/r10/cleanings'
-        ? { status: 201, body: [{ date: today, by: 'Mari' }] }
-        : undefined,
-    );
-    const user = userEvent.setup();
-    await renderApp();
-
-    await screen.findByRole('heading', { level: 3, name: '10' });
-    await user.click(within(card('10')).getByRole('button', { name: 'Cleaned' }));
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).queryByRole('textbox', { name: 'Note' })).toBeNull();
-    await user.type(within(dialog).getByRole('textbox', { name: 'Your name' }), 'Mari');
-    await user.click(within(dialog).getByRole('button', { name: 'Confirm' }));
-
-    expect(await within(card('10')).findByText('Cleaned today · Mari')).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith(
-      '/api/rooms/r10/cleanings',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ date: today, by: 'Mari' }),
-      }),
-    );
-
-    await user.click(within(card('2')).getByRole('button', { name: 'Cleaned' }));
-    expect(
-      within(screen.getByRole('dialog')).getByRole('textbox', { name: 'Your name' }),
-    ).toHaveValue('Mari');
-  });
-
-  it('colours the cleaning line by the thresholds', async () => {
-    mockApp(
-      'admin',
-      rooms({
-        rooms: [
-          { id: 'a', number: '1' },
-          { id: 'b', number: '2' },
-          { id: 'c', number: '3' },
-        ],
-        cleanings: {
-          a: [{ date: daysAgo(1), by: 'Ann' }],
-          b: [{ date: daysAgo(5), by: 'Bob' }],
-          c: [
-            { date: daysAgo(9), by: 'Cy' },
-            { date: daysAgo(20), by: 'Dee' },
-          ],
-        },
-        settings: { cleanGreenDays: 3, cleanYellowDays: 8 },
-      }),
-    );
-    const user = userEvent.setup();
-    await renderApp();
-
-    expect(await screen.findByText('Cleaned yesterday · Ann')).toHaveClass('text-status-green');
-    expect(screen.getByText('Cleaned 5 days ago · Bob')).toHaveClass('text-status-yellow');
-    expect(screen.getByText('Cleaned 9 days ago · Cy')).toHaveClass('text-status-red');
-
-    await user.click(within(card('3')).getByRole('button', { name: 'Cleaning history' }));
-    expect(within(card('3')).getByText(/Dee/)).toBeInTheDocument();
   });
 
   it('renames a card and deletes it after confirming', async () => {
@@ -485,7 +432,7 @@ describe('rooms compact tiles', () => {
     expect(card('2')).toBeInTheDocument();
   });
 
-  it('a tile shows the number, type and what its icons mean', async () => {
+  it('a tile shows the number, type and its unit status (no broom)', async () => {
     mockApp('admin', hotel());
     const user = userEvent.setup();
     await renderApp();
@@ -497,14 +444,10 @@ describe('rooms compact tiles', () => {
     expect(within(two).getByRole('img', { name: 'Units: Needs fixing' })).toHaveClass(
       'text-status-red',
     );
-    expect(within(two).getByRole('img', { name: 'No general cleaning yet' })).toHaveClass(
-      'text-status-red',
-    );
+    expect(within(two).getAllByRole('img')).toHaveLength(1);
     const ten = tile('10');
     expect(within(ten).getByRole('img', { name: 'Units: OK' })).toHaveClass('text-status-green');
-    expect(within(ten).getByRole('img', { name: 'Cleaned today · Bob' })).toHaveClass(
-      'text-status-green',
-    );
+    expect(within(ten).queryByRole('img', { name: 'Cleaned today · Bob' })).toBeNull();
   });
 
   it('no units → no wrench', async () => {
@@ -512,7 +455,7 @@ describe('rooms compact tiles', () => {
     const user = userEvent.setup();
     await renderApp();
     await toCompact(user);
-    expect(within(tile('2')).getAllByRole('img')).toHaveLength(1);
+    expect(within(tile('2')).queryAllByRole('img')).toHaveLength(0);
   });
 
   it('one tile opens as a full card at a time; × turns it back into a tile', async () => {
@@ -551,10 +494,10 @@ describe('rooms compact tiles', () => {
 
 // Last: the App's router is created once per file and keeps the /stock it was redirected to.
 describe('rooms page for a worker', () => {
-  it('a worker opening /rooms is redirected, and has no Rooms NAV entry', async () => {
+  it('a worker opening /rooms is redirected, and has no Room statuses NAV entry', async () => {
     mockApp('worker', rooms());
     await renderApp();
     await waitFor(() => expect(window.location.pathname).toBe('/stock'));
-    expect(screen.queryByRole('link', { name: 'Rooms' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Room statuses' })).toBeNull();
   });
 });

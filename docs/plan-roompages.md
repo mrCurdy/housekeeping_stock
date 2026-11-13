@@ -87,7 +87,7 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
   - Done. `viewCleaning` takes a `CleaningQuery` type (exported from `roomView.ts`). The now-unused
     `rooms.filter.cleanedNew` / `cleanedOld` texts were removed from en/et/ru here, not in step 3.
 
-- [ ] **3. Room statuses page (admin only)** (skills `ui`, `i18n`)
+- [x] **3. Room statuses page (admin only)** (skills `ui`, `i18n`)
   - `Rooms.tsx`: redirect to `/cleaning` without `setup` (route only exists after step 4: until
     then redirect to `/stock`, and step 4 changes it). NAV label "Room statuses" (`nav.rooms`
     text in en/et/ru), `perm: 'setup'`.
@@ -98,6 +98,11 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
   - Tests in `Rooms.test.tsx`: no cleaning line or Cleaned button on a card; tiles have no broom;
     the attention toggle still sorts; a worker opening `/rooms` is redirected.
   - Docs: `docs/structure.md` (`/rooms` section, file map).
+  - Done. The redirect and the attention-only `RoomFilters` were already in place (steps 1–2). The
+    page title is "Room statuses" too (`rooms.title`, et "Tubade olek", ru "Статусы номеров"), its
+    description no longer mentions cleanings. Removed `rooms.cleaned` and `rooms.who.cleanTitle`;
+    kept `rooms.history` (the `CleaningHistory` list's aria-label) and the `cleanedToday`/… texts
+    (`cleaningText`, for step 4). The worker "ask the admin" branches in `Rooms.tsx` are gone.
 
 - [ ] **4. Cleaning page** (skills `ui`, `i18n`, `auth`)
   - New `pages/Cleaning.tsx` (+ test), lazy route `/cleaning` in `App.tsx`, `NAV` entry

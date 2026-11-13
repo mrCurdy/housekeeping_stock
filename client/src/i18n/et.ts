@@ -47,7 +47,7 @@ export const et: Messages = {
     closeMenu: 'Sulge menüü',
     logout: 'Logi välja',
     settings: 'Seaded',
-    rooms: 'Toad',
+    rooms: 'Tubade olek',
   },
 
   theme: {
@@ -280,8 +280,8 @@ export const et: Messages = {
   },
 
   rooms: {
-    title: 'Toad',
-    description: 'Mis igas toas vajab tähelepanu ja millal oli viimane suurpuhastus',
+    title: 'Tubade olek',
+    description: 'Mis igas toas vajab tähelepanu: iga osa olek',
     empty: 'Tube pole veel',
     emptyHint: 'Lisa toad seadetes.',
     noUnits: 'Toa osi pole veel seadistatud',
@@ -301,7 +301,6 @@ export const et: Messages = {
     cleanedYesterday: (by) => `Koristatud eile · ${by}`,
     cleanedDaysAgo: (days, by) =>
       `Koristatud ${p(days, { one: 'päev', other: 'päeva' })} tagasi · ${by}`,
-    cleaned: 'Koristatud',
     history: 'Koristamise ajalugu',
     edit: (number) => `Muuda tuba ${number}`,
     remove: (number) => `Kustuta tuba ${number}`,
@@ -310,7 +309,6 @@ export const et: Messages = {
     defaultStatus: { ok: 'Korras', attention: 'Vajab tähelepanu', fix: 'Vajab parandamist' },
     who: {
       statusTitle: (unit, status) => `${unit}: ${status}`,
-      cleanTitle: (number) => `Toa ${number} suurpuhastus`,
       name: 'Sinu nimi',
       note: 'Märkus',
       notePlaceholder: 'Mida on vaja teha? (valikuline)',

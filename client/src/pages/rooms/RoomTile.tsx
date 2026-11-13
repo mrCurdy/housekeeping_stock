@@ -1,24 +1,20 @@
-import { cleanThresholds, cleaningLevel, formatDate, latestCleaning, type Room } from '@app/shared';
-import { Brush, Wrench } from 'lucide-react';
+import type { Room } from '@app/shared';
+import { Wrench } from 'lucide-react';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
-import { cleaningText, statusName } from './roomText';
+import { statusName } from './roomText';
 import { worstStatus } from './roomView';
 
 /**
- * A room as a small square tile (the compact view): number, type, a broom coloured by the general
- * cleaning and a wrench by the worst unit status (none without units). Tapping it opens the card.
+ * A room as a small square tile (the compact view): number, type and a wrench coloured by the worst
+ * unit status (none without units). Tapping it opens the card.
  */
 export function RoomTile({ room, onOpen }: { room: Room; onOpen: () => void }) {
   const { data } = useStock();
   const tx = useI18n().t.rooms;
   const type = data.roomTypes.find((rt) => rt.id === room.type);
-  const last = latestCleaning(data, room.id);
-  // counts from the real today, as on the card
-  const clean = cleaningLevel(last?.date, formatDate(new Date()), cleanThresholds(data.settings));
-  const cleanLabel = cleaningText(clean.days, last?.by ?? '', tx);
   const worst = worstStatus(data, room.id);
   const worstLabel = worst && tx.filter.unitsStatus(statusName(worst, tx.defaultStatus));
 
@@ -37,24 +33,15 @@ export function RoomTile({ room, onOpen }: { room: Room; onOpen: () => void }) {
           {type.name}
         </span>
       )}
-      <span className="flex items-center gap-2">
-        <Brush
+      {worst && worstLabel && (
+        <Wrench
           role="img"
-          aria-label={cleanLabel}
-          className={cn('h-4 w-4', ROOM_COLOR_CLASSES[clean.color].text)}
+          aria-label={worstLabel}
+          className={cn('h-4 w-4', ROOM_COLOR_CLASSES[worst.color].text)}
         >
-          <title>{cleanLabel}</title>
-        </Brush>
-        {worst && worstLabel && (
-          <Wrench
-            role="img"
-            aria-label={worstLabel}
-            className={cn('h-4 w-4', ROOM_COLOR_CLASSES[worst.color].text)}
-          >
-            <title>{worstLabel}</title>
-          </Wrench>
-        )}
-      </span>
+          <title>{worstLabel}</title>
+        </Wrench>
+      )}
     </button>
   );
 }
