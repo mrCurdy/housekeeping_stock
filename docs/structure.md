@@ -36,6 +36,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `prune.ts` (+ test): `pruneStock(data, keepFrom)` drops stock data before `keepFrom` and turns the day before it into a carried-over count (`m` = that day's total), so no later figure changes. The SQLite driver calls it (`prune`).
 - `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`, `itemCheckKey`/`checkTaskId` (ticks of checklist lines). Groups: `taskGroupList` (never empty), `groupOf`, `tasksByGroup`, `moveTaskTo` + `applyTaskMove` (drag/arrow reorder, also into another group), `removeTaskGroupIn`.
 - `rooms.ts` (+ test): room-card rules. `roomStatusList` (never empty: `DEFAULT_ROOM_STATUSES` while none is stored), `unitStatusOf` (missing = first status), `cleanThresholds`, `cleaningLevel(last, today, thresholds)` → `{ days, color }`, `latestCleaning`, `sortRooms` (natural), `removeUnitIn`/`removeStatusIn`/`removeTypeIn`/`removeRoomIn`, `pruneCleanings` (keeps each room's latest).
+- `names.ts` (+ test): names in several languages. `NAME_LANGS` (en/et/ru), `LocalizedNames`, `displayName(entity, lang)` (the override, else the base name), `cleanNames` (normalize), `renameIn(entity, name, lang?)` (the rename rule), `localizeNames(data, lang)` (the dataset as shown).
 - `dates.ts`: local `YYYY-MM-DD` helpers (`formatDate`, `parseDateLocal`, `addDays`, `todayLocal`, `dateRange`). `index.ts`: barrel.
 
 ### `server/src/` (Express 5)
@@ -121,7 +122,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `main.tsx`, `App.tsx`: the provider stack (I18n → Theme → Toast → Confirm → Auth → Date → Stock → Router) and the lazy route table.
 - `context/`:
   - `AuthContext.tsx`: the session check, QR `?key=` exchange, Login screen until signed in. `useAuth()` → `{ role, can, ready, logout }`: `can` reads the role permissions from `PermissionsContext.ts` (filled by `StockProvider` from `data.settings`, so the poll picks up changes; `ready` is false until the first load, and `AppShell`/`HomeRedirect` don't redirect before it).
-  - `StockContext.tsx` (**159**): the dataset, polling (`POLL_MS`: all of `GET /api/data` every 15 s, kept on purpose since stock data is pruned to ~30 days), `send()` and `edit(key, fn)` (`useStock()`). See the `ui` skill. `StockContext.test.tsx`: optimistic edit, failure → toast + reload, a stale poll can't overwrite an edit (`version`), no poll while typing, `setCount` rethrows.
+  - `StockContext.tsx` (**170**): the dataset (`data` with the names in the UI language via `localizeNames`, so pages read `.name`; `rawData` with every version, for Backup), polling (`POLL_MS`: all of `GET /api/data` every 15 s, kept on purpose since stock data is pruned to ~30 days), `send()` and `edit(key, fn)` (`useStock()`). See the `ui` skill. `StockContext.test.tsx`: optimistic edit, failure → toast + reload, a stale poll can't overwrite an edit (`version`), no poll while typing, `setCount` rethrows.
   - `stock/mutations.ts`: every mutation, grouped by area (setup, daily figures, checklist, settings, room cards, the rooms' master setup), built by `createMutations({ edit, send, data })` (`useMutations` memoizes it; a hook, so the React lint allows passing it `send`, which touches refs). `editData(prev, key, fn)` copies only the top-level key(s) an edit names; the rest is shared with the old dataset. `mutations.test.ts`.
   - `DateContext.tsx`: the selected day (−30…+7, locked in counter mode).
   - `I18nContext.tsx`: `useI18n()` → `{ t, locale, lang, setLang }`.
@@ -178,7 +179,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 `StockData` is also the backup file format. It's stored in SQLite tables (see the `sqlite-db` skill).
 
 ```
-items:        [{ id, name, multipliers: { [groupId]: qtyPerDeparture } }]
+items:        [{ id, name, names?, multipliers: { [groupId]: qtyPerDeparture } }]
 records:      { [itemId]: { [YYYY-MM-DD]: { c?, i?, m?, mc? } } }
 groups:       [{ id, name }]
 groupRecords: { [groupId]: { [YYYY-MM-DD]: { d } } }
@@ -191,13 +192,14 @@ notes:        { [YYYY-MM-DD]: string }                         // note for the n
 stockCards:   ['departures' | 'items' | 'overview']            // Stock page card order; [] = default, missing cards follow (stockCardOrder)
 settings:     { saluteText?, cleanGreenDays?, cleanYellowDays?, rolePermissions? } // app-wide preferences (key/value table; rolePermissions as JSON); missing = default (DEFAULT_SALUTE_TEXT, DEFAULT_CLEAN_DAYS 15/29, DEFAULT_ROLE_PERMISSIONS; never stored equal to it)
 rooms:        [{ id, number, type?, note? }]                   // room cards; shown level by level (sortByLevel); note ≤ ROOM_NOTE_MAX (500)
-roomTypes:    [{ id, name }]                                   // dropdown order
-roomUnits:    [{ id, name }]                                   // master layout every room shares, display order
-roomStatuses: [{ id, name, color }]                            // color ∈ ROOM_COLORS (10, green/yellow/red first); [] = DEFAULT_ROOM_STATUSES
+roomTypes:    [{ id, name, names? }]                                 // dropdown order
+roomUnits:    [{ id, name, names? }]                                 // master layout every room shares, display order
+roomStatuses: [{ id, name, color, names? }]                          // color ∈ ROOM_COLORS (10, green/yellow/red first); [] = DEFAULT_ROOM_STATUSES
 unitStatus:   { [roomId]: { [unitId]: { status, by, at, note? } } }  // current status only; missing = first status
 cleanings:    { [roomId]: [{ date, by }] }                     // newest first; older than HISTORY_DAYS pruned except each room's latest
 ```
 
+- **Names in several languages** (items, room types, room units, room statuses; not groups, count locations, task groups, room numbers or notes): `name` is the base name (what was first typed; old data and backups have only it), `names?: { en?, et?, ru? }` the per-language versions (`names.ts`). Every language without a version shows the base name (`displayName`). `normalizeStockData` drops blank versions and ones equal to the base. **Rename rule:** a rename sends the UI language (`lang` in the `PATCH` body) and changes only that version (`renameIn`; typing the base name again drops it); a create, or a body without `lang`, sets the base name. So the language the name was first typed in also gets a version on its first rename, and the base stays as the fallback. Stored as a nullable `names` JSON column (migration 7, which leaves the old names untouched).
 - **Record fields:**
   - `d`: departures for a group on that day.
   - `c`: extra consumption, added on top of auto consumption (there's no UI for it at the moment).

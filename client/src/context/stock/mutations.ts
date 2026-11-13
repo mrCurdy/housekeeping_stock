@@ -2,6 +2,7 @@ import {
   editTask,
   formatDate,
   removeRoomIn,
+  renameIn,
   removeStatusIn,
   removeTypeIn,
   removeUnitIn,
@@ -20,6 +21,8 @@ import {
   type Item,
   type ItemPatchInput,
   type Location,
+  type Localized,
+  type NameLang,
   type RecordPatchInput,
   type Room,
   type RoomColor,
@@ -138,17 +141,31 @@ export interface StockMutations {
 interface Deps {
   edit: Edit;
   send: Send;
+  /** The UI language: renaming an item, room unit, type or status changes only its version. */
+  lang?: NameLang;
   /** The current dataset, for mutations that compute the change before making it */
   data: StockData;
 }
 
-/** add / rename / remove for a list of named rows kept under `key`. */
+/** Renames `row` in place in `lang` (`renameIn`: only that language's version changes). */
+function renameRow(row: Localized, name: string, lang?: NameLang) {
+  const next = renameIn(row, name, lang);
+  row.name = next.name;
+  if (next.names) row.names = next.names;
+  else delete row.names;
+}
+
+/**
+ * add / rename / remove for a list of named rows kept under `key`. `localized`: the rows have
+ * per-language names, so a rename sends and changes only the current language's version.
+ */
 function named<T extends { id: string; name: string }>(
-  { edit, send }: Deps,
+  { edit, send, lang }: Deps,
   path: string,
   key: DataKey | DataKey[],
   list: (d: StockData) => T[],
   onRemove: (d: StockData, id: string) => void = () => {},
+  localized = false,
 ) {
   return {
     add: async (name: string) => {
@@ -159,9 +176,11 @@ function named<T extends { id: string; name: string }>(
     rename: (id: string, name: string) => {
       edit(key, (d) => {
         const row = list(d).find((r) => r.id === id);
-        if (row) row.name = name;
+        if (!row) return;
+        if (localized) renameRow(row, name, lang);
+        else row.name = name;
       });
-      void send(() => api.patch(`${path}/${id}`, { name }));
+      void send(() => api.patch(`${path}/${id}`, localized && lang ? { name, lang } : { name }));
     },
     remove: (id: string) => {
       edit(key, (d) => {
@@ -188,7 +207,7 @@ function moved<T>(list: readonly T[], from: number, to: number): T[] | null {
 
 /** Items, departure groups and count locations. */
 function setupMutations(deps: Deps) {
-  const { edit, send } = deps;
+  const { edit, send, lang } = deps;
   const items = named<Item>(
     deps,
     '/items',
@@ -214,13 +233,14 @@ function setupMutations(deps: Deps) {
       edit('items', (d) => {
         const item = d.items.find((i) => i.id === id);
         if (!item) return;
-        if (patch.name !== undefined) item.name = patch.name;
+        if (patch.name !== undefined) renameRow(item, patch.name, lang);
         for (const [g, qty] of Object.entries(patch.multipliers ?? {})) {
           if (qty) item.multipliers[g] = qty;
           else delete item.multipliers[g];
         }
       });
-      void send(() => api.patch(`/items/${id}`, patch));
+      const body = patch.name !== undefined && lang ? { ...patch, lang } : patch;
+      void send(() => api.patch(`/items/${id}`, body));
     },
     addGroup: groups.add,
     renameGroup: groups.rename,
@@ -422,13 +442,14 @@ function roomMutations({ edit, send }: Deps) {
 
 /** The rooms' master setup (Settings): units, room types and statuses. */
 function roomSetupMutations(deps: Deps) {
-  const { edit, send, data } = deps;
+  const { edit, send, data, lang } = deps;
   const units = named<RoomUnit>(
     deps,
     '/room-units',
     ['roomUnits', 'unitStatus'],
     (d) => d.roomUnits,
     (d, id) => removeUnitIn(d, id),
+    true,
   );
   const types = named<RoomType>(
     deps,
@@ -436,6 +457,7 @@ function roomSetupMutations(deps: Deps) {
     ['roomTypes', 'rooms'],
     (d) => d.roomTypes,
     (d, id) => removeTypeIn(d, id),
+    true,
   );
   /** Moves a row of a master list and sends the new order. */
   const move =
@@ -469,9 +491,15 @@ function roomSetupMutations(deps: Deps) {
     },
     updateRoomStatus: (id: string, patch: RoomStatusPatchInput) => {
       edit('roomStatuses', (d) => {
-        d.roomStatuses = roomStatusList(d).map((s) => (s.id === id ? { ...s, ...patch } : s));
+        d.roomStatuses = roomStatusList(d).map((s) => {
+          if (s.id !== id) return s;
+          const next = { ...s, ...(patch.color && { color: patch.color }) };
+          if (patch.name !== undefined) renameRow(next, patch.name, lang);
+          return next;
+        });
       });
-      void send(() => api.patch(`/room-statuses/${id}`, patch));
+      const body = patch.name !== undefined && lang ? { ...patch, lang } : patch;
+      void send(() => api.patch(`/room-statuses/${id}`, body));
     },
     removeRoomStatus: (id: string) => {
       // The last one stays (the server would answer 409)
@@ -500,6 +528,6 @@ export function createMutations(deps: Deps): StockMutations {
 }
 
 /** `createMutations`, rebuilt only when one of its inputs changes. */
-export function useMutations({ edit, send, data }: Deps): StockMutations {
-  return useMemo(() => createMutations({ edit, send, data }), [edit, send, data]);
+export function useMutations({ edit, send, data, lang }: Deps): StockMutations {
+  return useMemo(() => createMutations({ edit, send, data, lang }), [edit, send, data, lang]);
 }

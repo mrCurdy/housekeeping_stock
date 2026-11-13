@@ -164,10 +164,10 @@ describe('Settings: room cards setup', () => {
     const name = await screen.findByLabelText('Status name OK');
     await userEvent.clear(name);
     await userEvent.type(name, 'Fine{Enter}');
-    expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([{ name: 'Fine' }]);
+    expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([{ name: 'Fine', lang: 'en' }]);
     await userEvent.selectOptions(screen.getByLabelText('Colour of Fine'), 'Blue');
     expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([
-      { name: 'Fine' },
+      { name: 'Fine', lang: 'en' },
       { color: 'blue' },
     ]);
   });

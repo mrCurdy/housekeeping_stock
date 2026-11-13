@@ -1,6 +1,7 @@
 import {
   createStockMath,
   emptyStockData,
+  localizeNames,
   type BackupInput,
   type StockData,
   type StockMath,
@@ -38,7 +39,13 @@ import {
  * devices show up; that is skipped while a request is pending or an input has focus.
  */
 interface StockApi extends StockMutations {
+  /**
+   * The dataset as shown: item, room type, unit and status names in the current UI language
+   * (`localizeNames`). Renames go through the mutations, which change only that language.
+   */
   data: StockData;
+  /** The dataset as stored, every name version included (Backup). */
+  rawData: StockData;
   loading: boolean;
   /** Set when the first load failed */
   loadError: string | null;
@@ -60,7 +67,7 @@ const isTyping = () => {
 
 export function StockProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { minDate } = useSelectedDate();
   const [data, setData] = useState<StockData>(emptyStockData);
   const [loading, setLoading] = useState(true);
@@ -130,11 +137,13 @@ export function StockProvider({ children }: { children: ReactNode }) {
     [reload, toast, t],
   );
 
-  const mutations = useMutations({ edit, send, data });
+  const mutations = useMutations({ edit, send, data, lang });
+  const shown = useMemo(() => localizeNames(data, lang), [data, lang]);
 
   const value = useMemo<StockApi>(
     () => ({
-      data,
+      data: shown,
+      rawData: data,
       loading,
       loadError,
       math: createStockMath(data, { minDateStr: minDate }),
@@ -147,7 +156,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
         if (restored) setData(restored);
       },
     }),
-    [data, loading, loadError, minDate, reload, send, mutations],
+    [data, shown, loading, loadError, minDate, reload, send, mutations],
   );
 
   const rolePermissions = data.settings.rolePermissions;

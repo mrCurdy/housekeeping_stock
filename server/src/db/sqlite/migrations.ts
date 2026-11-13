@@ -123,4 +123,15 @@ export const migrations: { id: number; name: string; sql: string }[] = [
       UPDATE sessions SET role = 'housekeeper' WHERE role = 'worker';
     `,
   },
+  {
+    // Per-language name versions as JSON ({ en?, et?, ru? }); NULL = none. `name` stays the base.
+    id: 7,
+    name: 'localized names',
+    sql: `
+      ALTER TABLE items ADD COLUMN names TEXT;
+      ALTER TABLE room_types ADD COLUMN names TEXT;
+      ALTER TABLE room_units ADD COLUMN names TEXT;
+      ALTER TABLE room_statuses ADD COLUMN names TEXT;
+    `,
+  },
 ];

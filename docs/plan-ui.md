@@ -233,7 +233,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     fireworks play only when the chosen day is today. On phones Cancel hides (the × closes) so the
     two buttons share one row. `markCleaned(id, by, date?)` inserts in date order.
 
-- [ ] **9. Names entered in several languages** (skills `sqlite-db`, `ui`, `i18n`)
+- [x] **9. Names entered in several languages** (skills `sqlite-db`, `ui`, `i18n`)
   - Request (from the user): user-entered names can have a version per UI language (et/en/ru).
     Example: the admin, with the UI in Estonian, adds a stock item or room unit with an Estonian
     name; every language shows that name. Switching the UI to English and renaming saves the
@@ -261,6 +261,14 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Tests: shared helper and normalize; server: renaming in en keeps et, backup/restore round
     trip; client: switching language shows the right version and falls back to the base name.
   - Docs: `docs/structure.md` (data model), the `sqlite-db` and `i18n` skills.
+
+  - Done: scope = stock items, room types, room units and room statuses (`names?` on each; groups,
+    count locations, task groups, room numbers and notes stay single). Rename rule: a rename
+    always writes the current UI language's version (`renameIn`; a value equal to the base drops
+    it); only a create or a body without `lang` sets the base name, so the language the name was
+    first typed in also gets an override on its first rename. Storage: migration 7 adds a nullable
+    `names` JSON column. Client: `useStock().data` is already localized (`localizeNames`), so pages
+    keep reading `.name`; `rawData` (all versions) is what Backup downloads.
 
 ## Token rules for these sessions
 

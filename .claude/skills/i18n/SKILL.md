@@ -26,7 +26,7 @@ The server stays English. `apiErrorMessage(err, t)` in `lib/api.ts` maps error c
 6. Text with markup inside (e.g. a `<strong>`) is split into parts (`howTo: { before, after }`), not HTML strings.
 7. Dates: always pass `locale` from `useI18n()` (`formatLongDate(date, locale)`, `toLocaleDateString(locale, …)`, and add `locale` to the `useMemo` deps). Never `undefined`.
 8. Plain functions outside React (`lib/excel.ts`, `apiErrorMessage`) take `t` (or a section like `t.excel`) as a parameter.
-9. User data is never translated: item, group and room names are shown as typed. Only fallbacks like `t.common.unnamedItem` are.
+9. User data is never translated: item, group and room names are shown as typed. Only fallbacks like `t.common.unnamedItem` are. Item, room type, room unit and room status names can have a version per language typed by the admin (`names`, see `docs/structure.md`): `useStock().data` already shows the current language's version, and a rename through the `StockContext` mutations saves only that language. Read `.name` from `data`; use `displayName(entity, lang)` only on data that didn't come from `useStock().data`, and `rawData` where every version must be kept (Backup).
 10. Run `npm run lint && npm run typecheck && npm test`. If the text is on a phone screen (Inventory count), check that the Russian version fits: it is usually the longest.
 
 ## Glossary (keep it consistent)

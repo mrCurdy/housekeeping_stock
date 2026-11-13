@@ -15,7 +15,7 @@ import { hasExcelData } from '@/lib/excelRows';
 
 /** Settings card: Excel history, Backup (JSON download) and Restore (JSON upload, `can('restore')`). */
 export function DataCard() {
-  const { data, math } = useStock();
+  const { data, rawData, math } = useStock();
   const { today, minDate } = useSelectedDate();
   const toast = useToast();
   const confirm = useConfirm();
@@ -41,9 +41,9 @@ export function DataCard() {
   };
 
   const backup = () => {
-    if (!hasData(data)) return toast.info(t.data.noBackupData);
+    if (!hasData(rawData)) return toast.info(t.data.noBackupData);
     downloadBlob(
-      new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+      new Blob([JSON.stringify(rawData, null, 2)], { type: 'application/json' }),
       `stock_backup_${formatDate(new Date())}.json`,
     );
   };

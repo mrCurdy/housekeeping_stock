@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   emptyStockData,
   removeStatusIn,
+  renameIn,
   type Room,
   type RoomStatus,
   type RoomType,
@@ -147,10 +148,11 @@ export function createRoomStatuses(ctx: Ctx): RoomStatusRepo {
         const list = readRoomStatuses();
         const status = list.find((s) => s.id === id);
         if (!status) return null;
-        if (patch.name !== undefined) status.name = patch.name;
-        if (patch.color !== undefined) status.color = patch.color;
+        const at = list.indexOf(status);
+        if (patch.name !== undefined) list[at] = renameIn(status, patch.name, patch.lang);
+        if (patch.color !== undefined) list[at]!.color = patch.color;
         writeRoomStatuses(list);
-        return status;
+        return list[at]!;
       });
     },
     async delete(id) {

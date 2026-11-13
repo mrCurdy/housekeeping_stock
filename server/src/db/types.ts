@@ -28,6 +28,7 @@ import type {
   TaskPatchInput,
   UnitStatus,
   UnitStatusInput,
+  NameLang,
 } from '@app/shared';
 
 /**
@@ -38,7 +39,8 @@ import type {
 
 export interface NamedRepo<T> {
   create(name: string): Promise<T>;
-  rename(id: string, name: string): Promise<T | null>;
+  /** `lang`: rename only that language's version (lists with localized names); missing = the base name. */
+  rename(id: string, name: string, lang?: NameLang): Promise<T | null>;
   delete(id: string): Promise<boolean>;
 }
 

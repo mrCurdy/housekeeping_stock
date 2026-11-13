@@ -6,3 +6,4 @@ export * from './prune';
 export * from './checklist';
 export * from './auth';
 export * from './rooms';
+export * from './names';

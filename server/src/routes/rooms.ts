@@ -44,8 +44,8 @@ function orderedRoutes<T>(r: Router, path: string, repo: OrderedRepo<T>, what: s
     res.json(await repo.reorder((req.body as IdOrderInput).ids));
   });
   r.patch(`${path}/:id`, setup, validateBody(roomNameSchema), async (req, res) => {
-    const name = (req.body as RoomNameInput).name;
-    res.json(found(await repo.rename(param(req, 'id'), name), what));
+    const { name, lang } = req.body as RoomNameInput;
+    res.json(found(await repo.rename(param(req, 'id'), name, lang), what));
   });
   r.delete(`${path}/:id`, setup, async (req, res) => {
     found(await repo.delete(param(req, 'id')), what);

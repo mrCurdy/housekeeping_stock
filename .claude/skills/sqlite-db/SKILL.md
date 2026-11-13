@@ -14,11 +14,11 @@ and shared helpers in `createRows`, `namedRepo`), one repo file per area (`items
 `api.test.ts` uses one DB for the whole file: a new test there creates its own records, since earlier
 tests' data is still present.
 
-## Schema (migrations 1–6; 6 renamed the `worker` PIN and sessions to `housekeeper`)
+## Schema (migrations 1–7; 6 renamed the `worker` PIN and sessions to `housekeeper`; 7 added `names`)
 
 | table                          | columns                                                              | notes                                                                                                                                                                                                                                      |
 | ------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `items`                        | `id, name, pos`                                                      | `pos` = display order                                                                                                                                                                                                                      |
+| `items`                        | `id, name, pos, names`                                               | `pos` = display order; `names` (migration 7, also on `room_types`, `room_units`, `room_statuses`) = the per-language versions as JSON, NULL = none (`LOCALIZED_TABLES`, `toLocalized`, `namesJson`); renames go through `renameIn`         |
 | `multipliers`                  | `item_id, group_id, qty`                                             | PK (item, group); only qty > 0 stored                                                                                                                                                                                                      |
 | `records`                      | `item_id, date, c, i, m, mc`                                         | NULL = not entered; no all-NULL rows                                                                                                                                                                                                       |
 | `groups`                       | `id, name, pos`                                                      |                                                                                                                                                                                                                                            |
@@ -50,6 +50,10 @@ in a transaction and is recorded in `_migrations`. For a new column use `ALTER T
 with a default, then update the row interface, `snapshot()` and `fill()`.
 
 ## Row mapping
+
+- Names in several languages: `name` is the base name and is never rewritten by a language rename;
+  `namedRepo.rename(id, name, lang?)` and the item/status updates apply `renameIn` and write both
+  columns. A new localized list goes in `LOCALIZED_TABLES` (read with `readNamed`, written by `fill`).
 
 - Row interfaces (`RecordRow`, `TaskRow`…, in `rows.ts`) are snake_case as stored; map them to the shared types
   in the driver (`toTask`, `taskParams`). Missing optional fields are `NULL` in SQL and absent

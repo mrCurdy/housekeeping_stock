@@ -1,4 +1,5 @@
 import type { RolePermissions } from './auth';
+import type { LocalizedNames } from './names';
 /**
  * The whole dataset, as stored in data/db.json and returned by GET /api/data.
  * Dates are local-time 'YYYY-MM-DD' strings (see dates.ts), so string comparison sorts them.
@@ -7,6 +8,8 @@ import type { RolePermissions } from './auth';
 export interface Item {
   id: string;
   name: string;
+  /** Per-language versions of the name (`names.ts`). */
+  names?: LocalizedNames;
   /** Items used per departure, per group: { [groupId]: qty } */
   multipliers: Record<string, number>;
 }
@@ -136,12 +139,14 @@ export interface Room {
 export interface RoomType {
   id: string;
   name: string;
+  names?: LocalizedNames;
 }
 
 /** A part of a room (bed, shower…) whose status is tracked. */
 export interface RoomUnit {
   id: string;
   name: string;
+  names?: LocalizedNames;
 }
 
 /** Status colours: the 3 main ones (ok, needs attention, needs fixing), then 7 additional ones. */
@@ -162,6 +167,7 @@ export type RoomColor = (typeof ROOM_COLORS)[number];
 export interface RoomStatus {
   id: string;
   name: string;
+  names?: LocalizedNames;
   color: RoomColor;
 }
 

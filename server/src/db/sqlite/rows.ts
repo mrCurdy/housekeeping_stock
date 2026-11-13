@@ -8,6 +8,9 @@ import {
   type Group,
   type Item,
   type Location,
+  type LocalizedNames,
+  type NameLang,
+  renameIn,
   type Room,
   type RoomStatus,
   roomStatusList,
@@ -26,6 +29,24 @@ export interface NamedRow {
   id: string;
   name: string;
 }
+/** A row of a table with per-language names (`LOCALIZED_TABLES`): `names` is JSON or NULL. */
+export interface LocalizedRow extends NamedRow {
+  names: string | null;
+}
+/** Tables whose names have per-language versions (migration 7). */
+export const LOCALIZED_TABLES = new Set<string>([
+  'items',
+  'room_types',
+  'room_units',
+  'room_statuses',
+]);
+export const toLocalized = <R extends LocalizedRow>({ names, ...rest }: R) => ({
+  ...rest,
+  ...(names && { names: JSON.parse(names) as LocalizedNames }),
+});
+export const namesJson = (names: LocalizedNames | undefined) =>
+  names && Object.keys(names).length ? JSON.stringify(names) : null;
+
 export interface MultiplierRow {
   item_id: string;
   group_id: string;
@@ -189,9 +210,11 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     } else run('DELETE FROM settings WHERE key = ?', key);
   };
 
-  /** A { id, name } list in display order. */
+  /** A { id, name } list in display order (with `names` where the table has them). */
   const readNamed = (table: NamedTable) =>
-    all<NamedRow>(`SELECT id, name FROM ${table} ORDER BY pos`);
+    LOCALIZED_TABLES.has(table)
+      ? all<LocalizedRow>(`SELECT id, name, names FROM ${table} ORDER BY pos`).map(toLocalized)
+      : all<NamedRow>(`SELECT id, name FROM ${table} ORDER BY pos`);
   /** Puts the listed ids first, in that order (unknown ids are ignored); returns the list. */
   const reorderRows = <T extends { id: string }>(table: string, rows: T[], ids: string[]) => {
     const rank = new Map(ids.map((id, n) => [id, n]));
@@ -211,12 +234,16 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
   /** The statuses in order; the defaults while none is stored. Never empty. */
   const readRoomStatuses = () =>
     roomStatusList({
-      roomStatuses: all<RoomStatus>('SELECT id, name, color FROM room_statuses ORDER BY pos'),
+      roomStatuses: all<LocalizedRow & { color: RoomStatus['color'] }>(
+        'SELECT id, name, color, names FROM room_statuses ORDER BY pos',
+      ).map(toLocalized),
     });
   const writeRoomStatuses = (list: RoomStatus[]) => {
     run('DELETE FROM room_statuses');
-    const stmt = prepare('INSERT INTO room_statuses (id, name, color, pos) VALUES (?, ?, ?, ?)');
-    list.forEach((s, pos) => stmt.run(s.id, s.name, s.color, pos));
+    const stmt = prepare(
+      'INSERT INTO room_statuses (id, name, color, names, pos) VALUES (?, ?, ?, ?, ?)',
+    );
+    list.forEach((s, pos) => stmt.run(s.id, s.name, s.color, namesJson(s.names), pos));
   };
   const readCleanings = (roomId: string) =>
     all<CleaningRow>(
@@ -259,8 +286,9 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
 
   const hasItem = (id: string) => !!get('SELECT 1 FROM items WHERE id = ?', id);
   const readItem = (id: string): Item | null => {
-    const row = get<NamedRow>('SELECT id, name FROM items WHERE id = ?', id);
-    if (!row) return null;
+    const raw = get<LocalizedRow>('SELECT id, name, names FROM items WHERE id = ?', id);
+    if (!raw) return null;
+    const row = toLocalized(raw);
     const multipliers = Object.fromEntries(
       all<MultiplierRow>('SELECT * FROM multipliers WHERE item_id = ? ORDER BY rowid', id).map(
         (m) => [m.group_id, m.qty],
@@ -272,8 +300,8 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
   const snapshot = (): StockData => {
     const data = emptyStockData();
     const items = new Map<string, Item>();
-    for (const r of all<NamedRow>('SELECT id, name FROM items ORDER BY pos')) {
-      const item: Item = { id: r.id, name: r.name, multipliers: {} };
+    for (const r of readNamed('items')) {
+      const item: Item = { ...r, multipliers: {} };
       items.set(r.id, item);
       data.items.push(item);
     }
@@ -310,7 +338,9 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     data.rooms = all<RoomRow>('SELECT * FROM rooms ORDER BY rowid').map(toRoom);
     data.roomTypes = readNamed('room_types');
     data.roomUnits = readNamed('room_units');
-    data.roomStatuses = all<RoomStatus>('SELECT id, name, color FROM room_statuses ORDER BY pos');
+    data.roomStatuses = all<LocalizedRow & { color: RoomStatus['color'] }>(
+      'SELECT id, name, color, names FROM room_statuses ORDER BY pos',
+    ).map(toLocalized);
     for (const r of all<UnitStatusRow>('SELECT * FROM unit_status ORDER BY rowid')) {
       (data.unitStatus[r.room_id] ??= {})[r.unit_id] = {
         status: r.status_id,
@@ -328,9 +358,14 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
   /** Deletes everything and inserts `data` (no backup, no transaction: callers wrap it). */
   const fill = (data: StockData) => {
     for (const table of DATA_TABLES) run(`DELETE FROM ${table}`);
-    const named = (table: NamedTable, rows: NamedRow[]) => {
-      const stmt = prepare(`INSERT INTO ${table} (id, name, pos) VALUES (?, ?, ?)`);
-      rows.forEach((r, pos) => stmt.run(r.id, r.name, pos));
+    const named = (table: NamedTable, rows: (NamedRow & { names?: LocalizedNames })[]) => {
+      if (LOCALIZED_TABLES.has(table)) {
+        const stmt = prepare(`INSERT INTO ${table} (id, name, names, pos) VALUES (?, ?, ?, ?)`);
+        rows.forEach((r, pos) => stmt.run(r.id, r.name, namesJson(r.names), pos));
+      } else {
+        const stmt = prepare(`INSERT INTO ${table} (id, name, pos) VALUES (?, ?, ?)`);
+        rows.forEach((r, pos) => stmt.run(r.id, r.name, pos));
+      }
     };
     named('items', data.items);
     named('groups', data.groups);
@@ -434,8 +469,21 @@ export const namedRepo = <T extends Group | Location | TaskGroup | RoomType | Ro
   table: NamedTable,
   onDelete: (id: string) => void,
 ): NamedRepo<T> => {
-  const { run, write } = ctx;
+  const { run, get, write } = ctx;
   const { nextPos } = createRows(ctx);
+  /** In a table with per-language names, `lang` renames only that version (`renameIn`). */
+  const renameLocalized = (id: string, name: string, lang?: NameLang) => {
+    const row = get<LocalizedRow>(`SELECT id, name, names FROM ${table} WHERE id = ?`, id);
+    if (!row) return null;
+    const next = renameIn(toLocalized(row), name, lang);
+    run(
+      `UPDATE ${table} SET name = ?, names = ? WHERE id = ?`,
+      next.name,
+      namesJson(next.names),
+      id,
+    );
+    return next as T;
+  };
   return {
     async create(name) {
       return write(() => {
@@ -444,12 +492,13 @@ export const namedRepo = <T extends Group | Location | TaskGroup | RoomType | Ro
         return row as T;
       });
     },
-    async rename(id, name) {
-      return write(() =>
-        run(`UPDATE ${table} SET name = ? WHERE id = ?`, name, id).changes
+    async rename(id, name, lang) {
+      return write(() => {
+        if (LOCALIZED_TABLES.has(table)) return renameLocalized(id, name, lang);
+        return run(`UPDATE ${table} SET name = ? WHERE id = ?`, name, id).changes
           ? ({ id, name } as T)
-          : null,
-      );
+          : null;
+      });
     },
     async delete(id) {
       return write(() => {

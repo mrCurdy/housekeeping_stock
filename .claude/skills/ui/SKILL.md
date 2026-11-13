@@ -30,7 +30,7 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
    - Use `send(..., { rethrow: true })` and `await` it only when the page shows its own error (the counter rows).
    - When the server answers with the merged day (counts, checks), write that answer into the state.
    - Name lists use the `named()` helper (add/rename/remove).
-4. **Component**: `const { data, math, setThing } = useStock()`. Derived stock figures always come from
+4. **Component**: `const { data, math, setThing } = useStock()`. `data` shows item/room type/unit/status names in the UI language (`localizeNames`); `rawData` keeps every version (Backup only). Derived stock figures always come from
    `math` (`calculateTotal`, `autoConsumption`, `series`). Totals are never stored.
 
 ## A new page
