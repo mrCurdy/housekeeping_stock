@@ -24,6 +24,11 @@ of data already loaded: no server, storage or API change.
   - **Needs attention first:** by the room's worst unit status colour: red, then yellow, then the
     7 extra colours, then all-green last.
   - Ties always fall back to room number.
+  - **Default order (no sort active) is level by level** (added by the user after step 1): first by
+    level (`roomLevel`, natural order, so level `0` comes first), then by number inside the level:
+    001, 002, 003, 101 … 112, 201 … With 3-digit numbers this matches the natural sort, but grouping
+    by level first keeps odd numbers (`99`, `1010`) with their level. The "All rooms" view and the
+    tie-breaks use this order too.
 - **Hide all-green rooms:** an independent toggle. It hides a room when every unit's status
   (`unitStatusOf`, so unstored = the first status) has colour `green`. Only unit statuses count, not
   the cleaning colour. Shown only when units exist.
@@ -44,7 +49,7 @@ of data already loaded: no server, storage or API change.
     - `roomUrgency(data, roomId)`: worst unit colour → 3 red, 2 yellow, 1 other, 0 green;
     - `allGreen(data, roomId)`;
     - `viewRooms(data, view)` with `view = { level: string | null, sort: 'number' | 'cleanedNew'
-      | 'cleanedOld' | 'attention', hideGreen: boolean }`, using `sortRooms`, `latestCleaning`,
+| 'cleanedOld' | 'attention', hideGreen: boolean }`, using `sortRooms`, `latestCleaning`,
       `unitStatusOf` and `roomStatusList` from `@app/shared`.
   - Tests:
     - levels from mixed numbers;
@@ -61,6 +66,10 @@ of data already loaded: no server, storage or API change.
     `rooms.view`), with the invalid-level fallback.
   - `Rooms.tsx`: render `RoomFilters` above the grid when there are rooms, and the grid from
     `viewRooms`. Add the "No rooms match" empty state with Show all.
+  - `roomView.ts`: the default order (sort `'number'`) and every tie-break become level first, then
+    number (see Decisions). Tests in `roomView.test.ts`: `['112', '003', '101', '001', '002']` →
+    `001, 002, 003, 101, 112`; `99` (level `9`) sorts after `205` (level `2`); a level filter
+    keeps that order.
   - Text in en/et/ru under `rooms.filter.*`.
   - Tests in `pages/Rooms.test.tsx`:
     - level buttons appear from the rooms, and pressing one shows only that level;
