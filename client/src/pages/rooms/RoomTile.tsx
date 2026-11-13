@@ -4,6 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
+import { useUntranslated } from '@/lib/untranslated';
 import { statusName } from './roomText';
 import { worstStatus } from './roomView';
 
@@ -14,6 +15,7 @@ import { worstStatus } from './roomView';
 export function RoomTile({ room, onOpen }: { room: Room; onOpen: () => void }) {
   const { data } = useStock();
   const tx = useI18n().t.rooms;
+  const untranslated = useUntranslated();
   const type = data.roomTypes.find((rt) => rt.id === room.type);
   const worst = worstStatus(data, room.id);
   const worstLabel = worst && tx.filter.unitsStatus(statusName(worst, tx.defaultStatus));
@@ -29,7 +31,10 @@ export function RoomTile({ room, onOpen }: { room: Room; onOpen: () => void }) {
         {room.number}
       </span>
       {type && (
-        <span className="max-w-full truncate text-xs text-fg-muted" title={type.name}>
+        <span
+          className={cn('max-w-full truncate text-xs text-fg-muted', untranslated(type).className)}
+          title={untranslated(type).title ?? type.name}
+        >
           {type.name}
         </span>
       )}

@@ -2,7 +2,9 @@ import { CommitInput, EmptyState, Modal } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
+import { cn } from '@/lib/cn';
 import { parseQty } from '@/lib/numbers';
+import { useUntranslated } from '@/lib/untranslated';
 
 /** How many of each item one departure of a group uses. */
 export function GroupItemsModal({
@@ -15,6 +17,7 @@ export function GroupItemsModal({
   const { data, updateItem } = useStock();
   const toast = useToast();
   const { t } = useI18n();
+  const untranslated = useUntranslated();
   const group = data.groups.find((g) => g.id === groupId);
 
   return (
@@ -29,7 +32,12 @@ export function GroupItemsModal({
         {group &&
           data.items.map((item) => (
             <label key={item.id} className="flex items-center justify-between gap-4">
-              <span className="text-sm font-medium">{item.name || t.common.unnamedItem}</span>
+              <span
+                title={untranslated(item).title}
+                className={cn('text-sm font-medium', untranslated(item).className)}
+              >
+                {item.name || t.common.unnamedItem}
+              </span>
               <CommitInput
                 type="number"
                 min={0}

@@ -32,6 +32,10 @@ function useCommit(value: Value, onCommit: (text: string) => void) {
       if (draft !== null && draft !== shown) onCommit(draft);
       setDraft(null);
     },
+    /** onCommit with the unchanged text (an explicit Enter); a changed one is left to commit(). */
+    confirm: () => {
+      if (draft === null || draft === shown) onCommit(shown);
+    },
   };
 }
 
@@ -39,14 +43,23 @@ export interface CommitInputProps extends Omit<ComponentProps<typeof Input>, 'va
   value: Value;
   /** Called with the typed text on blur / Enter (and on unmount), only if it changed. */
   onCommit: (text: string) => void;
+  /** Enter calls onCommit even when the text is unchanged (confirming it, e.g. a translation). */
+  confirmUnchanged?: boolean;
 }
 
 /**
  * An input that edits freely and saves once: on blur, Enter, or when it unmounts (e.g. a page change).
  * Escape restores the saved value. While not focused it follows `value`, so remote changes show up.
  */
-export function CommitInput({ value, onCommit, onBlur, onKeyDown, ...props }: CommitInputProps) {
-  const { text, setDraft, commit } = useCommit(value, onCommit);
+export function CommitInput({
+  value,
+  onCommit,
+  confirmUnchanged,
+  onBlur,
+  onKeyDown,
+  ...props
+}: CommitInputProps) {
+  const { text, setDraft, commit, confirm } = useCommit(value, onCommit);
   return (
     <Input
       {...props}
@@ -57,7 +70,10 @@ export function CommitInput({ value, onCommit, onBlur, onKeyDown, ...props }: Co
         onBlur?.(e);
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Enter') {
+          if (confirmUnchanged) confirm();
+          e.currentTarget.blur();
+        }
         if (e.key === 'Escape') setDraft(null);
         onKeyDown?.(e);
       }}

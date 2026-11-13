@@ -420,7 +420,7 @@ export function normalizeStockData(raw: {
 
 /** `{ names }` when the entity has real per-language versions, else nothing. */
 const withNames = (e: { name: string; names?: LocalizedNames }) => {
-  const n = cleanNames(e.names, e.name);
+  const n = cleanNames(e.names);
   return n ? { names: n } : {};
 };
 

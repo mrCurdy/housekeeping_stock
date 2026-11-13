@@ -10,6 +10,8 @@ export interface Item {
   name: string;
   /** Per-language versions of the name (`names.ts`). */
   names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
   /** Items used per departure, per group: { [groupId]: qty } */
   multipliers: Record<string, number>;
 }
@@ -142,6 +144,8 @@ export interface RoomType {
   id: string;
   name: string;
   names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
 }
 
 /** A part of a room (bed, shower…) whose status is tracked. */
@@ -149,6 +153,8 @@ export interface RoomUnit {
   id: string;
   name: string;
   names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
   /** The `RoomUnitGroup` it is listed in. Missing or unknown = the default group (`unitGroupOf`). */
   group?: string;
 }
@@ -159,6 +165,8 @@ export interface RoomUnitGroup {
   /** '' = unnamed (the group old units were put in); the client shows a translated title. */
   name: string;
   names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
 }
 
 /** The group units without one (old data and backups) are put in. */
@@ -183,6 +191,8 @@ export interface RoomStatus {
   id: string;
   name: string;
   names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
   color: RoomColor;
 }
 

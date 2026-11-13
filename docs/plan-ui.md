@@ -302,7 +302,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     is created in a group (`POST /room-units { name, group }`). Room cards list the units group by
     group, with a heading per group once there are several.
 
-- [ ] **11. Admin sees which names lack the current language** (skills `ui`, `i18n`)
+- [x] **11. Admin sees which names lack the current language** (skills `ui`, `i18n`)
   - Request (from the user): for the admin only, a name with no version in the current UI
     language (shown from the base name as a fallback) is drawn in a different font colour, so
     it's clear what still needs translating. Other roles see names as before.
@@ -321,6 +321,16 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Tests: shared helper; client: admin sees the colour on a fallback name and not on a
     translated one; housekeeper never sees it.
   - Docs: `docs/structure.md`, `ui` and `i18n` skills.
+
+  - Done: new token `text-untranslated` (`--untranslated`, light and dark; `text-warning` was too
+    pale on white). Not missing while never renamed (no `names`): an empty name (the default unit
+    group `units`) and a default status with its default name, which the app shows translated.
+    "Saving unchanged" = Enter in the name field (`CommitInput confirmUnchanged`; blur still saves
+    only a change), said in the tooltip. `cleanNames` lost its `base` parameter. `useRole()` in
+    `AuthContext` (null outside a provider) feeds `useUntranslated()` (`lib/untranslated.ts`).
+    Marked on: Stock items, Settings lists (types, statuses, groups, units), room cards and tiles,
+    the count pages, the group items dialog. Not in dropdown options (`<option>` can't be styled).
+    A newly created name only has the base name, so it shows as missing until saved in a language.
 
 ## Token rules for these sessions
 

@@ -20,6 +20,8 @@ export const ru: Messages = {
     stockName: 'Наименование',
     unnamedItem: 'Без названия',
     unnamedRoom: 'Без названия',
+    untranslated:
+      'Ещё не переведено на этот язык. Чтобы оставить этот текст, нажмите Enter в поле названия.',
     enterNumber: 'Введите число',
     enterQty: 'Введите число 0 или больше',
     clearManual: 'Сбросить ручное значение',

@@ -134,3 +134,8 @@ export function useAuth(): AuthState {
   if (!value) throw new Error('useAuth must be used inside <AuthProvider>');
   return value;
 }
+
+/** The session's role, or null outside `<AuthProvider>` (UI kit and component tests). */
+export function useRole(): Role | null {
+  return use(AuthContext)?.role ?? null;
+}

@@ -20,6 +20,8 @@ export const et: Messages = {
     stockName: 'Nimetus',
     unnamedItem: 'Nimetu toode',
     unnamedRoom: 'Nimetu ruum',
+    untranslated:
+      'Pole veel sellesse keelde tõlgitud. Selle teksti jätmiseks vajuta nime väljal Enter.',
     enterNumber: 'Sisesta number',
     enterQty: 'Sisesta number 0 või rohkem',
     clearManual: 'Kustuta käsitsi sisestatud väärtus',

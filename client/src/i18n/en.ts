@@ -24,6 +24,9 @@ export const en = {
     stockName: 'Stock name',
     unnamedItem: 'Unnamed item',
     unnamedRoom: 'Unnamed room',
+    /** Admin only: a name with no version in the UI language (shown from the base name) */
+    untranslated:
+      'Not yet translated into this language. To keep this text, press Enter in its name field.',
     enterNumber: 'Enter a number',
     enterQty: 'Enter a number of 0 or more',
     clearManual: 'Clear manual value',

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { cleanNames, displayName, localizeNames, renameIn } from './names';
+import { cleanNames, displayName, hasOwnName, localizeNames, renameIn } from './names';
 import { backupSchema, itemPatchSchema, normalizeStockData, roomNameSchema } from './schemas';
-import { emptyStockData } from './types';
+import { emptyStockData, type Item, type RoomStatus, type RoomUnitGroup } from './types';
 
 describe('localized names', () => {
   const towel = { id: 'a', name: 'Rätik', names: { en: 'Towel' } };
@@ -19,15 +19,21 @@ describe('localized names', () => {
     const ru = renameIn(towel, 'Полотенце', 'ru');
     expect(ru).toEqual({ id: 'a', name: 'Rätik', names: { en: 'Towel', ru: 'Полотенце' } });
     expect(renameIn(towel, 'Käterätik')).toEqual({ ...towel, name: 'Käterätik' });
-    // back to the base name: the override goes
-    expect(renameIn(towel, 'Rätik', 'en')).toEqual({ id: 'a', name: 'Rätik' });
+    // saved unchanged (equal to the base): the language's version is confirmed and kept
+    expect(renameIn(towel, 'Rätik', 'et')).toEqual({
+      ...towel,
+      names: { en: 'Towel', et: 'Rätik' },
+    });
   });
 
-  it('cleanNames drops empty overrides, overrides equal to the base and unknown languages', () => {
-    expect(cleanNames({ en: 'Towel', et: 'Rätik', ru: '  ' }, 'Rätik')).toEqual({ en: 'Towel' });
-    expect(cleanNames({ et: 'Rätik' }, 'Rätik')).toBeUndefined();
-    expect(cleanNames(undefined, 'Rätik')).toBeUndefined();
-    expect(cleanNames({ de: 'Handtuch' } as never, 'Rätik')).toBeUndefined();
+  it('cleanNames drops empty overrides and unknown languages, keeps one equal to the base', () => {
+    expect(cleanNames({ en: 'Towel', et: 'Rätik', ru: '  ' })).toEqual({
+      en: 'Towel',
+      et: 'Rätik',
+    });
+    expect(cleanNames({ ru: ' ' })).toBeUndefined();
+    expect(cleanNames(undefined)).toBeUndefined();
+    expect(cleanNames({ de: 'Handtuch' } as never)).toBeUndefined();
   });
 
   it('normalizeStockData keeps real overrides of items, room types, units and statuses', () => {
@@ -42,7 +48,7 @@ describe('localized names', () => {
       id: 'i',
       name: 'Rätik',
       multipliers: {},
-      names: { en: 'Towel' },
+      names: { en: 'Towel', et: 'Rätik' },
     });
     expect(data.roomTypes[0]).toEqual({ id: 't', name: 'Kahene' });
     expect(data.roomUnits[0]!.names).toEqual({ ru: 'Кровать' });
@@ -68,15 +74,43 @@ describe('localized names', () => {
     expect(roomNameSchema.safeParse({ name: 'Bed', lang: 'de' }).success).toBe(false);
   });
 
-  it('localizeNames shows each list in a language and keeps a dataset without versions as is', () => {
+  it('localizeNames shows each list in a language and keeps an empty list as is', () => {
     const plain = emptyStockData();
     plain.items = [{ id: 'p', name: 'Soap', multipliers: {} }];
-    expect(localizeNames(plain, 'en')).toBe(plain);
     const data = { ...plain, items: [...plain.items, { ...towel, multipliers: {} }] };
     const en = localizeNames(data, 'en');
     expect(en.items.map((i) => i.name)).toEqual(['Soap', 'Towel']);
     expect(en.items[1]!.names).toEqual({ en: 'Towel' });
     expect(en.roomUnits).toBe(data.roomUnits);
     expect(localizeNames(data, 'ru').items[1]!.name).toBe('Rätik');
+  });
+
+  it('hasOwnName: a version stored for that language (not the base fallback)', () => {
+    expect(hasOwnName(towel, 'en')).toBe(true);
+    expect(hasOwnName(towel, 'et')).toBe(false);
+    expect(hasOwnName({ name: 'X', names: { ru: ' ' } }, 'ru')).toBe(false);
+  });
+
+  it('localizeNames flags names shown from the base name (nameMissing)', () => {
+    const data = {
+      ...emptyStockData(),
+      items: [{ ...towel, multipliers: {} }] as Item[],
+      roomUnitGroups: [
+        { id: 'units', name: '' },
+        { id: 'bath', name: '', names: { en: 'Bathroom' } },
+      ] as RoomUnitGroup[],
+      roomStatuses: [
+        { id: 'ok', name: 'OK', color: 'green' as const },
+        { id: 'fix', name: 'Broken', color: 'red' as const },
+      ] as RoomStatus[],
+    };
+    const en = localizeNames(data, 'en');
+    expect(en.items[0]!.nameMissing).toBeUndefined();
+    expect(localizeNames(data, 'et').items[0]!.nameMissing).toBe(true);
+    // the default group (no name) and an unrenamed default status are shown translated
+    const et = localizeNames(data, 'et');
+    expect(et.roomUnitGroups[0]!.nameMissing).toBeUndefined();
+    expect(et.roomUnitGroups[1]!.nameMissing).toBe(true);
+    expect(et.roomStatuses.map((s) => s.nameMissing)).toEqual([undefined, true]);
   });
 });

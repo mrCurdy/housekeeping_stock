@@ -43,6 +43,7 @@ export function RoomSetupCard() {
   const statusRows = statuses.map((s) => ({
     id: s.id,
     name: statusName(s, t.rooms.defaultStatus),
+    nameMissing: s.nameMissing,
   }));
   const colorOf = (id: string): RoomColor => statuses.find((s) => s.id === id)?.color ?? 'grey';
   const colorOptions = ROOM_COLORS.map((c) => ({ value: c, label: tx.colors[c] }));

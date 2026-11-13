@@ -91,6 +91,18 @@ describe('names in several languages', () => {
     expect(d.roomStatuses.filter((x) => x.names)).toHaveLength(1);
   });
 
+  it('saving a name unchanged in a language stores that version (the base text confirmed)', async () => {
+    env = await setup();
+    const api = env.api();
+    const item = (await api.post('/api/items').send({ name: 'Rätik' }).expect(201)).body;
+    await api.patch(`/api/items/${item.id}`).send({ name: 'Rätik', lang: 'et' }).expect(200);
+    const unit = (await api.post('/api/room-units').send({ name: 'Voodi' }).expect(201)).body;
+    await api.patch(`/api/room-units/${unit.id}`).send({ name: 'Voodi', lang: 'et' }).expect(200);
+    const d = await data();
+    expect(d.items[0]).toMatchObject({ name: 'Rätik', names: { et: 'Rätik' } });
+    expect(d.roomUnits[0]).toMatchObject({ name: 'Voodi', names: { et: 'Voodi' } });
+  });
+
   it('backup and restore carry every version; an old backup restores with plain names', async () => {
     env = await setup();
     const api = env.api();

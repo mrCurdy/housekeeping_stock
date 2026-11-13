@@ -2,11 +2,15 @@ import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AddForm, Button, CommitInput } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
+import { cn } from '@/lib/cn';
+import { useUntranslated } from '@/lib/untranslated';
 
 /** One row of a master list: its id and the name shown (and edited) in the field. */
 export interface MasterRow {
   id: string;
   name: string;
+  /** No version in the UI language (`localizeNames`): the admin sees it marked. */
+  nameMissing?: boolean;
 }
 
 /**
@@ -43,6 +47,7 @@ export function MasterList({
 }) {
   const { t } = useI18n();
   const tx = t.settings.rooms;
+  const untranslated = useUntranslated();
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <div>
@@ -60,9 +65,14 @@ export function MasterList({
                 value={row.name}
                 maxLength={100}
                 aria-label={fieldLabel(row.name)}
-                className="min-w-0 flex-1"
+                title={untranslated(row).title}
+                className={cn('min-w-0 flex-1', untranslated(row).className)}
+                confirmUnchanged={row.nameMissing}
                 onCommit={(text) => {
-                  if (text.trim() && text.trim() !== row.name) onRename(row.id, text.trim());
+                  // unchanged but missing in this language: saving it confirms this version
+                  if (text.trim() && (text.trim() !== row.name || row.nameMissing)) {
+                    onRename(row.id, text.trim());
+                  }
                 }}
               />
               <Button

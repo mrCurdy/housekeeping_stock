@@ -7,6 +7,7 @@ import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/cn';
 import { useDragSort } from '@/lib/useDragSort';
+import { useUntranslated } from '@/lib/untranslated';
 import { useListsDragSort } from '@/lib/useListsDragSort';
 
 const GRIP =
@@ -25,6 +26,7 @@ export function UnitGroups() {
   const confirm = useConfirm();
   const toast = useToast();
   const stock = useStock();
+  const untranslated = useUntranslated();
   const groups = unitsByGroup(stock.data);
   const groupLabel = (name: string) => name || tx.defaultGroup;
 
@@ -110,9 +112,11 @@ export function UnitGroups() {
                   placeholder={tx.defaultGroup}
                   maxLength={100}
                   aria-label={tx.groupName(name)}
-                  className="min-w-0 flex-1 font-medium"
+                  title={untranslated(group).title}
+                  className={cn('min-w-0 flex-1 font-medium', untranslated(group).className)}
+                  confirmUnchanged={group.nameMissing}
                   onCommit={(text) => {
-                    if (text.trim() && text.trim() !== group.name) {
+                    if (text.trim() && (text.trim() !== group.name || group.nameMissing)) {
                       stock.renameRoomUnitGroup(group.id, text.trim());
                     }
                   }}
@@ -165,9 +169,11 @@ export function UnitGroups() {
                           value={unit.name}
                           maxLength={100}
                           aria-label={tx.unitName(unit.name)}
-                          className="min-w-0 flex-1"
+                          title={untranslated(unit).title}
+                          className={cn('min-w-0 flex-1', untranslated(unit).className)}
+                          confirmUnchanged={unit.nameMissing}
                           onCommit={(text) => {
-                            if (text.trim() && text.trim() !== unit.name) {
+                            if (text.trim() && (text.trim() !== unit.name || unit.nameMissing)) {
                               stock.renameRoomUnit(unit.id, text.trim());
                             }
                           }}

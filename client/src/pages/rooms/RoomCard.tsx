@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
+import { useUntranslated } from '@/lib/untranslated';
 import { roomExists, statusName, typeOptions } from './roomText';
 import { WhoDialog } from './WhoDialog';
 
@@ -29,6 +30,7 @@ export function RoomCard({
 }) {
   const { data, updateRoom, removeRoom, setUnitStatus } = useStock();
   const { t, locale } = useI18n();
+  const untranslated = useUntranslated();
   const tx = t.rooms;
   // The units group by group (a heading per group once there are several)
   const unitGroups = unitsByGroup(data).filter((g) => g.units.length > 0);
@@ -82,7 +84,14 @@ export function RoomCard({
           <div className="flex items-start gap-2 px-5 pt-4">
             <div className="flex min-w-0 flex-1 flex-col">
               <CardTitle className="text-xl break-words">{room.number}</CardTitle>
-              {type && <p className="text-sm text-fg-muted">{type.name}</p>}
+              {type && (
+                <p
+                  title={untranslated(type).title}
+                  className={cn('text-sm text-fg-muted', untranslated(type).className)}
+                >
+                  {type.name}
+                </p>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -124,7 +133,13 @@ export function RoomCard({
           {unitGroups.map(({ group, units }) => (
             <section key={group.id} className="flex flex-col gap-2">
               {unitGroups.length > 1 && (
-                <h4 className="text-xs font-semibold tracking-wide text-fg-muted uppercase">
+                <h4
+                  title={untranslated(group).title}
+                  className={cn(
+                    'text-xs font-semibold tracking-wide text-fg-muted uppercase',
+                    untranslated(group).className,
+                  )}
+                >
                   {group.name || t.settings.rooms.defaultGroup}
                 </h4>
               )}
@@ -138,7 +153,13 @@ export function RoomCard({
                       className={cn('rounded-md border-l-4 px-3 py-2', colors.border, colors.soft)}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="min-w-0 flex-1 text-sm font-medium break-words">
+                        <span
+                          title={untranslated(unit).title}
+                          className={cn(
+                            'min-w-0 flex-1 text-sm font-medium break-words',
+                            untranslated(unit).className,
+                          )}
+                        >
                           {unit.name}
                         </span>
                         <Select
