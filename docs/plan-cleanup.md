@@ -109,7 +109,7 @@ figure** (totals, the counter page, the Overview).
   - Done when: the step 3 tests, `CounterMode.test.tsx` and the full suite pass, and the `ui` skill's "feature end to end" template shows the new `edit(key, fn)` form.
   - Done differently: `edit` takes a key or a list of keys (`edit(['tasks', 'checks'], fn)`), since some edits touch several (removing a group, a task, a task group). The copy is the pure `editData` in `mutations.ts`, tested in `stock/mutations.test.ts`. The context calls it through a `useMutations` hook (the `react-hooks/refs` lint rejects passing `send` to a plain function during render). `restore` stays in `StockContext.tsx` because it replaces the whole dataset (`setData`). The areas are setup (items/groups/locations), daily (records/departures/counts), checklist and settings.
 
-- [ ] **9. Page tests** (skill `ui`)
+- [x] **9. Page tests** (skill `ui`)
   - `pages/Stock.test.tsx`:
     - typing income updates the total;
     - × clears a manual value;
@@ -119,6 +119,7 @@ figure** (totals, the counter page, the Overview).
     - the editor saves only on Save;
     - the previous day's note is read-only.
   - Use `mockApi` with a small `StockData` fixture in `client/src/test/fixtures.ts`, which later tests can reuse.
+  - Done differently: the two files already existed, so the cases are new `describe` blocks in them. `fixtures.ts` also has `mockApp(role, data, route)` (wraps `mockApi`) and `today`/`yesterday`. The worker case is paired with an admin case so it can't pass vacuously. Tests only: the behaviour already worked, so they passed on first run.
 
 - [ ] **10. Close out**
   - Delete the "Known weak spots" section from `docs/structure.md`, or leave only what is still open.
