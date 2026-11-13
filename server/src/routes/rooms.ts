@@ -59,7 +59,7 @@ export function roomsRouter({ db }: AppContext) {
   const r = Router();
 
   // ---- Cards ----
-  r.post('/rooms', rooms, validateBody(roomCreateSchema), async (req, res) => {
+  r.post('/rooms', setup, validateBody(roomCreateSchema), async (req, res) => {
     const room = notDuplicate(await db.rooms.create(req.body as RoomCreateInput));
     res.status(201).json(found(room, 'Room type'));
   });

@@ -58,37 +58,11 @@ describe('rooms page', () => {
     expect(within(card('10')).getByText('No general cleaning yet')).toBeInTheDocument();
   });
 
-  it('creates a card', async () => {
-    const fetch = mockApp('admin', rooms(), (method, path) =>
-      method === 'POST' && path === '/rooms'
-        ? { status: 201, body: { id: 'r101', number: '101', type: 'dbl' } }
-        : undefined,
-    );
-    const user = userEvent.setup();
+  it('has no add-room form (rooms are added in Settings)', async () => {
+    mockApp('admin', rooms());
     await renderApp();
-
-    await user.type(await screen.findByRole('textbox', { name: 'Room number' }), '101');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Room type' }), 'dbl');
-    await user.click(screen.getByRole('button', { name: 'Add room' }));
-    expect(await screen.findByRole('heading', { level: 3, name: '101' })).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith(
-      '/api/rooms',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ number: '101', type: 'dbl' }),
-      }),
-    );
-  });
-
-  it('refuses a number that already exists', async () => {
-    const fetch = mockApp('admin', rooms());
-    const user = userEvent.setup();
-    await renderApp();
-
-    await user.type(await screen.findByRole('textbox', { name: 'Room number' }), '10');
-    await user.click(screen.getByRole('button', { name: 'Add room' }));
-    expect(screen.getByText('Room 10 already exists')).toBeInTheDocument();
-    expect(fetch).not.toHaveBeenCalledWith('/api/rooms', expect.anything());
+    await screen.findByRole('heading', { level: 3, name: '2' });
+    expect(screen.queryByRole('button', { name: 'Add room' })).toBeNull();
   });
 
   it('saves the note on blur', async () => {
@@ -270,10 +244,22 @@ describe('rooms page', () => {
     expect(screen.getByRole('link', { name: 'Rooms' })).toBeInTheDocument();
   });
 
-  it('shows the empty state without rooms', async () => {
+  it('without rooms the admin is pointed to Settings, a worker to the admin', async () => {
     mockApp('admin', rooms({ rooms: [] }));
+    const { unmount } = await renderApp();
+    expect(await screen.findByText('No rooms yet')).toBeInTheDocument();
+    expect(screen.getByText('Add the rooms in Settings.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      '/settings',
+    );
+    unmount();
+
+    mockApp('worker', rooms({ rooms: [] }));
     await renderApp();
     expect(await screen.findByText('No rooms yet')).toBeInTheDocument();
+    expect(screen.getByText('Ask the admin to set this up.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Open Settings' })).toBeNull();
   });
 });
 
@@ -399,10 +385,87 @@ describe('rooms filter bar', () => {
     );
   });
 
-  it('no filter bar without rooms', async () => {
+  it('no filter bar or search without rooms', async () => {
     mockApp('admin', rooms({ rooms: [] }));
     await renderApp();
     await screen.findByText('No rooms yet');
     expect(screen.queryByRole('group', { name: 'Level' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Search rooms' })).toBeNull();
+  });
+});
+
+describe('rooms search', () => {
+  /** 101, 103, 301, 315 (Double), 205 (Double). */
+  const hotel = () =>
+    rooms({
+      rooms: [
+        { id: 'r101', number: '101' },
+        { id: 'r103', number: '103' },
+        { id: 'r301', number: '301' },
+        { id: 'r315', number: '315', type: 'dbl' },
+        { id: 'r205', number: '205', type: 'dbl' },
+      ],
+    });
+  const search = () => screen.getByRole('textbox', { name: 'Search rooms' });
+  const start = async () => {
+    mockApp('worker', hotel());
+    const user = userEvent.setup();
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+    return user;
+  };
+
+  it('a number matches from its first digit', async () => {
+    const user = await start();
+    expect(search()).toHaveAttribute('placeholder', 'Room number or type');
+    await user.type(search(), '3');
+    expect(titles()).toEqual(['301', '315']);
+    await user.type(search(), '0');
+    expect(titles()).toEqual(['301']);
+  });
+
+  it('a room type name matches, any case', async () => {
+    const user = await start();
+    await user.type(search(), 'DOU');
+    expect(titles()).toEqual(['205', '315']);
+  });
+
+  it('searches every level; the level applies again once cleared with ×', async () => {
+    const user = await start();
+    const levels = screen.getByRole('group', { name: 'Level' });
+    await user.click(within(levels).getByRole('button', { name: '2' }));
+    expect(titles()).toEqual(['205']);
+
+    await user.type(search(), '1');
+    expect(titles()).toEqual(['101', '103']);
+    expect(within(levels).getByRole('button', { name: '2' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(search()).toHaveValue('');
+    expect(titles()).toEqual(['205']);
+  });
+
+  it('is not remembered', async () => {
+    mockApp('worker', hotel());
+    const user = userEvent.setup();
+    const { unmount } = await renderApp();
+    await user.type(await screen.findByRole('textbox', { name: 'Search rooms' }), '3');
+    unmount();
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+    expect(search()).toHaveValue('');
+    expect(titles()).toHaveLength(5);
+  });
+
+  it('"Show all" also clears the search', async () => {
+    const user = await start();
+    await user.type(search(), '9');
+    expect(screen.getByText('No rooms match')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show all' }));
+    expect(search()).toHaveValue('');
+    expect(titles()).toHaveLength(5);
   });
 });

@@ -85,7 +85,11 @@ room admin-only).
   - Docs: `docs/structure.md` (file map under `pages/rooms/`, the `/rooms` page section) and the
     `ui` skill if it lists page examples. Tick the plan.
 
-- [ ] **3. Search instead of "add room"; Add room moves to Settings** (skills `ui`, `i18n`, `auth`)
+- [x] **3. Search instead of "add room"; Add room moves to Settings** (skills `ui`, `i18n`, `auth`)
+  - Done: `viewRooms` takes `RoomQuery` (= `RoomView` + `search?`). `RoomSearch` is a plain `Input`
+    with its own × (`ClearableInput` is commit-on-blur; the search filters live), Escape clears too.
+    The no-rooms worker text is `common.askAdmin`. Also fixed a pre-existing typecheck error in
+    `server/src/seed/data.ts` (`g.use[i] ?? 0`).
   - Added by the user after step 2. Decisions (confirmed):
     - **Search field** on the Rooms page, where `NewRoomForm` is now (above the filter bar, always
       shown when there are rooms). Case-insensitive, trimmed; empty = no search.

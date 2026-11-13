@@ -148,7 +148,7 @@ export function seedData(today: string): StockData {
   data.items = ITEMS.map((name, i): Item => ({
     id: `i-${i + 1}`,
     name,
-    multipliers: Object.fromEntries(GROUPS.map((g) => [g.id, g.use[i]])),
+    multipliers: Object.fromEntries(GROUPS.map((g) => [g.id, g.use[i] ?? 0])),
   }));
   data.locations = [
     { id: 'l-linen', name: 'Linen room' },

@@ -1,18 +1,29 @@
 import { ROOM_COLORS, roomStatusList, type RoomColor } from '@app/shared';
-import { DoorOpen } from 'lucide-react';
-import { Card, CardBody, CardDescription, CardHeader, CardTitle, Select } from '@/components/ui';
+import { DoorOpen, Plus } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Button,
+  Card,
+  CardBody,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Select,
+} from '@/components/ui';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
 import { statusName } from '../rooms/roomText';
+import { AddRoomDialog } from './AddRoomDialog';
 import { CleaningThresholds } from './CleaningThresholds';
 import { MasterList, type MasterRow } from './MasterList';
 
 /**
  * The master layout every room card shares (admin, `setup`): units, statuses (name + colour),
- * room types and the general-cleaning thresholds.
+ * room types and the general-cleaning thresholds. "Add room" opens `AddRoomDialog` (new cards
+ * are admin-only; workers edit them on /rooms).
  */
 export function RoomSetupCard() {
   const { t } = useI18n();
@@ -20,6 +31,7 @@ export function RoomSetupCard() {
   const confirm = useConfirm();
   const stock = useStock();
   const { data } = stock;
+  const [adding, setAdding] = useState(false);
 
   const statuses = roomStatusList(data);
   const statusRows = statuses.map((s) => ({
@@ -37,13 +49,24 @@ export function RoomSetupCard() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <DoorOpen className="h-4 w-4 text-fg-muted" />
-          {tx.title}
-        </CardTitle>
-        <CardDescription>{tx.description}</CardDescription>
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <CardTitle className="flex items-center gap-2">
+            <DoorOpen className="h-4 w-4 text-fg-muted" />
+            {tx.title}
+          </CardTitle>
+          <CardDescription>{tx.description}</CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          leftIcon={<Plus className="h-4 w-4" />}
+          onClick={() => setAdding(true)}
+        >
+          {tx.addRoom}
+        </Button>
       </CardHeader>
+      {adding && <AddRoomDialog onClose={() => setAdding(false)} />}
       <CardBody className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <MasterList
           title={tx.units}

@@ -1,6 +1,14 @@
 import { emptyStockData, type StockData } from '@app/shared';
 import { describe, expect, it } from 'vitest';
-import { allGreen, roomLevel, roomLevels, roomUrgency, viewRooms, type RoomView } from './roomView';
+import {
+  allGreen,
+  matchesSearch,
+  roomLevel,
+  roomLevels,
+  roomUrgency,
+  viewRooms,
+  type RoomView,
+} from './roomView';
 
 const by = { by: 'Ann', at: '2026-11-01T10:00:00.000Z' };
 
@@ -132,5 +140,55 @@ describe('viewRooms', () => {
     d.rooms = ['99', '205', '1010', '101'].map((number) => ({ id: `r${number}`, number }));
     expect(numbers(d, view({ sort: 'attention' }))).toEqual(['101', '1010', '205', '99']);
     expect(numbers(d, view({ sort: 'cleanedNew' }))).toEqual(['101', '1010', '205', '99']);
+  });
+});
+
+describe('search', () => {
+  const types = [
+    { id: 'dbl', name: 'Double' },
+    { id: 'sgl', name: 'Single' },
+  ];
+  const room = (number: string, type?: string) => ({ id: `r${number}`, number, type });
+
+  it('matches a number by prefix, digits in order', () => {
+    expect(matchesSearch(room('301'), '3', types)).toBe(true);
+    expect(matchesSearch(room('315'), '3', types)).toBe(true);
+    expect(matchesSearch(room('103'), '3', types)).toBe(false);
+    expect(matchesSearch(room('305'), '30', types)).toBe(true);
+    expect(matchesSearch(room('315'), '30', types)).toBe(false);
+    expect(matchesSearch(room('001'), '001', types)).toBe(true);
+    expect(matchesSearch(room('B12'), ' b1 ', types)).toBe(true);
+  });
+
+  it("matches the start of the room type's name, any case", () => {
+    expect(matchesSearch(room('101', 'dbl'), 'dou', types)).toBe(true);
+    expect(matchesSearch(room('101', 'dbl'), 'DOU', types)).toBe(true);
+    expect(matchesSearch(room('101', 'dbl'), 'ouble', types)).toBe(false);
+    expect(matchesSearch(room('101', 'sgl'), 'dou', types)).toBe(false);
+    expect(matchesSearch(room('101'), 'dou', types)).toBe(false);
+  });
+
+  it('an empty or space-only query matches every room', () => {
+    expect(matchesSearch(room('101'), '', types)).toBe(true);
+    expect(matchesSearch(room('101'), '   ', types)).toBe(true);
+    const d = data();
+    expect(viewRooms(d, { ...view({ level: '2' }), search: '  ' }).map((r) => r.number)).toEqual([
+      '201',
+      '205',
+    ]);
+  });
+
+  it('ignores the level filter but keeps the sort and hide-green', () => {
+    const d = data();
+    d.roomTypes = types;
+    d.rooms = d.rooms.map((r) => (r.number.endsWith('5') ? { ...r, type: 'dbl' } : r));
+    const searched = (over: Partial<RoomView>, search: string) =>
+      viewRooms(d, { ...view(over), search }).map((r) => r.number);
+    expect(searched({ level: '2' }, '1')).toEqual(['101', '102', '115']);
+    expect(searched({ level: '1' }, 'dou')).toEqual(['115', '205']);
+    d.cleanings = { r115: [{ date: '2026-11-05', by: 'Ann' }] };
+    expect(searched({ level: '2', sort: 'cleanedNew' }, '1')).toEqual(['115', '101', '102']);
+    d.unitStatus = { r102: { bed: { status: 'fix', ...by } } };
+    expect(searched({ level: '2', hideGreen: true }, '1')).toEqual(['102']);
   });
 });

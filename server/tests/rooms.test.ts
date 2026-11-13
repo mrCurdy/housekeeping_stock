@@ -205,10 +205,10 @@ describe('room cards API', () => {
     expect(res.body).toMatchObject({ cleanGreenDays: 4, cleanYellowDays: 5 });
   });
 
-  it('a worker creates rooms, edits the note, changes statuses and cleans', async () => {
+  it('a worker edits the note, changes statuses and cleans a room the admin added', async () => {
     const unit = (await env.api().post('/api/room-units').send({ name: 'Bed' }).expect(201)).body;
+    const room = (await env.api().post('/api/rooms').send({ number: '7' }).expect(201)).body;
     const w = await env.login(WORKER_PIN);
-    const room = (await w.post('/api/rooms').send({ number: '7' }).expect(201)).body;
     await w.patch(`/api/rooms/${room.id}`).send({ note: 'Sea view' }).expect(200);
     await w
       .put(`/api/rooms/${room.id}/units/${unit.id}`)

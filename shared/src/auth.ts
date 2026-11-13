@@ -11,7 +11,8 @@ export type PinRole = (typeof PIN_ROLES)[number];
 /**
  * setup: items, groups, locations, the room master layout · tasks: edit the checklist · restore · pins · qr ·
  * daily: departures, consumption, income, manual stock · checklist: ticks, notes · count: room counts ·
- * rooms: room cards (create/edit/delete, unit statuses, cleanings; the master layout is `setup`)
+ * rooms: room cards (edit note/number/type, delete, unit statuses, cleanings; adding a room and the
+ * master layout are `setup`)
  */
 export const PERMISSIONS = [
   'setup',

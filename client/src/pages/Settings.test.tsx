@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { emptyStockData } from '@app/shared';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/context/AuthContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
 import { DateProvider } from '@/context/DateContext';
@@ -182,5 +182,82 @@ describe('Settings: room cards setup', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save thresholds' }));
     expect(await screen.findByText('Green must be less than yellow')).toBeInTheDocument();
     expect(sent(fetch, '/api/settings', 'PATCH')).toEqual([]);
+  });
+});
+
+describe('Settings: add a room', () => {
+  beforeEach(() => {
+    // jsdom has no <dialog> methods
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+      this.open = false;
+    };
+  });
+
+  function roomApi() {
+    return mockApi((method, path, body) => {
+      if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
+      if (path === '/data') {
+        return {
+          status: 200,
+          body: {
+            ...emptyStockData(),
+            settings: {},
+            rooms: [{ id: 'r10', number: '10' }],
+            roomTypes: [{ id: 'dbl', name: 'Double' }],
+          },
+        };
+      }
+      if (path === '/auth/qr') return { status: 200, body: { active: false } };
+      if (path === '/rooms' && method === 'POST') {
+        return { status: 201, body: { id: 'r101', ...(body as object) } };
+      }
+    });
+  }
+  const posts = (fetch: ReturnType<typeof mockApi>) =>
+    fetch.mock.calls
+      .filter(([u, init]) => u === '/api/rooms' && init?.method === 'POST')
+      .map(([, init]) => JSON.parse(init?.body as string));
+  const open = async () => {
+    await userEvent.click(await screen.findByRole('button', { name: 'Add room' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'New room' })).toBeInTheDocument();
+    return dialog;
+  };
+
+  it('Add sends the number, type and note', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = within(await open());
+    await userEvent.type(dialog.getByLabelText('Room number'), ' 101 ');
+    await userEvent.selectOptions(dialog.getByLabelText('Room type'), 'dbl');
+    await userEvent.type(dialog.getByLabelText('Note'), 'Sea view');
+    await userEvent.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(posts(fetch)).toEqual([{ number: '101', type: 'dbl', note: 'Sea view' }]),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('Cancel sends nothing', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = within(await open());
+    await userEvent.type(dialog.getByLabelText('Room number'), '101');
+    await userEvent.click(dialog.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(posts(fetch)).toEqual([]);
+  });
+
+  it('a taken number shows the error in the dialog', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = within(await open());
+    await userEvent.type(dialog.getByLabelText('Room number'), '10');
+    await userEvent.click(dialog.getByRole('button', { name: 'Add' }));
+    expect(dialog.getByText('Room 10 already exists')).toBeInTheDocument();
+    expect(posts(fetch)).toEqual([]);
   });
 });

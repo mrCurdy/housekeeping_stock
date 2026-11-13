@@ -1,31 +1,38 @@
 import { DoorOpen, LayoutList, SearchX } from 'lucide-react';
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, Button, buttonVariants, Card, EmptyState, Spinner } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
-import { NewRoomForm } from './rooms/NewRoomForm';
 import { RoomCard } from './rooms/RoomCard';
 import { RoomFilters } from './rooms/RoomFilters';
+import { RoomSearch } from './rooms/RoomSearch';
 import { roomLevels, viewRooms } from './rooms/roomView';
 import { useRoomView } from './rooms/useRoomView';
 
 /**
  * /rooms: one card per hotel room (level by level) with its unit statuses and last general
- * cleaning, under a filter bar (level, sort, hide-green; `rooms/roomView.ts`). Units, statuses,
- * types and thresholds are set up by the admin in Settings.
+ * cleaning, under a search and a filter bar (level, sort, hide-green; `rooms/roomView.ts`). Rooms
+ * are added, and units, statuses, types and thresholds set up, by the admin in Settings.
  */
 export default function Rooms() {
   const { data, loading, loadError, reload } = useStock();
   const { can } = useAuth();
   const { t } = useI18n();
   const tx = t.rooms;
+  const settingsLink = can('setup') && (
+    <Link to="/settings" className={buttonVariants({ variant: 'outline' })}>
+      {tx.openSettings}
+    </Link>
+  );
   const levels = roomLevels(data.rooms);
   const [view, setView] = useRoomView(levels);
+  const [search, setSearch] = useState('');
 
   if (!can('rooms')) return <Navigate to="/stock" replace />;
-  const rooms = viewRooms(data, view);
+  const rooms = viewRooms(data, { ...view, search });
 
   return (
     <>
@@ -52,19 +59,12 @@ export default function Rooms() {
                 icon={<LayoutList />}
                 title={tx.noUnits}
                 description={can('setup') ? tx.noUnitsHint : t.common.askAdmin}
-                action={
-                  can('setup') && (
-                    <Link to="/settings" className={buttonVariants({ variant: 'outline' })}>
-                      {tx.openSettings}
-                    </Link>
-                  )
-                }
+                action={settingsLink}
               />
             </Card>
           )}
 
-          <NewRoomForm />
-
+          {data.rooms.length > 0 && <RoomSearch value={search} onChange={setSearch} />}
           {data.rooms.length > 0 && (
             <RoomFilters
               levels={levels}
@@ -76,7 +76,12 @@ export default function Rooms() {
 
           {data.rooms.length === 0 ? (
             <Card>
-              <EmptyState icon={<DoorOpen />} title={tx.empty} description={tx.emptyHint} />
+              <EmptyState
+                icon={<DoorOpen />}
+                title={tx.empty}
+                description={can('setup') ? tx.emptyHint : t.common.askAdmin}
+                action={data.roomUnits.length > 0 && settingsLink}
+              />
             </Card>
           ) : rooms.length === 0 ? (
             <Card>
@@ -87,7 +92,10 @@ export default function Rooms() {
                 action={
                   <Button
                     variant="outline"
-                    onClick={() => setView({ level: null, hideGreen: false })}
+                    onClick={() => {
+                      setView({ level: null, hideGreen: false });
+                      setSearch('');
+                    }}
                   >
                     {tx.filter.showAll}
                   </Button>

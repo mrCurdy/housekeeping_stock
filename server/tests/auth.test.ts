@@ -102,6 +102,7 @@ describe('PIN auth', () => {
         () => w.put(`/api/${list}/order`).send({ ids: [] }),
       ]),
       () => w.patch('/api/settings').send({ cleanGreenDays: 3 }),
+      () => w.post('/api/rooms').send({ number: '101', note: 'x' }),
     ];
     for (const [n, send] of forbidden.entries()) {
       const res = await send();
@@ -112,6 +113,7 @@ describe('PIN auth', () => {
     const data = (await env.api().get('/api/data').expect(200)).body;
     expect(data.items.map((i: { name: string }) => i.name)).toEqual(['Towel']);
     expect(data.tasks).toHaveLength(1);
+    expect(data.rooms).toEqual([]);
   });
 
   it('changing the worker PIN logs out every worker', async () => {

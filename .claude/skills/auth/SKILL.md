@@ -7,17 +7,17 @@ description: Fomka's PIN login and roles (admin, worker, counter). Use when addi
 
 ## The matrix (`shared/src/auth.ts`, the only source)
 
-| permission  | what                                                                                                                  | admin | worker | counter (QR) |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- | ----- | ------ | ------------ |
-| `setup`     | items, groups, rooms (add/rename/delete, items-per-departure), room master setup (units, statuses, types, thresholds) | ✓     |        |              |
-| `tasks`     | checklist task editing (add/edit/reorder/remove)                                                                      | ✓     |        |              |
-| `restore`   | `POST /restore`                                                                                                       | ✓     |        |              |
-| `pins`      | `PUT /auth/pins`                                                                                                      | ✓     |        |              |
-| `qr`        | `GET/POST/DELETE /auth/qr`                                                                                            | ✓     |        |              |
-| `daily`     | departures, records (consumption, income, manual stock)                                                               | ✓     | ✓      |              |
-| `checklist` | ticks, notes                                                                                                          | ✓     | ✓      |              |
-| `count`     | room counts                                                                                                           | ✓     | ✓      | today only   |
-| `rooms`     | room cards: create/edit/delete, unit statuses, cleanings                                                              | ✓     | ✓      |              |
+| permission  | what                                                                                                                                                      | admin | worker | counter (QR) |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------ | ------------ |
+| `setup`     | items, groups, rooms (add/rename/delete, items-per-departure), room master setup (units, statuses, types, thresholds), adding a room card (`POST /rooms`) | ✓     |        |              |
+| `tasks`     | checklist task editing (add/edit/reorder/remove)                                                                                                          | ✓     |        |              |
+| `restore`   | `POST /restore`                                                                                                                                           | ✓     |        |              |
+| `pins`      | `PUT /auth/pins`                                                                                                                                          | ✓     |        |              |
+| `qr`        | `GET/POST/DELETE /auth/qr`                                                                                                                                | ✓     |        |              |
+| `daily`     | departures, records (consumption, income, manual stock)                                                                                                   | ✓     | ✓      |              |
+| `checklist` | ticks, notes                                                                                                                                              | ✓     | ✓      |              |
+| `count`     | room counts                                                                                                                                               | ✓     | ✓      | today only   |
+| `rooms`     | room cards: edit (note, number, type), delete, unit statuses, cleanings (adding a room is `setup`)                                                        | ✓     | ✓      |              |
 
 Reading (`GET /data`, Excel, Backup) needs only a login. To change who may do what, edit `MATRIX`
 and `shared/src/auth.test.ts`; never check role names directly elsewhere, always `can(role, perm)`.
@@ -53,8 +53,8 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
   as plain text (item/group names) and use `t.common.askAdmin` in empty states.
   Hidden now: item add/rename/remove (`ItemsCard`), group controls and ⚙ (`DeparturesCard`),
   Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`DataMenu`),
-  the "Open Settings" link on `/rooms` without units (`Rooms`, needs `setup`; the master setup
-  itself is `RoomSetupCard` on the admin-only Settings page),
+  the "Open Settings" links on `/rooms` without units or rooms (`Rooms`, needs `setup`; the master
+  setup and "Add room" (`AddRoomDialog`) are in `RoomSetupCard` on the admin-only Settings page),
   and the Settings NAV entry (`perm: 'pins'` on a `NAV` item in `AppShell`; `/settings` itself
   redirects without `pins`).
 - Counter mode (`todayOnly(role)`): `AppShell` renders no sidebar, menu or toolbar and redirects

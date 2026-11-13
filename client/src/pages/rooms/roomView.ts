@@ -1,9 +1,10 @@
-// The Rooms page view: level filter, sort and hide-green. Pure, over the data already loaded.
+// The Rooms page view: search, level filter, sort and hide-green. Pure, over the data already loaded.
 import {
   latestCleaning,
   unitStatusOf,
   type Room,
   type RoomColor,
+  type RoomType,
   type StockData,
 } from '@app/shared';
 
@@ -18,8 +19,11 @@ export interface RoomView {
 
 type ViewData = Pick<
   StockData,
-  'rooms' | 'roomUnits' | 'roomStatuses' | 'unitStatus' | 'cleanings'
+  'rooms' | 'roomUnits' | 'roomStatuses' | 'unitStatus' | 'cleanings' | 'roomTypes'
 >;
+
+/** The view plus the typed search (not remembered, so not part of the stored `RoomView`). */
+export type RoomQuery = RoomView & { search?: string };
 
 /** A room's level: the first character of its number (101 → "1"). */
 export const roomLevel = (number: string): string => number.trim().charAt(0);
@@ -60,12 +64,31 @@ export const allGreen = (
   data.roomUnits.every((u) => unitStatusOf(data, roomId, u.id).status.color === 'green');
 
 /**
- * The rooms to show, in order. Starts from the level-by-level order (`sortByLevel`), so every
+ * The search, case-insensitive and trimmed (empty = every room): the number starts with it
+ * (`3` → 301, 315, not 103) or the room type's name does (`dou` → Double).
+ */
+export function matchesSearch(
+  room: Pick<Room, 'number' | 'type'>,
+  query: string,
+  types: readonly RoomType[],
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (room.number.trim().toLowerCase().startsWith(q)) return true;
+  const type = room.type && types.find((t) => t.id === room.type);
+  return !!type && type.name.trim().toLowerCase().startsWith(q);
+}
+
+/**
+ * The rooms to show, in order. A search looks across every level (the level filter waits until
+ * it is cleared); sort and hide-green still apply. Starts from the level-by-level order (`sortByLevel`), so every
  * other sort is stable and ties fall back to it. Hide-green only applies while units exist.
  */
-export function viewRooms(data: ViewData, view: RoomView): Room[] {
+export function viewRooms(data: ViewData, view: RoomQuery): Room[] {
   let rooms = sortByLevel(data.rooms);
-  if (view.level !== null) rooms = rooms.filter((r) => roomLevel(r.number) === view.level);
+  const search = view.search?.trim() ?? '';
+  if (search) rooms = rooms.filter((r) => matchesSearch(r, search, data.roomTypes));
+  else if (view.level !== null) rooms = rooms.filter((r) => roomLevel(r.number) === view.level);
   if (view.hideGreen && data.roomUnits.length) rooms = rooms.filter((r) => !allGreen(data, r.id));
 
   if (view.sort === 'attention') {
