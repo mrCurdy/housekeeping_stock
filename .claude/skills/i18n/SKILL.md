@@ -1,9 +1,9 @@
 ---
 name: i18n
-description: Add or change user-visible text in Stock Monitor so it exists in all three languages (English, Estonian, Russian), or add a new language. Use whenever a change adds or edits UI text (labels, buttons, toasts, confirm dialogs, tooltips, aria-labels, placeholders, empty states, Excel headers), when adding a page or component with text, or when the user asks to translate or fix a translation.
+description: Add or change user-visible text in Fomka so it exists in all three languages (English, Estonian, Russian), or add a new language. Use whenever a change adds or edits UI text (labels, buttons, toasts, confirm dialogs, tooltips, aria-labels, placeholders, empty states, Excel headers), when adding a page or component with text, or when the user asks to translate or fix a translation.
 ---
 
-# Translating Stock Monitor (en / et / ru)
+# Translating Fomka (en / et / ru)
 
 The client has no i18n library. All UI text lives in typed dictionaries:
 
@@ -26,40 +26,44 @@ The server stays English. `apiErrorMessage(err, t)` in `lib/api.ts` maps error c
 6. Text with markup inside (e.g. a `<strong>`) is split into parts (`howTo: { before, after }`), not HTML strings.
 7. Dates: always pass `locale` from `useI18n()` (`formatLongDate(date, locale)`, `toLocaleDateString(locale, …)`, and add `locale` to the `useMemo` deps). Never `undefined`.
 8. Plain functions outside React (`lib/excel.ts`, `apiErrorMessage`) take `t` (or a section like `t.excel`) as a parameter.
-9. User data is never translated: item, group and room names are shown as typed. Only fallbacks like `t.common.unnamedItem` are.
+9. User data is never translated: item, group and room names are shown as typed. Only fallbacks like `t.common.unnamedItem` are. Item, room type, room unit, unit group and room status names can have a version per language typed by the admin (`names`, see `docs/structure.md`): `useStock().data` already shows the current language's version, and a rename through the `StockContext` mutations saves only that language. Read `.name` from `data`; use `displayName(entity, lang)` only on data that didn't come from `useStock().data`, and `rawData` where every version must be kept (Backup). A name with no version in the UI language carries `nameMissing` and is marked for the admin (`useUntranslated`, text `common.untranslated`); saving it unchanged in a language stores that version.
 10. Run `npm run lint && npm run typecheck && npm test`. If the text is on a phone screen (Inventory count), check that the Russian version fits: it is usually the longest.
 
 ## Glossary (keep it consistent)
 
-| English | Eesti | Русский |
-|---|---|---|
-| Stock (page) | Ladu | Склад |
-| Stock / Total stock (figure) | Laoseis | Остаток (card: Остатки) |
-| Inventory count | Inventuur | Инвентаризация |
-| Item / stock item | Toode | Позиция |
-| Stock name | Nimetus | Наименование |
-| Consumption | Kulu | Расход |
-| Income | Juurdetulek | Приход |
-| Departures | Lahkumised | Выезды |
-| Group | Grupp | Группа |
-| Items per departure | Kulu ühe lahkumise kohta | Расход на один выезд |
-| Hotel room (checked out) | tuba / toad | номер / номера |
-| Room where stock is counted (location) | ruum / ruumid | помещение / помещения |
-| Counted | Loetud | Посчитано |
-| Shortage | Puudujääk | Недостача |
-| Calculated / Entered by hand | Arvutatud / Käsitsi sisestatud | Рассчитано / Введено вручную |
-| Backup / Restore | Varukoopia / Taasta | Копия / Восстановить |
-| Save / Saved / Retry | Salvesta / Salvestatud / Proovi uuesti | Сохранить / Сохранено / Повторить |
-| Remove | Eemalda | Удалить |
-| Today | Täna | Сегодня |
-| Checklist | Kontrollnimekiri | Чек-лист |
-| Task | Ülesanne | Задача |
-| Instructions | Juhend | Инструкция |
-| Note for the next shift | Kommentaar järgmisele vahetusele | Комментарий для следующей смены |
-| Settings | Seaded | Настройки |
-| Admin / Worker (role) | administraator / töötaja | администратор / сотрудник |
-| PIN / QR code | PIN / QR-kood | PIN / QR-код |
-| Revoke | Tühista | Отозвать |
+| English                                | Eesti                                  | Русский                           |
+| -------------------------------------- | -------------------------------------- | --------------------------------- |
+| Stock (page)                           | Ladu                                   | Склад                             |
+| Stock / Total stock (figure)           | Laoseis                                | Остаток (card: Остатки)           |
+| Inventory count                        | Inventuur                              | Инвентаризация                    |
+| Item / stock item                      | Toode                                  | Позиция                           |
+| Stock name                             | Nimetus                                | Наименование                      |
+| Consumption                            | Kulu                                   | Расход                            |
+| Income                                 | Juurdetulek                            | Приход                            |
+| Departures                             | Lahkumised                             | Выезды                            |
+| Group                                  | Grupp                                  | Группа                            |
+| Items per departure                    | Kulu ühe lahkumise kohta               | Расход на один выезд              |
+| Hotel room (checked out)               | tuba / toad                            | номер / номера                    |
+| Room where stock is counted (location) | ruum / ruumid                          | помещение / помещения             |
+| Counted                                | Loetud                                 | Посчитано                         |
+| Shortage                               | Puudujääk                              | Недостача                         |
+| Calculated / Entered by hand           | Arvutatud / Käsitsi sisestatud         | Рассчитано / Введено вручную      |
+| Backup / Restore                       | Varukoopia / Taasta                    | Копия / Восстановить              |
+| Room card                              | toakaart                               | карточка номера                   |
+| General cleaning                       | suurpuhastus                           | генеральная уборка                |
+| Save / Saved / Retry                   | Salvesta / Salvestatud / Proovi uuesti | Сохранить / Сохранено / Повторить |
+| Remove                                 | Eemalda                                | Удалить                           |
+| Today                                  | Täna                                   | Сегодня                           |
+| Checklist                              | Kontrollnimekiri                       | Чек-лист                          |
+| Task                                   | Ülesanne                               | Задача                            |
+| Instructions                           | Juhend                                 | Инструкция                        |
+| Note for the next shift                | Kommentaar järgmisele vahetusele       | Комментарий для следующей смены   |
+| Settings                               | Seaded                                 | Настройки                         |
+| Admin (role)                           | administraator                         | администратор                     |
+| Housekeeper (role)                     | toateenija                             | горничная                         |
+| Reception (role)                       | vastuvõtt                              | консьерж                          |
+| PIN / QR code                          | PIN / QR-kood                          | PIN / QR-код                      |
+| Revoke                                 | Tühista                                | Отозвать                          |
 
 "Room" is ambiguous in English: hotel rooms (departures) and storage rooms (locations) are different words in et and ru. Pick by meaning.
 

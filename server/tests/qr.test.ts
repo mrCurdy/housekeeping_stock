@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addDays, formatDate, todayLocal } from '@app/shared';
-import { setup, WORKER_PIN, type TestEnv } from './helpers';
+import { setup, HOUSEKEEPER_PIN, type TestEnv } from './helpers';
 
 describe('QR counter access', () => {
   let env: TestEnv;
@@ -54,6 +54,8 @@ describe('QR counter access', () => {
     const task = (
       await env.api().post('/api/tasks').send({ name: 'Beds', from: '2026-01-01' }).expect(201)
     ).body;
+    const roomCard = (await env.api().post('/api/rooms').send({ number: '101' }).expect(201)).body;
+    const unit = (await env.api().post('/api/room-units').send({ name: 'Bed' }).expect(201)).body;
     const { token } = (await env.api().post('/api/auth/qr').expect(201)).body;
     const c = await link(token);
     const today = formatDate(todayLocal());
@@ -77,10 +79,21 @@ describe('QR counter access', () => {
       () => c.post('/api/locations').send({ name: 'F2' }),
       () => c.post('/api/tasks').send({ name: 'Bins', from: today }),
       () => c.post('/api/restore').send({}),
-      () => c.put('/api/auth/pins').send({ role: 'worker', pin: '5555' }),
+      () => c.put('/api/auth/pins').send({ role: 'housekeeper', pin: '5555' }),
       () => c.get('/api/auth/qr'),
       () => c.post('/api/auth/qr'),
       () => c.delete('/api/auth/qr'),
+      () => c.post('/api/rooms').send({ number: '102' }),
+      () => c.patch(`/api/rooms/${roomCard.id}`).send({ note: 'x' }),
+      () => c.delete(`/api/rooms/${roomCard.id}`),
+      () => c.put(`/api/rooms/${roomCard.id}/units/${unit.id}`).send({ status: 'ok', by: 'A' }),
+      () => c.post(`/api/rooms/${roomCard.id}/cleanings`).send({ date: today, by: 'A' }),
+      ...['room-units', 'room-types', 'room-statuses'].flatMap((list) => [
+        () => c.post(`/api/${list}`).send({ name: 'X', color: 'blue' }),
+        () => c.patch(`/api/${list}/ok`).send({ name: 'X' }),
+        () => c.delete(`/api/${list}/ok`),
+        () => c.put(`/api/${list}/order`).send({ ids: [] }),
+      ]),
     ];
     for (const [n, send] of forbidden.entries()) {
       const res = await send();
@@ -92,7 +105,7 @@ describe('QR counter access', () => {
   });
 
   it('only the admin manages QR codes', async () => {
-    const w = await env.login(WORKER_PIN);
+    const w = await env.login(HOUSEKEEPER_PIN);
     await w.get('/api/auth/qr').expect(403);
     await w.post('/api/auth/qr').expect(403);
     await w.delete('/api/auth/qr').expect(403);
@@ -113,7 +126,7 @@ describe('QR counter access', () => {
   it('revoking ends the link and its sessions, but not the PIN logins', async () => {
     const { token } = (await env.api().post('/api/auth/qr').expect(201)).body;
     const c = await link(token);
-    const w = await env.login(WORKER_PIN);
+    const w = await env.login(HOUSEKEEPER_PIN);
     await env.api().delete('/api/auth/qr').expect(204);
 
     await c.get('/api/data').expect(401);

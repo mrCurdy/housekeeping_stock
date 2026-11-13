@@ -1,5 +1,7 @@
 import type {
   AppSettings,
+  Cleaning,
+  CleaningInput,
   DayChecks,
   DayCounts,
   DayRecord,
@@ -10,12 +12,24 @@ import type {
   PinRole,
   RecordPatchInput,
   Role,
+  Room,
+  RoomCreateInput,
+  RoomPatchInput,
+  RoomStatus,
+  RoomStatusCreateInput,
+  RoomStatusPatchInput,
+  RoomType,
+  RoomUnit,
+  RoomUnitGroup,
   StockCard,
   SettingsPatchInput,
   StockData,
   Task,
   TaskGroup,
   TaskPatchInput,
+  UnitStatus,
+  UnitStatusInput,
+  NameLang,
 } from '@app/shared';
 
 /**
@@ -26,7 +40,8 @@ import type {
 
 export interface NamedRepo<T> {
   create(name: string): Promise<T>;
-  rename(id: string, name: string): Promise<T | null>;
+  /** `lang`: rename only that language's version (lists with localized names); missing = the base name. */
+  rename(id: string, name: string, lang?: NameLang): Promise<T | null>;
   delete(id: string): Promise<boolean>;
 }
 
@@ -94,8 +109,55 @@ export interface StockCardRepo {
 }
 
 export interface SettingsRepo {
+  /** All settings (a missing one = its default). The auth guard reads it once per request. */
+  read(): Promise<AppSettings>;
   /** Changes the listed settings ('' resets one to its default); returns all of them. */
   update(patch: SettingsPatchInput): Promise<AppSettings>;
+}
+
+/** Room cards. `'duplicate'`: another card already has that number. */
+export interface RoomRepo {
+  /** null: unknown room type (`type: ''` = none). */
+  create(input: RoomCreateInput): Promise<Room | null | 'duplicate'>;
+  /** Only the given fields change; `type: ''` and `note: ''` clear them. null: unknown room or type. */
+  update(id: string, patch: RoomPatchInput): Promise<Room | null | 'duplicate'>;
+  /** Deletes the card with its unit statuses and cleanings. */
+  delete(id: string): Promise<boolean>;
+  /** Sets a unit's current status (now as `at`). null: unknown room, unit or status. */
+  setUnitStatus(roomId: string, unitId: string, input: UnitStatusInput): Promise<UnitStatus | null>;
+  /** Records a general cleaning; returns the room's cleanings, newest first. null: unknown room. */
+  addCleaning(roomId: string, input: CleaningInput): Promise<Cleaning[] | null>;
+}
+
+/** A master list (room units, room types): create / rename / delete / reorder. */
+export interface OrderedRepo<T> extends NamedRepo<T> {
+  /** Puts the listed ids first, in that order. Returns the whole list. */
+  reorder(ids: string[]): Promise<T[]>;
+}
+
+/** Room units: each is in a group (`RoomUnitGroupRepo`). */
+export interface RoomUnitRepo extends OrderedRepo<RoomUnit> {
+  /** In `group`; a missing or unknown one = the first group (created as the default when none). */
+  create(name: string, group?: string): Promise<RoomUnit>;
+  /**
+   * Puts the listed units first, in that order, and `move.id` into group `move.group` (ignored
+   * when either is unknown). Returns the whole list.
+   */
+  reorder(ids: string[], move?: { id: string; group: string }): Promise<RoomUnit[]>;
+}
+
+export interface RoomUnitGroupRepo extends Omit<OrderedRepo<RoomUnitGroup>, 'delete'> {
+  /** 'notEmpty' (nothing deleted) while units are in it. */
+  delete(id: string): Promise<boolean | 'notEmpty'>;
+}
+
+/** Unit statuses. Stored only once changed: until then the defaults are used (and get stored). */
+export interface RoomStatusRepo {
+  create(input: RoomStatusCreateInput): Promise<RoomStatus>;
+  update(id: string, patch: RoomStatusPatchInput): Promise<RoomStatus | null>;
+  /** Its units go back to the first status. 'last' (nothing deleted) when it is the only one. */
+  delete(id: string): Promise<boolean | 'last'>;
+  reorder(ids: string[]): Promise<RoomStatus[]>;
 }
 
 /** Login storage. Not part of StockData: backups and restores never touch it. */
@@ -141,6 +203,14 @@ export interface Db {
   checklist: ChecklistRepo;
   stockCards: StockCardRepo;
   settings: SettingsRepo;
+  rooms: RoomRepo;
+  /** Removing a unit removes its status on every card. */
+  roomUnits: RoomUnitRepo;
+  /** A group with units isn't deleted. */
+  roomUnitGroups: RoomUnitGroupRepo;
+  /** Removing a type clears it on its cards. */
+  roomTypes: OrderedRepo<RoomType>;
+  roomStatuses: RoomStatusRepo;
   auth: AuthRepo;
   /** Create tables / files. Must be idempotent. */
   init(): Promise<void>;

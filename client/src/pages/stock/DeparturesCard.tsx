@@ -1,7 +1,17 @@
 import { Settings, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { AddForm } from '@/components/AddForm';
-import { Button, Card, CommitInput, Table, TBody, Td, Th, THead, Tr } from '@/components/ui';
+import {
+  AddForm,
+  Button,
+  Card,
+  CommitInput,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useSelectedDate } from '@/context/DateContext';
@@ -25,7 +35,9 @@ export function DeparturesCard({
   const toast = useToast();
   const { t } = useI18n();
   const tx = t.stock.departures;
-  const setup = useAuth().can('setup');
+  const { can } = useAuth();
+  const setup = can('setup');
+  const daily = can('daily'); // without it the departures are shown, not typed
 
   return (
     <Card>
@@ -93,6 +105,7 @@ export function DeparturesCard({
                   aria-label={tx.departuresOf(group.name)}
                   className="no-spin h-9 text-right"
                   value={data.groupRecords[group.id]?.[date]?.d}
+                  disabled={!daily}
                   onCommit={(text) => {
                     const d = parseQty(text);
                     if (d === undefined) return toast.error(t.common.enterQty);

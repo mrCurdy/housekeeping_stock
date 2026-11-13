@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Button, Input } from '@/components/ui';
+import { Button } from './Button';
+import { Input } from './Input';
 import { cn } from '@/lib/cn';
 
 /** "New thing" text field + Add button. Clears itself after a successful add. */

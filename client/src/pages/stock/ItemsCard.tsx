@@ -1,10 +1,10 @@
 import { Package, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { AddForm } from '@/components/AddForm';
-import { ClearableInput } from '@/components/ClearableInput';
 import {
+  AddForm,
   Button,
   Card,
+  ClearableInput,
   CommitInput,
   EmptyState,
   Table,
@@ -16,12 +16,14 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
-import { formatLongDate, useSelectedDate } from '@/context/DateContext';
+import { useSelectedDate } from '@/context/DateContext';
+import { formatLongDate } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/cn';
 import { parseNumber, parseQty } from '@/lib/numbers';
+import { useUntranslated } from '@/lib/untranslated';
 import { useRoomStatus } from './useRoomStatus';
 import { StockCardHeader } from './StockCardHeader';
 
@@ -34,7 +36,11 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
   const { t, locale } = useI18n();
   const tx = t.stock.items;
   const roomStatus = useRoomStatus();
-  const setup = useAuth().can('setup');
+  const untranslated = useUntranslated();
+  const { can } = useAuth();
+  const setup = can('setup');
+  /** Without `daily` the figures are shown but can't be typed (the server would refuse). */
+  const daily = can('daily');
 
   /** Saves one typed figure; `parse` decides what is a valid number. */
   const save =
@@ -73,6 +79,7 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
             {data.items.map((item) => {
               const rec = data.records[item.id]?.[date];
               const rooms = roomStatus(item.id, date);
+              const hint = untranslated(item);
               return (
                 <Tr key={item.id}>
                   <Td className="py-2">
@@ -80,12 +87,16 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
                       <CommitInput
                         value={item.name}
                         onCommit={(name) => updateItem(item.id, { name: name.trim() })}
+                        confirmUnchanged={item.nameMissing}
                         placeholder={t.common.stockName}
                         aria-label={t.common.stockName}
-                        className="h-9 min-w-36"
+                        title={hint.title}
+                        className={cn('h-9 min-w-36', hint.className)}
                       />
                     ) : (
-                      <span className="font-medium">{item.name || t.common.unnamedItem}</span>
+                      <span title={hint.title} className={cn('font-medium', hint.className)}>
+                        {item.name || t.common.unnamedItem}
+                      </span>
                     )}
                   </Td>
                   <Td className="py-2">
@@ -99,9 +110,12 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
                         rec?.mc != null ? 'val-manual' : 'val-calc',
                       )}
                       value={rec?.mc ?? math.autoConsumption(item, date) + (rec?.c ?? 0)}
+                      disabled={!daily}
                       onCommit={save(item.id, 'mc', parseNumber)}
                       onClear={
-                        rec?.mc != null ? () => patchRecord(item.id, date, { mc: null }) : undefined
+                        daily && rec?.mc != null
+                          ? () => patchRecord(item.id, date, { mc: null })
+                          : undefined
                       }
                     />
                   </Td>
@@ -114,6 +128,7 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
                       aria-label={tx.incomeOf(item.name)}
                       className="no-spin h-9 text-right"
                       value={rec?.i}
+                      disabled={!daily}
                       onCommit={save(item.id, 'i', parseQty)}
                     />
                   </Td>
@@ -128,9 +143,12 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
                         rec?.m != null ? 'val-manual' : rooms ? 'val-rooms' : 'val-calc',
                       )}
                       value={math.calculateTotal(item.id, date)}
+                      disabled={!daily}
                       onCommit={save(item.id, 'm', parseNumber)}
                       onClear={
-                        rec?.m != null ? () => patchRecord(item.id, date, { m: null }) : undefined
+                        daily && rec?.m != null
+                          ? () => patchRecord(item.id, date, { m: null })
+                          : undefined
                       }
                     />
                     {rooms && (

@@ -1,18 +1,22 @@
 import { backupSchema, formatDate } from '@app/shared';
-import { Download, FileSpreadsheet, Upload } from 'lucide-react';
+import { Database, Download, FileSpreadsheet, Upload } from 'lucide-react';
 import { useRef, useState, type ChangeEvent } from 'react';
-import { Button, Tooltip } from '@/components/ui';
+import { Button, Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
 import { apiErrorMessage } from '@/lib/api';
+import { backupCounts, hasData } from '@/lib/backup';
 import { downloadBlob } from '@/lib/download';
+import { hasExcelData } from '@/lib/excelRows';
 
-/** Header toolbar: Excel history, Backup (JSON download) and Restore (JSON upload). */
-export function DataMenu() {
-  const { data, math } = useStock();
+/** Settings card: Excel history, Backup (JSON download) and Restore (JSON upload, `can('restore')`). */
+export function DataCard() {
+  const { data, rawData, math } = useStock();
+  const { today, minDate } = useSelectedDate();
   const toast = useToast();
   const confirm = useConfirm();
   const { t } = useI18n();
@@ -21,11 +25,11 @@ export function DataMenu() {
   const [exporting, setExporting] = useState(false);
 
   const exportExcel = async () => {
-    if (data.items.length === 0) return toast.info(t.data.noData);
+    if (!hasExcelData(data)) return toast.info(t.data.noData);
     setExporting(true);
     try {
       const { exportExcel } = await import('@/lib/excel');
-      if (!(await exportExcel(data, math, formatDate(new Date()), t.excel))) {
+      if (!(await exportExcel(data, math, { from: minDate, today }, t.excel))) {
         toast.info(t.data.noHistory);
       }
     } catch (err) {
@@ -37,11 +41,9 @@ export function DataMenu() {
   };
 
   const backup = () => {
-    if (data.items.length === 0 && data.groups.length === 0 && data.tasks.length === 0) {
-      return toast.info(t.data.noBackupData);
-    }
+    if (!hasData(rawData)) return toast.info(t.data.noBackupData);
     downloadBlob(
-      new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+      new Blob([JSON.stringify(rawData, null, 2)], { type: 'application/json' }),
       `stock_backup_${formatDate(new Date())}.json`,
     );
   };
@@ -58,15 +60,9 @@ export function DataMenu() {
       parsed = null;
     }
     if (!parsed?.success) return toast.error(t.data.notBackup, t.data.notBackupFile(file.name));
-    const { items, groups, locations } = parsed.data;
     const ok = await confirm({
       title: t.data.restoreTitle,
-      description: t.data.restoreDescription(
-        file.name,
-        items.length,
-        groups.length,
-        locations.length,
-      ),
+      description: t.data.restoreDescription(file.name, backupCounts(parsed.data)),
       confirmLabel: t.data.restore,
     });
     if (!ok) return;
@@ -79,49 +75,46 @@ export function DataMenu() {
   };
 
   return (
-    <div className="flex items-center gap-1">
-      <Tooltip content={t.data.excelHint} side="bottom">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Database className="h-4 w-4 text-fg-muted" />
+          {t.data.title}
+        </CardTitle>
+        <CardDescription>{t.data.description}</CardDescription>
+      </CardHeader>
+      <CardBody className="flex flex-wrap gap-2">
         <Button
-          variant="ghost"
-          size="sm"
+          variant="outline"
           onClick={exportExcel}
           loading={exporting}
           leftIcon={<FileSpreadsheet className="h-4 w-4" />}
         >
-          <span className="hidden lg:inline">{t.data.excel}</span>
+          {t.data.excel}
         </Button>
-      </Tooltip>
-      <Tooltip content={t.data.backupHint} side="bottom">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={backup}
-          leftIcon={<Download className="h-4 w-4" />}
-        >
-          <span className="hidden lg:inline">{t.data.backup}</span>
+        <Button variant="outline" onClick={backup} leftIcon={<Download className="h-4 w-4" />}>
+          {t.data.backup}
         </Button>
-      </Tooltip>
-      {canRestore && (
-        <Tooltip content={t.data.restoreHint} side="bottom" align="end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fileInput.current?.click()}
-            leftIcon={<Upload className="h-4 w-4" />}
-          >
-            <span className="hidden lg:inline">{t.data.restore}</span>
-          </Button>
-        </Tooltip>
-      )}
-      {canRestore && (
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={onFile}
-        />
-      )}
-    </div>
+        {canRestore && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => fileInput.current?.click()}
+              leftIcon={<Upload className="h-4 w-4" />}
+            >
+              {t.data.restore}
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              data-testid="restore-file"
+              onChange={onFile}
+            />
+          </>
+        )}
+      </CardBody>
+    </Card>
   );
 }

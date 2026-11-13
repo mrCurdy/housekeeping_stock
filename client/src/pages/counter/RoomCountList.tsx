@@ -8,6 +8,7 @@ import { useStock } from '@/context/StockContext';
 import { ApiError, apiErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { parseQty } from '@/lib/numbers';
+import { useUntranslated } from '@/lib/untranslated';
 import { countKey, type CountDrafts, type CountState } from './useCountDrafts';
 
 const rowTone: Record<CountState, string> = {
@@ -34,6 +35,7 @@ export function RoomCountList({
   const { data, setCount } = useStock();
   const { date } = useSelectedDate();
   const { t } = useI18n();
+  const untranslated = useUntranslated();
   const tx = t.counter;
   const [error, setError] = useState('');
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
@@ -104,7 +106,11 @@ export function RoomCountList({
                 rowTone[state],
               )}
             >
-              <label htmlFor={id} className="font-medium">
+              <label
+                htmlFor={id}
+                title={untranslated(item).title}
+                className={cn('font-medium', untranslated(item).className)}
+              >
                 {item.name || t.common.unnamedItem}
               </label>
               <div className="flex items-center gap-2">

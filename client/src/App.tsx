@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell, HomeRedirect } from '@/components/layout/AppShell';
 import { Spinner } from '@/components/ui';
 import { AuthProvider } from '@/context/AuthContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
@@ -30,11 +30,13 @@ const router = createBrowserRouter([
       </div>
     ),
     children: [
-      { index: true, element: <Navigate to="/stock" replace /> },
+      { index: true, element: <HomeRedirect /> }, // the role's home page
       { path: 'stock', lazy: page(() => import('@/pages/Stock')) },
       // /counter = all rooms; /counter/<roomId> = one room's counting list (bookmark it per floor)
       { path: 'counter/:locationId?', lazy: page(() => import('@/pages/Counter')) },
       { path: 'checklist', lazy: page(() => import('@/pages/Checklist')) },
+      { path: 'rooms', lazy: page(() => import('@/pages/Rooms')) }, // admin only
+      { path: 'cleaning', lazy: page(() => import('@/pages/Cleaning')) },
       { path: 'settings', lazy: page(() => import('@/pages/Settings')) }, // admin only
       { path: '*', element: <NotFound /> },
     ],

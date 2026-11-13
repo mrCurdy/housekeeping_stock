@@ -1,5 +1,16 @@
 import { todayOnly, type Permission } from '@app/shared';
-import { Boxes, ClipboardList, ListChecks, LogOut, Menu, Package, Settings, X } from 'lucide-react';
+import {
+  Boxes,
+  Broom,
+  ClipboardList,
+  DoorOpen,
+  ListChecks,
+  LogOut,
+  Menu,
+  Package,
+  Settings,
+  X,
+} from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@/components/ui';
@@ -7,7 +18,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import type { Messages } from '@/i18n/en';
 import { cn } from '@/lib/cn';
-import { DataMenu } from './DataMenu';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { PaletteToggle } from './PaletteToggle';
 import { ThemeToggle } from './ThemeToggle';
@@ -16,28 +26,51 @@ interface NavItem {
   to: string;
   label: (t: Messages) => string;
   icon: ComponentType<{ className?: string }>;
-  /** Shown only to roles with this permission */
+  /** Shown only to roles with this permission; the others are redirected to their home page. */
   perm?: Permission;
+  /** A role lands here (on `/`, or from a page it can't open) only with this permission (default: `perm`). */
+  home?: Permission;
 }
 
 /** Add pages to the sidebar here (and their route in App.tsx). */
 const NAV: NavItem[] = [
-  { to: '/stock', label: (t) => t.nav.stock, icon: Package },
-  { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList },
-  { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks },
+  // open to every role, but read-only without `daily`, so only the admin lands here
+  { to: '/stock', label: (t) => t.nav.stock, icon: Package, home: 'daily' },
+  { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList, perm: 'count' },
+  { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks, perm: 'checklist' },
+  { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'setup' },
+  { to: '/cleaning', label: (t) => t.nav.cleaning, icon: Broom, perm: 'cleaning' },
   { to: '/settings', label: (t) => t.nav.settings, icon: Settings, perm: 'pins' },
 ];
 
+type Can = (perm: Permission) => boolean;
+
+/** The page a role starts on: the first NAV entry it may land on (admin /stock, housekeeper /counter, reception /checklist). */
+const homePath = (can: Can) =>
+  NAV.find((n) => {
+    const perm = n.home ?? n.perm;
+    return !perm || can(perm);
+  })?.to ?? '/stock';
+
+/** The index route: sends `/` to the role's home page. */
+export function HomeRedirect() {
+  const { can, ready } = useAuth();
+  // The role permissions come with the data: until then the home page isn't known
+  if (!ready) return null;
+  return <Navigate to={homePath(can)} replace />;
+}
+
 export function AppShell() {
   const { t } = useI18n();
-  const { role, can, logout } = useAuth();
+  const { role, can, ready, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Counting and the checklist happen on phones: keep their header free of the admin tools
   const { pathname } = useLocation();
-  const counting = pathname.startsWith('/counter') || pathname.startsWith('/checklist');
   // Counter mode (QR session): only the Counter, with no menu or toolbar
   const counterOnly = todayOnly(role);
   if (counterOnly && !pathname.startsWith('/counter')) return <Navigate to="/counter" replace />;
+  // A page this role can't use → its home page (once the role permissions have loaded)
+  const page = NAV.find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`));
+  if (ready && page?.perm && !can(page.perm)) return <Navigate to={homePath(can)} replace />;
 
   const sidebar = (
     <nav className="flex flex-col gap-1 p-3">
@@ -111,11 +144,6 @@ export function AppShell() {
           )}
           <span className={cn('font-semibold', !counterOnly && 'md:hidden')}>{t.appName}</span>
           <div className="flex-1" />
-          {!counterOnly && (
-            <div className={cn(counting && 'hidden md:block')}>
-              <DataMenu />
-            </div>
-          )}
           <LanguageSwitcher />
           <PaletteToggle />
           <ThemeToggle />

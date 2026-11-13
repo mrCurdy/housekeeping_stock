@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { pinSchema } from '@app/shared';
 
+// Empty (as docker compose passes an unset variable) means unset
+const optionalPin = z.preprocess((v) => (v === '' ? undefined : v), pinSchema.optional());
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -24,18 +27,29 @@ const envSchema = z
      */
     HTTPS_ONLY: z.enum(['true', 'false']).default('false'),
 
-    /** PINs set on the first start (later changed in the app). Unset: 1234 / 0000 with a warning. */
-    // Empty (as docker compose passes an unset variable) means unset
-    ADMIN_PIN: z.preprocess((v) => (v === '' ? undefined : v), pinSchema.optional()),
-    WORKER_PIN: z.preprocess((v) => (v === '' ? undefined : v), pinSchema.optional()),
+    /**
+     * PINs set on the first start (later changed in the app). Unset: admin 1234, housekeeper 1111,
+     * reception 0000, with a warning. WORKER_PIN is the old name of HOUSEKEEPER_PIN.
+     */
+    ADMIN_PIN: optionalPin,
+    HOUSEKEEPER_PIN: optionalPin,
+    RECEPTION_PIN: optionalPin,
+    WORKER_PIN: optionalPin,
 
     /** Directory with the built client; served in production. */
     CLIENT_DIST: z.string().optional(),
   })
-  .refine((e) => !e.ADMIN_PIN || e.ADMIN_PIN !== e.WORKER_PIN, {
-    path: ['WORKER_PIN'],
-    message: 'ADMIN_PIN and WORKER_PIN must differ',
-  });
+  .transform(({ WORKER_PIN, ...e }) => ({ ...e, HOUSEKEEPER_PIN: e.HOUSEKEEPER_PIN ?? WORKER_PIN }))
+  .refine(
+    (e) => {
+      const set = [e.ADMIN_PIN, e.HOUSEKEEPER_PIN, e.RECEPTION_PIN].filter(Boolean);
+      return new Set(set).size === set.length;
+    },
+    {
+      path: ['RECEPTION_PIN'],
+      message: 'ADMIN_PIN, HOUSEKEEPER_PIN and RECEPTION_PIN must differ',
+    },
+  );
 
 export type Config = z.infer<typeof envSchema> & { httpsOnly: boolean };
 

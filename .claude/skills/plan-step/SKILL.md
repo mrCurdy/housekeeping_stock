@@ -1,6 +1,6 @@
 ---
 name: plan-step
-description: Do one numbered step of a plan in docs/ (e.g. docs/plan-auth-sqlite.md) in a fresh session, tests first, with minimal token use. Use when asked to "do step N of docs/<plan>.md" or to continue the plan.
+description: Do one numbered step of a plan in docs/ (e.g. docs/plan-roompages.md) in a fresh session, tests first, with minimal token use. Use when asked to "do step N of docs/<plan>.md" or to continue the plan.
 ---
 
 # Doing one plan step
@@ -24,15 +24,16 @@ One session = one step. Its context starts cold, so only load what that step nee
 6. **Record the step:**
    - tick its checkbox in the plan, and add a line under it for any decision that differs from
      the plan;
-   - update the CLAUDE.md sections it affects (architecture, data model, pages);
+   - update `docs/structure.md` where the step changes it (file map, data model, pages), and CLAUDE.md only for architecture or rules;
    - update or create the skill the step names;
    - commit with a message that names the step (`Step 2: PIN auth on the server`).
 7. **Stop.** Report in 3–5 lines what was done, and anything left over for the next step. Don't
-   start the next step.
+   start the next step. When run as a `step-runner` agent (the `run-stage` skill), end with the
+   report format from `.claude/agents/step-runner.md`.
 
 ## Ways to save tokens
 
-- Never read `boilerplate/` except the exact file a step names, and then only the relevant part.
+- Never read `../boilerplate/` except the exact file a step names, and then only the relevant part.
 - Never read `client/src/i18n/et.ts` or `ru.ts` whole. Follow the `i18n` skill and use `grep -n` to
   find where keys go.
 - Don't read `package-lock.json`, `node_modules/`, `dist/` or `data/`.
@@ -40,4 +41,4 @@ One session = one step. Its context starts cold, so only load what that step nee
   new tests in a new file.
 - Don't re-read a file after editing it. Run commands with `| tail -30`.
 - If the plan turns out wrong or unclear, ask the user (one short question) instead of exploring
-  to guess.
+  to guess. As a `step-runner` agent you can't ask: stop and report `BLOCKED` with the question.

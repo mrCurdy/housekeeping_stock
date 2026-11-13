@@ -31,10 +31,10 @@ const app = () =>
 describe('AuthContext', () => {
   it('shows the app for a session and hides what the role may not do', async () => {
     mockApi((_m, path) =>
-      path === '/auth/me' ? { status: 200, body: { role: 'worker' } } : undefined,
+      path === '/auth/me' ? { status: 200, body: { role: 'housekeeper' } } : undefined,
     );
     app();
-    expect(await screen.findByText('Role: worker')).toBeInTheDocument();
+    expect(await screen.findByText('Role: housekeeper')).toBeInTheDocument();
     expect(screen.queryByText('Admin tools')).not.toBeInTheDocument();
   });
 

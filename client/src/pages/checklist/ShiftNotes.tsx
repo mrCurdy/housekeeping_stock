@@ -1,7 +1,8 @@
 import { addDays, formatDate, parseDateLocal } from '@app/shared';
 import { MessageSquare } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle, CommitTextarea } from '@/components/ui';
-import { formatLongDate, useSelectedDate } from '@/context/DateContext';
+import { useSelectedDate } from '@/context/DateContext';
+import { formatLongDate } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 

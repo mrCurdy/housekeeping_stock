@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatDate } from '@app/shared';
 import { mockApi } from '@/test/fetch';
+import { mockApp, today } from '@/test/fixtures';
 
 const start = (role = 'admin', extra: object = {}) =>
   mockApi((_method, path) => {
@@ -98,8 +99,8 @@ describe('stock page', () => {
     );
   });
 
-  it('shows no grips to a worker', async () => {
-    start('worker');
+  it('shows no grips to a housekeeper', async () => {
+    start('housekeeper');
     const { default: App } = await import('../App');
     render(<App />);
     await screen.findByRole('heading', { name: 'Overview' });
@@ -138,4 +139,80 @@ describe('stock page', () => {
     await user.click(toggle);
     expect(screen.queryByText('1 level')).toBeNull();
   });
+});
+
+describe('stock items', () => {
+  const total = (item: string) => screen.getByRole('spinbutton', { name: `Total stock ${item}` });
+
+  it('typing income updates the total', async () => {
+    const fetch = mockApp('admin');
+    const user = userEvent.setup();
+    const { default: App } = await import('../App');
+    render(<App />);
+
+    expect(await screen.findByRole('spinbutton', { name: 'Total stock Towels' })).toHaveValue(10);
+    await user.type(screen.getByRole('spinbutton', { name: 'Income Towels' }), '5{Enter}');
+    expect(total('Towels')).toHaveValue(15);
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/records/towels/${today}`,
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ i: 5 }) }),
+    );
+  });
+
+  it('× clears a manual value', async () => {
+    const fetch = mockApp('admin');
+    const user = userEvent.setup();
+    const { default: App } = await import('../App');
+    render(<App />);
+
+    expect(await screen.findByRole('spinbutton', { name: 'Total stock Sheets' })).toHaveValue(7);
+    const row = total('Sheets').closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'Clear manual value' }));
+    expect(total('Sheets')).toHaveValue(4); // back to yesterday's count
+    expect(within(row).queryByRole('button', { name: 'Clear manual value' })).toBeNull();
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/records/sheets/${today}`,
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ m: null }) }),
+    );
+  });
+
+  it('a housekeeper sees no rename or remove controls', async () => {
+    mockApp('housekeeper');
+    const { default: App } = await import('../App');
+    render(<App />);
+
+    expect(
+      await screen.findByRole('spinbutton', { name: 'Total stock Towels' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Towels', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Stock name' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove Towels' })).toBeNull();
+  });
+
+  it('the admin sees them', async () => {
+    mockApp('admin');
+    const { default: App } = await import('../App');
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: 'Remove Towels' })).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox', { name: 'Stock name' })).toHaveLength(2);
+  });
+});
+
+describe('header', () => {
+  it.each(['admin', 'housekeeper', 'reception'])(
+    'has no Excel, Backup or Restore for the %s',
+    async (role) => {
+      mockApp(role);
+      const { default: App } = await import('../App');
+      render(<App />);
+      expect(
+        await screen.findByRole('spinbutton', { name: 'Total stock Towels' }),
+      ).toBeInTheDocument();
+      const header = screen.getByRole('banner');
+      for (const name of [/Excel/, /Backup/, /Restore/]) {
+        expect(within(header).queryByRole('button', { name })).not.toBeInTheDocument();
+      }
+    },
+  );
 });

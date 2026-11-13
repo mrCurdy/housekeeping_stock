@@ -3,12 +3,14 @@ import { useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
+import { useUntranslated } from '@/lib/untranslated';
 
 /** Items × rooms for the selected day, plus the sum that becomes the stock figure. */
 export function AllRoomsTable({ progress }: { progress: (locationId: string) => number }) {
   const { data, math } = useStock();
   const { date } = useSelectedDate();
   const { t } = useI18n();
+  const untranslated = useUntranslated();
   const day = data.counts[date] ?? {};
   const known = new Set(data.locations.map((l) => l.id));
 
@@ -60,7 +62,12 @@ export function AllRoomsTable({ progress }: { progress: (locationId: string) => 
       <TBody>
         {data.items.map((item) => (
           <Tr key={item.id}>
-            <Td className="font-medium whitespace-nowrap">{item.name || t.common.unnamedItem}</Td>
+            <Td
+              title={untranslated(item).title}
+              className={cn('font-medium whitespace-nowrap', untranslated(item).className)}
+            >
+              {item.name || t.common.unnamedItem}
+            </Td>
             {data.locations.map((loc) => cell(day[loc.id]?.[item.id], '', loc.id))}
             {removedRooms.length > 0 && cell(removedSum(item.id), 'text-fg-muted')}
             {cell(math.roomSum(item.id, date), 'text-primary')}

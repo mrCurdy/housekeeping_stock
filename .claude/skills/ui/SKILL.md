@@ -15,20 +15,22 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
 1. **shared/**: the type in `types.ts`, a zod body schema in `schemas.ts` (and in `backupSchema` if it's stored).
 2. **server**:
    - a `Db` method (`sqlite-db` skill);
-   - a route in `routes/<area>.ts` with `validate(schema)` and `allow(perm)` (`auth` skill);
-   - a test in `server/tests/api.test.ts`.
-3. **`StockContext.tsx`**: add the method to `StockApi` and implement it like its neighbours:
+   - a route in `routes/<area>.ts` with `validateBody(schema)` and `allow(perm)` (`auth` skill);
+   - a test in a new `server/tests/<feature>.test.ts` (setup: `tests/helpers.ts`).
+3. **`context/stock/mutations.ts`**: add the method to `StockMutations` and implement it in its area's group (`setupMutations`, `dailyMutations`, `checklistMutations`, `settingsMutations`, `roomMutations`, `roomSetupMutations`) like its neighbours:
    ```ts
-   setThing: (id, value) => {
-     edit((d) => { /* change the draft, e.g. d.things[id] = value */ }); // optimistic
-     void send(() => api.put(`/things/${id}`, { value }));            // toast + reload on failure
+   setThing: (id: string, value: number) => {
+     // optimistic; copies only d.things (pass ['things', 'other'] when fn changes several keys)
+     edit('things', (d) => { d.things[id] = value; });
+     void send(() => api.put(`/things/${id}`, { value })); // toast + reload on failure
    },
    ```
+   - `edit(key, fn)` deep-copies only the named top-level key(s): `fn` must not change any other part of `d`. `StockContext.tsx` keeps only the state, polling, `send` and `edit`.
    - A rule shared with the server (like `editTask`) goes in `shared/` and is called inside `edit()`.
    - Use `send(..., { rethrow: true })` and `await` it only when the page shows its own error (the counter rows).
    - When the server answers with the merged day (counts, checks), write that answer into the state.
    - Name lists use the `named()` helper (add/rename/remove).
-4. **Component**: `const { data, math, setThing } = useStock()`. Derived stock figures always come from
+4. **Component**: `const { data, math, setThing } = useStock()`. `data` shows item/room type/unit/status names in the UI language (`localizeNames`); `rawData` keeps every version (Backup only). Derived stock figures always come from
    `math` (`calculateTotal`, `autoConsumption`, `series`). Totals are never stored.
 
 ## A new page
@@ -42,28 +44,27 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
   - `loading` → a centred `<Spinner />`;
   - then a `flex flex-col gap-6` stack of `Card`s.
 - For an admin-only page, start with `if (!can('<perm>')) return <Navigate to="/stock" replace />`. The server must guard the routes as well.
-- The selected day is `useSelectedDate().date`, a local `YYYY-MM-DD` string. Show it with `formatLongDate(date, locale)`. Never use `toISOString()` for dates.
+- The selected day is `useSelectedDate().date`, a local `YYYY-MM-DD` string. Show it with `formatLongDate(date, locale)` (`@/lib/format`). Never use `toISOString()` for dates.
 
 ## UI kit (`import { … } from '@/components/ui'`)
 
-| Component                                                                                                                                   | Key props                                                                                                           |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `Button`                                                                                                                                    | `variant` primary·secondary·outline·ghost·danger·link, `size` sm·md·lg·icon·icon-sm, `loading`, `leftIcon`, `block` |
-| `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardBody`, `CardFooter`                                                              | plain divs with styling                                                                                             |
-| `Table`, `THead`, `TBody`, `Tr`, `Th`, `Td`                                                                                                 | `Table` scrolls sideways inside its card                                                                            |
-| `Input`, `Textarea`, `Select` (`options`), `Checkbox`, `Switch` (`checked`, `onCheckedChange`), `Slider`                                    | `invalid`; wrap in `FormField` (`label`, `hint`, `error`)                                                           |
-| `CommitInput`, `CommitTextarea`                                                                                                             | `value`, `onCommit(text)`: edits freely, saves on blur/Enter/unmount, Escape reverts                                |
-| `Modal`                                                                                                                                     | `open`, `onClose`, `title`, `description`, `footer`, `size` sm·md·lg                                                |
-| `Alert` (`tone` info·success·warning·danger, `title`), `Badge` (`tone`, `outline`), `EmptyState` (`icon`, `title`, `description`, `action`) |                                                                                                                     |
-| `Dropdown` (`trigger`, `items`, `align`), `Tabs` (`items`, `value`, `onValueChange`), `Tooltip` (`content`, `side`, `align`)                |                                                                                                                     |
-| `Spinner` (`size`), `Skeleton`, `Avatar`                                                                                                    |                                                                                                                     |
+| Component                                                                                                                                   | Key props                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`                                                                                                                                    | `variant` primary·secondary·outline·ghost·danger·link, `size` sm·md·lg·icon·icon-sm, `loading`, `leftIcon`, `block`                                             |
+| `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardBody`, `CardFooter`                                                              | plain divs with styling                                                                                                                                         |
+| `Table`, `THead`, `TBody`, `Tr`, `Th`, `Td`                                                                                                 | `Table` scrolls sideways inside its card                                                                                                                        |
+| `Input`, `Textarea`, `Select` (`options`), `Checkbox`, `Switch` (`checked`, `onCheckedChange`), `Slider`                                    | `invalid`; wrap in `FormField` (`label`, `hint`, `error`)                                                                                                       |
+| `CommitInput`, `CommitTextarea`                                                                                                             | `value`, `onCommit(text)`: edits freely, saves on blur/Enter/unmount, Escape reverts                                                                            |
+| `Modal`                                                                                                                                     | `open`, `onClose`, `title`, `description`, `footer`, `size` sm·md·lg                                                                                            |
+| `Alert` (`tone` info·success·warning·danger, `title`), `Badge` (`tone`, `outline`), `EmptyState` (`icon`, `title`, `description`, `action`) |                                                                                                                                                                 |
+| `Dropdown` (`trigger`, `items`, `align`), `Tabs` (`items`, `value`, `onValueChange`), `Tooltip` (`content`, `side`, `align`)                |                                                                                                                                                                 |
+| `AddForm`, `ClearableInput`                                                                                                                 | `AddForm`: `placeholder`, `label`, `onAdd(name)`, the "new name" line under a list. `ClearableInput`: `CommitInput` props + `onClear` (× clears a manual value) |
+| `Spinner` (`size`), `Skeleton`, `Avatar`                                                                                                    |                                                                                                                                                                 |
 
 Outside the kit:
 
-- `AddForm` (`placeholder`, `label`, `onAdd(name)`): the "new name" line under a list.
-- `ClearableInput`: `CommitInput` props plus `onClear`, showing an × when a manual value overrides a calculated one.
 - `useDragSort(count, onMove)` (`@/lib/useDragSort`): reorder a vertical list by a grip or ↑/↓. Put `rowRef(i)`/`rowStyle(i)` on rows and `handleProps(i)` on a `touch-none` grip button (the checklist group cards in `Checklist.tsx`). Pass `{ free: true }` when rows can sit side by side, and highlight `over` (`Stock.tsx`).
-- `useListsDragSort(counts, onMove)` (`@/lib/useListsDragSort`): the same over several lists, rows can move between them (`TaskList` inside `TaskGroupCard`); `listRef(l)` on each list's whole area, `target` for the drop line.
+- `useListsDragSort(counts, onMove)` (`@/lib/useListsDragSort`): the same over several lists, rows can move between them (`TaskList` inside `TaskGroupCard`, the units in `pages/settings/UnitGroups.tsx`); `listRef(l)` on each list's whole area, `target` for the drop line. `UnitGroups.test.tsx` fakes the boxes for a drag between lists.
 - `useConfirm()`: `if (await confirm({ title, description, confirmLabel })) …`. It is red by default; pass `danger: false` for a neutral one.
 - `useToast()`: `toast.success|error|info(title, description?)`.
 - `apiErrorMessage(err, t)` turns any request error into text.
@@ -73,10 +74,14 @@ Outside the kit:
 
 - Numbers and names inside tables → `CommitInput`.
 - Text where an accidental change would hurt (task names) → plain `Input`s with an explicit Save button (`TaskEditor.tsx`).
-- Several fields that are checked together (PINs) → a `<form>` with `FormField`s (`Settings.tsx` `PinForm`).
+- Several fields that are checked together (PINs, the cleaning thresholds) → a `<form>` with `FormField`s (`pages/settings/PinForm.tsx`, `CleaningThresholds.tsx`).
+- An ordered list of names (rename / ↑↓ / remove / add) → `pages/settings/MasterList.tsx`.
 
 ## Styling
 
+- A "who did it" step before a change: `pages/rooms/WhoDialog.tsx` (a `Modal` with a `<form id>` and the submit button in `footer` via `form={id}`; `children`, `description`, `confirmLabel` and `extraAction` (a secondary button left of the confirm, e.g. "Choose date") turn it into a page's own dialog, like `pages/cleaning/CleaningDialog.tsx`). A per-device remembered value goes in `localStorage` inside try/catch. A remembered view (filters, sort, a full/compact mode with a `matchMedia` default) is a small hook like `pages/rooms/useRoomView.ts`; on/off toggle buttons are `Button` `primary`/`outline` with `aria-pressed` (`toggleProps` and the level buttons `LevelFilter` in `pages/rooms/LevelFilter.tsx`). A colour-coded icon needs `role="img"` + `aria-label` so the meaning isn't only the colour (`RoomTile.tsx`).
+- Names with per-language versions (items, room types, units, unit groups, statuses): wherever one is shown or edited, spread `useUntranslated()(entity)` (`@/lib/untranslated`) as `title` + `cn(…, className)`, so the admin sees one with no version in the UI language (`nameMissing`) marked. Its edit field gets `confirmUnchanged={entity.nameMissing}` (`CommitInput`: Enter commits the unchanged text), and an `onCommit` that skips unchanged text must still save it when `nameMissing`.
+- Room status colours: take the classes from `ROOM_COLOR_CLASSES[color]` (`@/lib/roomColors`), never build `bg-status-${c}` strings (Tailwind can't find them). Show a status's name with `statusName(s, t.rooms.defaultStatus)` (`pages/rooms/roomText.ts`), so the defaults are translated.
 - Use semantic tokens only: `bg-surface`, `bg-surface-2`, `text-fg`, `text-fg-muted`, `border-border`, `text-primary`, `bg-primary-soft`, and `success|warning|danger|info` (+ `-soft`). Raw colours break dark mode. Merge classes with `cn()`.
 - **Stock figures:**
   - `val-calc`: calculated;
@@ -87,12 +92,13 @@ Outside the kit:
 - **Phones:**
   - Wrap grids as `grid grid-cols-1 …` with `minmax(0,…)` columns, so a wide table scrolls inside its card and not the page.
   - Fields get 16px text on touch screens automatically (no iOS zoom), so don't override `font-size` on inputs.
-  - The header hides the toolbar on `/counter` and `/checklist` (the `counting` check in `AppShell`). Add new phone-first pages there too.
+  - Don't auto-focus a field on a touch screen when the page has its own buttons for it (the PIN keypad in `Login.tsx`): `matchMedia('(pointer: coarse)')` in try/catch; focusing opens the OS keyboard on top.
+  - The header holds only the language, palette, theme and log-out buttons on every page; admin tools go in Settings cards, not the header.
 - Icons come from `lucide-react` at `h-4 w-4`. Icon-only buttons need `aria-label` and `title`.
 
 ## Roles and modes
 
-- `useAuth().can('setup' | 'tasks' | 'restore' | 'pins' | 'qr' | 'daily' | 'checklist' | 'count')` hides the controls a role can't use (see `ItemsCard`: `setup` shows rename/remove/add).
+- `useAuth().can('setup' | 'tasks' | 'restore' | 'pins' | 'qr' | 'daily' | 'checklist' | 'count' | 'cleaning')` hides the controls a role can't use (see `ItemsCard`: `setup` shows rename/remove/add).
 - Hiding is only cosmetic: the route needs `allow(perm)` as well.
 - A counter (QR) session is `todayOnly(role)`. It sees only `/counter`, and its date is locked to today.
 
@@ -107,7 +113,9 @@ plurals). Never read the et/ru files whole.
 - Client tests live next to the code (`*.test.tsx`).
   - Fake the server with `mockApi((method, path, body) => reply)` from `@/test/fetch`.
   - Wrap the component in only the providers it uses. `Settings.test.tsx` is the pattern: Toast → Confirm → Auth.
+  - A context's own behaviour (`StockContext`): `context/StockContext.test.tsx` renders a small consumer of `useStock()` under I18n → Toast → Auth → Date → Stock. Its `fakeApi` can hold a request open (a `deferred` reply), and it drives the poll with `vi.useFakeTimers({ shouldAdvanceTime: true })` + `POLL_MS`. A change to `StockContext` must keep this file green.
   - A whole page with real data (`StockContext`, routes, roles): set the URL with `window.history.replaceState`, answer `/auth/me` and `/data` in `mockApi`, then `await import('../App')` and render it. `pages/Checklist.test.tsx` is the pattern (it also shows faking row positions for a pointer drag).
+  - For page data use `@/test/fixtures`: `mockApp(role, stockFixture({ …overrides }), route?)` answers `/auth/me` and `/data` (`today`/`yesterday` are the fixture's dates). `pages/Stock.test.tsx` → "stock items" is the short pattern.
   - Call `vi.unstubAllGlobals()` in `afterEach`.
 - Query by role and label (`screen.getByRole('button', { name: … })`) using the English text.
 - Run one file: `cd client && npx vitest run src/pages/<File>.test.tsx | tail -30`.
@@ -116,7 +124,7 @@ plurals). Never read the et/ru files whole.
 ## Saving tokens
 
 - Start from `docs/structure.md` and this skill. Don't list or read folders to "get a feel".
-- Read big files in parts: `StockContext.tsx` (grep the method name), `en.ts` (grep the section), `db/sqlite/index.ts`.
+- Read big files in parts: `stock/mutations.ts` (grep the method name), `en.ts` (grep the section).
 - Copy the nearest existing component and change it. Don't design from scratch.
 - Don't re-read files after editing them. Pipe test and build output through `| tail`.
 - If a change shifts the structure (a new file, page or rule), update `docs/structure.md` in the same commit.
