@@ -58,6 +58,12 @@ describe('REST API', () => {
       notes: {},
       stockCards: [],
       settings: {},
+      rooms: [],
+      roomTypes: [],
+      roomUnits: [],
+      roomStatuses: [],
+      unitStatus: {},
+      cleanings: {},
     });
   });
 

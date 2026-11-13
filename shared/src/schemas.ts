@@ -1,15 +1,22 @@
 import { z } from 'zod';
 import { pruneTasks, taskGroupList } from './checklist';
+import { roomStatusList } from './rooms';
 import {
   emptyStockData,
+  ROOM_COLORS,
+  ROOM_NOTE_MAX,
   SALUTE_TEXT_MAX,
   STOCK_CARDS,
   type AppSettings,
+  type Cleaning,
   type DayRecord,
+  type Room,
+  type RoomStatus,
   type StockCard,
   type StockData,
   type Task,
   type TaskGroup,
+  type UnitStatus,
 } from './types';
 
 /** Request bodies. The server validates with these (validateBody); the client can reuse them. */
@@ -81,10 +88,26 @@ export type TaskGroupOrderInput = z.infer<typeof taskGroupOrderSchema>;
 export const stockCardOrderSchema = z.object({ order: z.array(z.enum(STOCK_CARDS)) });
 export type StockCardOrderInput = z.infer<typeof stockCardOrderSchema>;
 
-/** A partial update of the app settings. '' (or only spaces) resets a value to its default. */
-export const settingsPatchSchema = z.object({
-  saluteText: z.string().trim().max(SALUTE_TEXT_MAX).optional(),
-});
+const days = z.number().int().min(0).max(3650);
+
+/**
+ * A partial update of the app settings. '' (or only spaces) resets a text to its default. The
+ * cleaning thresholds must keep 0 <= green < yellow; when only one is sent, the server checks the
+ * pair against the stored other one (`cleanThresholds`).
+ */
+export const settingsPatchSchema = z
+  .object({
+    saluteText: z.string().trim().max(SALUTE_TEXT_MAX).optional(),
+    cleanGreenDays: days.optional(),
+    cleanYellowDays: days.optional(),
+  })
+  .refine(
+    (s) =>
+      s.cleanGreenDays === undefined ||
+      s.cleanYellowDays === undefined ||
+      s.cleanGreenDays < s.cleanYellowDays,
+    { message: 'Green days must be less than yellow days', path: ['cleanGreenDays'] },
+  );
 export type SettingsPatchInput = z.infer<typeof settingsPatchSchema>;
 
 /** `item`: tick one checklist line of the task's instructions instead of the task. */
@@ -100,6 +123,59 @@ export type CheckInput = z.infer<typeof checkSchema>;
 /** '' clears the note. */
 export const noteSchema = z.object({ text: z.string().max(5000) });
 export type NoteInput = z.infer<typeof noteSchema>;
+
+// ---- Rooms ----
+
+const roomNumber = z.string().trim().min(1).max(20);
+/** The room note; '' clears it. */
+const roomNote = z.string().trim().max(ROOM_NOTE_MAX);
+/** A person's name in the "who" dialog. */
+const who = z.string().trim().min(1).max(100);
+
+/** `type`: a room type id ('' or missing = none). */
+export const roomCreateSchema = z.object({
+  number: roomNumber,
+  type: z.string().max(100).optional(),
+  note: roomNote.optional(),
+});
+export type RoomCreateInput = z.infer<typeof roomCreateSchema>;
+
+/** Only the fields given change; `type: ''` and `note: ''` clear them. */
+export const roomPatchSchema = z.object({
+  number: roomNumber.optional(),
+  type: z.string().max(100).optional(),
+  note: roomNote.optional(),
+});
+export type RoomPatchInput = z.infer<typeof roomPatchSchema>;
+
+/** Room types and units: create and rename use `nameSchema`-like bodies with a non-blank name. */
+export const roomNameSchema = z.object({ name: name.pipe(z.string().min(1)) });
+export type RoomNameInput = z.infer<typeof roomNameSchema>;
+
+export const roomStatusCreateSchema = z.object({
+  name: name.pipe(z.string().min(1)),
+  color: z.enum(ROOM_COLORS),
+});
+export type RoomStatusCreateInput = z.infer<typeof roomStatusCreateSchema>;
+
+export const roomStatusPatchSchema = roomStatusCreateSchema.partial();
+export type RoomStatusPatchInput = z.infer<typeof roomStatusPatchSchema>;
+
+/** Units, statuses or room types in their new order (ids not listed keep their place at the end). */
+export const idOrderSchema = z.object({ ids: z.array(z.string()) });
+export type IdOrderInput = z.infer<typeof idOrderSchema>;
+
+/** A unit's new status, who set it and an optional note. */
+export const unitStatusSchema = z.object({
+  status: z.string().min(1).max(100),
+  by: who,
+  note: roomNote.optional(),
+});
+export type UnitStatusInput = z.infer<typeof unitStatusSchema>;
+
+/** A general cleaning: the local day (`formatDate`) and the cleaner's name. */
+export const cleaningSchema = z.object({ date: dateSchema, by: who });
+export type CleaningInput = z.infer<typeof cleaningSchema>;
 
 // ---- Backups ----
 
@@ -159,7 +235,48 @@ export const backupSchema = z
     notes: z.record(z.string(), z.string()).default({}),
     stockCards: z.array(z.enum(STOCK_CARDS)).catch([]).default([]),
     settings: z
-      .object({ saluteText: z.string().max(SALUTE_TEXT_MAX).optional().catch(undefined) })
+      .object({
+        saluteText: z.string().max(SALUTE_TEXT_MAX).optional().catch(undefined),
+        cleanGreenDays: days.optional().catch(undefined),
+        cleanYellowDays: days.optional().catch(undefined),
+      })
+      .catch({})
+      .default({}),
+    // Rooms (added later: older backups don't have them)
+    rooms: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          number: z.string().catch(''),
+          type: z.string().optional().catch(undefined),
+          note: z.string().optional().catch(undefined),
+        }),
+      )
+      .catch([])
+      .default([]),
+    roomTypes: z.array(idName).catch([]).default([]),
+    roomUnits: z.array(idName).catch([]).default([]),
+    roomStatuses: z
+      .array(idName.extend({ color: z.enum(ROOM_COLORS).catch('grey') }))
+      .catch([])
+      .default([]),
+    unitStatus: z
+      .record(
+        z.string(),
+        z.record(
+          z.string(),
+          z.object({
+            status: z.string(),
+            by: z.string().catch(''),
+            at: z.string().catch(''),
+            note: z.string().optional().catch(undefined),
+          }),
+        ),
+      )
+      .catch({})
+      .default({}),
+    cleanings: z
+      .record(z.string(), z.array(z.object({ date: dateSchema, by: z.string().catch('') })))
       .catch({})
       .default({}),
   })
@@ -183,6 +300,12 @@ export function normalizeStockData(raw: {
   notes?: Record<string, string>;
   stockCards?: StockCard[];
   settings?: AppSettings;
+  rooms?: Room[];
+  roomTypes?: { id: string; name: string }[];
+  roomUnits?: { id: string; name: string }[];
+  roomStatuses?: RoomStatus[];
+  unitStatus?: Record<string, Record<string, UnitStatus>>;
+  cleanings?: Record<string, Cleaning[]>;
 }): StockData {
   const out = emptyStockData();
   out.items = raw.items.map((i) => ({
@@ -238,7 +361,49 @@ export function normalizeStockData(raw: {
   out.stockCards = [...new Set(raw.stockCards ?? [])];
   const saluteText = raw.settings?.saluteText?.trim();
   if (saluteText) out.settings.saluteText = saluteText;
+  const { cleanGreenDays: green, cleanYellowDays: yellow } = raw.settings ?? {};
+  if (green === undefined || yellow === undefined || green < yellow) {
+    if (green !== undefined) out.settings.cleanGreenDays = green;
+    if (yellow !== undefined) out.settings.cleanYellowDays = yellow;
+  }
+  normalizeRooms(raw, out);
   return out;
+}
+
+/** Rooms: blank notes dropped, references to unknown types/rooms/units/statuses dropped, no empty maps. */
+function normalizeRooms(raw: Parameters<typeof normalizeStockData>[0], out: StockData) {
+  out.roomTypes = (raw.roomTypes ?? []).map(({ id, name }) => ({ id, name }));
+  out.roomUnits = (raw.roomUnits ?? []).map(({ id, name }) => ({ id, name }));
+  out.roomStatuses = (raw.roomStatuses ?? []).map(({ id, name, color }) => ({ id, name, color }));
+  const typeIds = new Set(out.roomTypes.map((t) => t.id));
+  out.rooms = (raw.rooms ?? []).map(({ id, number, type, note }) => ({
+    id,
+    number,
+    ...(type && typeIds.has(type) && { type }),
+    ...(note?.trim() && { note: note.trim() }),
+  }));
+
+  const roomIds = new Set(out.rooms.map((r) => r.id));
+  const unitIds = new Set(out.roomUnits.map((u) => u.id));
+  const statusIds = new Set(roomStatusList(out).map((s) => s.id));
+  for (const [roomId, byUnit] of Object.entries(raw.unitStatus ?? {})) {
+    if (!roomIds.has(roomId)) continue;
+    for (const [unitId, { status, by, at, note }] of Object.entries(byUnit)) {
+      if (!unitIds.has(unitId) || !statusIds.has(status)) continue;
+      (out.unitStatus[roomId] ??= {})[unitId] = {
+        status,
+        by,
+        at,
+        ...(note?.trim() && { note: note.trim() }),
+      };
+    }
+  }
+  for (const [roomId, list] of Object.entries(raw.cleanings ?? {})) {
+    if (!roomIds.has(roomId) || !list.length) continue;
+    out.cleanings[roomId] = list
+      .map(({ date, by }) => ({ date, by }))
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  }
 }
 
 /**

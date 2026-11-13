@@ -64,6 +64,12 @@ const sample = (): StockData => ({
   notes: { [day(-1)]: 'Order soap' },
   stockCards: ['overview', 'items', 'departures'],
   settings: { saluteText: 'Hurraa!' },
+  rooms: [],
+  roomTypes: [],
+  roomUnits: [],
+  roomStatuses: [],
+  unitStatus: {},
+  cleanings: {},
 });
 
 describe('SQLite driver', () => {

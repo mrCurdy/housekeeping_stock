@@ -60,9 +60,17 @@ settings:       { saluteText?, cleanGreenDays?, cleanYellowDays? }
 
 ## Steps
 
-- [ ] **1. Shared types, schemas and pure rules** (`shared/`)
+- [x] **1. Shared types, schemas and pure rules** (`shared/`)
+  - Done. Differences: `unitStatusOf` returns `{ status, entry? }`; `removeStatusIn` drops the
+    reset units' entries (missing = first) and returns false for the last/unknown status; added
+    `latestCleaning`, `idOrderSchema` (shared by units/statuses/types order), `roomNameSchema`,
+    `roomStatusPatchSchema`. `cleaningLevel` → `{ days: null, color: 'red' }` when never cleaned.
+    `settingsPatchSchema` is now a refined object (only checks the pair when both are sent: step 3
+    must check a single threshold against the stored other one, e.g. via `cleanThresholds`). The
+    six new `StockData` keys are required and in `emptyStockData`, so the server's `/data` already
+    returns them empty until step 2 stores them.
   - `types.ts`: the types above, `ROOM_COLORS` (`green, yellow, red` + 7: `blue, purple, orange,
-    teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { green: 15, yellow: 29 }`.
+teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { green: 15, yellow: 29 }`.
   - `auth.ts`: add `rooms` to `PERMISSIONS`, give it to `worker` (admin has all).
   - `schemas.ts`: request bodies (room create/patch with `note` trimmed, max `ROOM_NOTE_MAX` = 500;
     type/unit/status create/patch, order, unit

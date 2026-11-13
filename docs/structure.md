@@ -16,6 +16,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 | New permission / hide UI by role        | `shared/src/auth.ts` (`PERMISSIONS`, `MATRIX`) → `allow(perm)` on the route → `useAuth().can(perm)` in the UI                                                                   | `auth`       |
 | Stock rule (totals, consumption)        | `shared/src/stock.ts` + `stock.test.ts` only (pure; server and client both use it)                                                                                              | —            |
 | Checklist rule (task history, ticks)    | `shared/src/checklist.ts` + `checklist.test.ts`                                                                                                                                 | —            |
+| Room-card rule (statuses, cleanings)    | `shared/src/rooms.ts` + `rooms.test.ts`                                                                                                                                         | —            |
 | UI component used on more than one page | `client/src/components/ui/<Name>.tsx` + export in `components/ui/index.ts` + a case in `ui.test.tsx`                                                                            | `ui`         |
 | Colour / utility class                  | `client/src/styles/index.css` (tokens on `:root` and `[data-theme='dark']`, `@utility` classes)                                                                                 | `ui`         |
 | Backup / restore format                 | `shared/src/schemas.ts` (`backupSchema`, must still read old files) → `db/sqlite/rows.ts` (`snapshot`, `fill`)                                                                  | `sqlite-db`  |
@@ -33,6 +34,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `stock.ts` (+ test): `createStockMath(state, { minDateStr })` → `dayFigures`, `calculateTotal`, `autoConsumption`, `roomSum`, `series`.
 - `prune.ts` (+ test): `pruneStock(data, keepFrom)` drops stock data before `keepFrom` and turns the day before it into a carried-over count (`m` = that day's total), so no later figure changes. The SQLite driver calls it (`prune`).
 - `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`, `itemCheckKey`/`checkTaskId` (ticks of checklist lines). Groups: `taskGroupList` (never empty), `groupOf`, `tasksByGroup`, `moveTaskTo` + `applyTaskMove` (drag/arrow reorder, also into another group), `removeTaskGroupIn`.
+- `rooms.ts` (+ test): room-card rules. `roomStatusList` (never empty: `DEFAULT_ROOM_STATUSES` while none is stored), `unitStatusOf` (missing = first status), `cleanThresholds`, `cleaningLevel(last, today, thresholds)` → `{ days, color }`, `latestCleaning`, `sortRooms` (natural), `removeUnitIn`/`removeStatusIn`/`removeTypeIn`/`removeRoomIn`, `pruneCleanings` (keeps each room's latest).
 - `dates.ts`: local `YYYY-MM-DD` helpers (`formatDate`, `parseDateLocal`, `addDays`, `todayLocal`, `dateRange`). `index.ts`: barrel.
 
 ### `server/src/` (Express 5)
@@ -165,7 +167,13 @@ taskGroups:   [{ id, name }]                                   // checklist grou
 checks:       { [YYYY-MM-DD]: { [taskId | taskId#lineKey]: ISO time ticked } }  // missing = not done
 notes:        { [YYYY-MM-DD]: string }                         // note for the next shift
 stockCards:   ['departures' | 'items' | 'overview']            // Stock page card order; [] = default, missing cards follow (stockCardOrder)
-settings:     { saluteText? }                                   // app-wide preferences (key/value table); missing = default (DEFAULT_SALUTE_TEXT)
+settings:     { saluteText?, cleanGreenDays?, cleanYellowDays? } // app-wide preferences (key/value table); missing = default (DEFAULT_SALUTE_TEXT, DEFAULT_CLEAN_DAYS 15/29)
+rooms:        [{ id, number, type?, note? }]                   // room cards; shown sorted by number (sortRooms); note ≤ ROOM_NOTE_MAX (500)
+roomTypes:    [{ id, name }]                                   // dropdown order
+roomUnits:    [{ id, name }]                                   // master layout every room shares, display order
+roomStatuses: [{ id, name, color }]                            // color ∈ ROOM_COLORS (10, green/yellow/red first); [] = DEFAULT_ROOM_STATUSES
+unitStatus:   { [roomId]: { [unitId]: { status, by, at, note? } } }  // current status only; missing = first status
+cleanings:    { [roomId]: [{ date, by }] }                     // newest first; older than HISTORY_DAYS pruned except each room's latest
 ```
 
 - **Record fields:**
@@ -191,6 +199,7 @@ settings:     { saluteText? }                                   // app-wide pref
   - a group drops its departures and multipliers;
   - an item drops its records and counts;
   - a room keeps its counts, which still count in the totals (shown as "Removed rooms").
+  - a room unit drops its statuses on every card; a room status resets its units to the first status (the last one can't be removed); a room type is cleared on its cards; a room card drops its statuses and cleanings (`rooms.ts`).
 
 ## Stock calculation
 
