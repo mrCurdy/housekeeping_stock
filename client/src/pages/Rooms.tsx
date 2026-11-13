@@ -9,12 +9,14 @@ import { useStock } from '@/context/StockContext';
 import { RoomCard } from './rooms/RoomCard';
 import { RoomFilters } from './rooms/RoomFilters';
 import { RoomSearch } from './rooms/RoomSearch';
+import { RoomTile } from './rooms/RoomTile';
 import { roomLevels, viewRooms } from './rooms/roomView';
 import { useRoomView } from './rooms/useRoomView';
 
 /**
  * /rooms: one card per hotel room (level by level) with its unit statuses and last general
- * cleaning, under a search and a filter bar (level, sort, hide-green; `rooms/roomView.ts`). Rooms
+ * cleaning, under a search and a filter bar (level, sort, hide-green, full cards or compact tiles;
+ * `rooms/roomView.ts`). In compact mode one tile at a time opens as its full card. Rooms
  * are added, and units, statuses, types and thresholds set up, by the admin in Settings.
  */
 export default function Rooms() {
@@ -30,9 +32,12 @@ export default function Rooms() {
   const levels = roomLevels(data.rooms);
   const [view, setView] = useRoomView(levels);
   const [search, setSearch] = useState('');
+  const [openId, setOpenId] = useState<string | null>(null);
 
   if (!can('rooms')) return <Navigate to="/stock" replace />;
   const rooms = viewRooms(data, { ...view, search });
+  // the open tile closes when the filters or search hide it (it stays closed if it comes back)
+  if (openId !== null && !rooms.some((r) => r.id === openId)) setOpenId(null);
 
   return (
     <>
@@ -102,6 +107,21 @@ export default function Rooms() {
                 }
               />
             </Card>
+          ) : view.mode === 'compact' ? (
+            <div className="grid grid-cols-3 gap-2 min-[420px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+              {rooms.map((room) =>
+                room.id === openId ? (
+                  <RoomCard
+                    key={room.id}
+                    room={room}
+                    className="col-span-full"
+                    onClose={() => setOpenId(null)}
+                  />
+                ) : (
+                  <RoomTile key={room.id} room={room} onOpen={() => setOpenId(room.id)} />
+                ),
+              )}
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {rooms.map((room) => (

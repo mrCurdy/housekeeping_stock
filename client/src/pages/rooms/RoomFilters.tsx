@@ -1,14 +1,21 @@
-import { EyeOff } from 'lucide-react';
+import { EyeOff, Grid3x3, Rows2 } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
-import type { RoomSort, RoomView } from './roomView';
+import type { RoomSort } from './roomView';
+import type { RoomMode, StoredRoomView } from './useRoomView';
+
+const MODES = [
+  { mode: 'full', icon: Rows2 },
+  { mode: 'compact', icon: Grid3x3 },
+] as const satisfies readonly { mode: RoomMode; icon: unknown }[];
 
 const SORTS = ['cleanedNew', 'cleanedOld', 'attention'] as const satisfies readonly RoomSort[];
 
 /**
  * The bar above the room cards: one level at a time (or All), one of three sort toggles
- * (pressing the active one goes back to number order) and hide-green (only with units).
+ * (pressing the active one goes back to number order), hide-green (only with units) and the
+ * full cards / compact tiles switch.
  */
 export function RoomFilters({
   levels,
@@ -17,8 +24,8 @@ export function RoomFilters({
   showHideGreen,
 }: {
   levels: readonly string[];
-  view: RoomView;
-  onChange: (patch: Partial<RoomView>) => void;
+  view: StoredRoomView;
+  onChange: (patch: Partial<StoredRoomView>) => void;
   showHideGreen: boolean;
 }) {
   const tx = useI18n().t.rooms.filter;
@@ -82,6 +89,31 @@ export function RoomFilters({
           {tx.hideGreen}
         </Button>
       )}
+
+      <div
+        role="group"
+        aria-labelledby={`${id}-mode`}
+        className="flex flex-wrap items-center gap-2"
+      >
+        <span id={`${id}-mode`} className="text-sm text-fg-muted">
+          {tx.view}
+        </span>
+        {MODES.map(({ mode, icon: Icon }) => {
+          const label = mode === 'full' ? tx.viewFull : tx.viewCompact;
+          return (
+            <Button
+              key={mode}
+              {...toggle(view.mode === mode)}
+              size="icon-sm"
+              aria-label={label}
+              title={label}
+              onClick={() => onChange({ mode })}
+            >
+              <Icon className="h-4 w-4" />
+            </Button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   unitStatusOf,
   type Room,
   type RoomColor,
+  type RoomStatus,
   type RoomType,
   type StockData,
 } from '@app/shared';
@@ -45,15 +46,26 @@ export const sortByLevel = <T extends Pick<Room, 'number'>>(rooms: readonly T[])
 const colorUrgency = (color: RoomColor): number =>
   color === 'red' ? 3 : color === 'yellow' ? 2 : color === 'green' ? 0 : 1;
 
+/** A room's worst unit status (the one `roomUrgency` ranks; first one on a tie), none without units. */
+export function worstStatus(
+  data: Pick<StockData, 'roomUnits' | 'roomStatuses' | 'unitStatus'>,
+  roomId: string,
+): RoomStatus | undefined {
+  let worst: RoomStatus | undefined;
+  for (const unit of data.roomUnits) {
+    const { status } = unitStatusOf(data, roomId, unit.id);
+    if (!worst || colorUrgency(status.color) > colorUrgency(worst.color)) worst = status;
+  }
+  return worst;
+}
+
 /** A room's worst unit status: 3 red, 2 yellow, 1 an extra colour, 0 all green (or no units). */
 export function roomUrgency(
   data: Pick<StockData, 'roomUnits' | 'roomStatuses' | 'unitStatus'>,
   roomId: string,
 ): number {
-  let worst = 0;
-  for (const unit of data.roomUnits)
-    worst = Math.max(worst, colorUrgency(unitStatusOf(data, roomId, unit.id).status.color));
-  return worst;
+  const worst = worstStatus(data, roomId);
+  return worst ? colorUrgency(worst.color) : 0;
 }
 
 /** Every unit's status (unstored = the first status) is green. */

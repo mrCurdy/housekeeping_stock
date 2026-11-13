@@ -328,6 +328,12 @@ export const ru: Messages = {
       search: 'Поиск номеров',
       searchPlaceholder: 'Номер или тип',
       searchClear: 'Очистить поиск',
+      view: 'Вид',
+      viewFull: 'Полные карточки',
+      viewCompact: 'Компактные плитки',
+      openRoom: (number) => `Открыть номер ${number}`,
+      closeRoom: (number) => `Закрыть номер ${number}`,
+      unitsStatus: (status) => `Части: ${status}`,
     },
   },
 

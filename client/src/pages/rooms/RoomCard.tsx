@@ -8,7 +8,7 @@ import {
   unitStatusOf,
   type Room,
 } from '@app/shared';
-import { ChevronDown, Pencil, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronDown, Pencil, Sparkles, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Card, CardTitle, CommitTextarea, Input, Select } from '@/components/ui';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -28,9 +28,18 @@ type Pending = { unitId: string; statusId: string } | 'clean' | null;
 /**
  * One room card: number and type (✎ edits them or deletes the card), its note, every master unit
  * with its status, and the general-cleaning line with "Cleaned" and the cleaning history.
- * Status changes and cleanings first ask who did it (`WhoDialog`).
+ * Status changes and cleanings first ask who did it (`WhoDialog`). Opened from a compact tile it
+ * gets `onClose` (an × that turns it back into the tile) and a `className` for the grid.
  */
-export function RoomCard({ room }: { room: Room }) {
+export function RoomCard({
+  room,
+  onClose,
+  className,
+}: {
+  room: Room;
+  onClose?: () => void;
+  className?: string;
+}) {
   const { data, updateRoom, removeRoom, setUnitStatus, markCleaned } = useStock();
   const { t, locale } = useI18n();
   const tx = t.rooms;
@@ -77,7 +86,7 @@ export function RoomCard({ room }: { room: Room }) {
     pending && pending !== 'clean' ? statuses.find((s) => s.id === pending.statusId) : undefined;
 
   return (
-    <article aria-label={tx.roomNamed(room.number)} className="min-w-0">
+    <article aria-label={tx.roomNamed(room.number)} className={cn('min-w-0', className)}>
       <Card className="flex h-full flex-col">
         {editing ? (
           <RoomEditor
@@ -105,6 +114,18 @@ export function RoomCard({ room }: { room: Room }) {
             >
               <Pencil className="h-4 w-4" />
             </Button>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                title={tx.filter.closeRoom(room.number)}
+                aria-label={tx.filter.closeRoom(room.number)}
+                className="text-fg-muted"
+                onClick={onClose}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
 

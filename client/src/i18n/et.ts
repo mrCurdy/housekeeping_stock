@@ -329,6 +329,12 @@ export const et: Messages = {
       search: 'Otsi tube',
       searchPlaceholder: 'Toa number või tüüp',
       searchClear: 'Tühjenda otsing',
+      view: 'Vaade',
+      viewFull: 'Täiskaardid',
+      viewCompact: 'Kompaktsed ruudud',
+      openRoom: (number) => `Ava tuba ${number}`,
+      closeRoom: (number) => `Sulge tuba ${number}`,
+      unitsStatus: (status) => `Osad: ${status}`,
     },
   },
 

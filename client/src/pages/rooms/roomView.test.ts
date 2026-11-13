@@ -7,6 +7,7 @@ import {
   roomLevels,
   roomUrgency,
   viewRooms,
+  worstStatus,
   type RoomView,
 } from './roomView';
 
@@ -69,6 +70,18 @@ describe('roomUrgency / allGreen', () => {
     d.roomStatuses = [d.roomStatuses[1]!, d.roomStatuses[0]!]; // yellow first now
     expect(allGreen(d, 'r101')).toBe(false);
     expect(roomUrgency(d, 'r101')).toBe(2);
+  });
+  it('worstStatus is the status roomUrgency ranks; none without units', () => {
+    const d = data();
+    d.unitStatus = {
+      r101: { bed: { status: 'attention', ...by }, shower: { status: 'fix', ...by } },
+      r102: { shower: { status: 'paint', ...by } },
+    };
+    expect(worstStatus(d, 'r101')?.id).toBe('fix');
+    expect(worstStatus(d, 'r102')?.id).toBe('paint');
+    expect(worstStatus(d, 'r201')?.id).toBe('ok');
+    d.roomUnits = [];
+    expect(worstStatus(d, 'r101')).toBeUndefined();
   });
 });
 

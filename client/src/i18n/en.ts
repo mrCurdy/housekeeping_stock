@@ -332,6 +332,12 @@ export const en = {
       search: 'Search rooms',
       searchPlaceholder: 'Room number or type',
       searchClear: 'Clear search',
+      view: 'View',
+      viewFull: 'Full cards',
+      viewCompact: 'Compact tiles',
+      openRoom: (number: string) => `Open room ${number}`,
+      closeRoom: (number: string) => `Close room ${number}`,
+      unitsStatus: (status: string) => `Units: ${status}`,
     },
   },
 

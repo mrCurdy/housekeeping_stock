@@ -469,3 +469,97 @@ describe('rooms search', () => {
     expect(titles()).toHaveLength(5);
   });
 });
+
+describe('rooms compact tiles', () => {
+  const hotel = () =>
+    rooms({
+      unitStatus: { r2: { shower: { status: 'fix', by: 'Ann', at: '2026-11-01T10:00:00.000Z' } } },
+      cleanings: { r10: [{ date: daysAgo(0), by: 'Bob' }] },
+    });
+  const view = () => screen.getByRole('group', { name: 'View' });
+  const tile = (number: string) => screen.getByRole('button', { name: `Open room ${number}` });
+  const toCompact = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByRole('heading', { level: 3, name: '2' });
+    await user.click(within(view()).getByRole('button', { name: 'Compact tiles' }));
+  };
+
+  it('the toggle switches between full cards and tiles', async () => {
+    mockApp('worker', hotel());
+    const user = userEvent.setup();
+    await renderApp();
+    await toCompact(user);
+    expect(within(view()).getByRole('button', { name: 'Compact tiles' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.queryByRole('article')).toBeNull();
+    expect(tile('10')).toBeInTheDocument();
+    expect(tile('2')).toBeInTheDocument();
+
+    await user.click(within(view()).getByRole('button', { name: 'Full cards' }));
+    expect(screen.queryByRole('button', { name: 'Open room 2' })).toBeNull();
+    expect(card('2')).toBeInTheDocument();
+  });
+
+  it('a tile shows the number, type and what its icons mean', async () => {
+    mockApp('admin', hotel());
+    const user = userEvent.setup();
+    await renderApp();
+    await toCompact(user);
+
+    const two = tile('2');
+    expect(within(two).getByText('2')).toBeInTheDocument();
+    expect(within(two).getByText('Double')).toBeInTheDocument();
+    expect(within(two).getByRole('img', { name: 'Units: Needs fixing' })).toHaveClass(
+      'text-status-red',
+    );
+    expect(within(two).getByRole('img', { name: 'No general cleaning yet' })).toHaveClass(
+      'text-status-red',
+    );
+    const ten = tile('10');
+    expect(within(ten).getByRole('img', { name: 'Units: OK' })).toHaveClass('text-status-green');
+    expect(within(ten).getByRole('img', { name: 'Cleaned today · Bob' })).toHaveClass(
+      'text-status-green',
+    );
+  });
+
+  it('no units → no wrench', async () => {
+    mockApp('admin', { ...hotel(), roomUnits: [] });
+    const user = userEvent.setup();
+    await renderApp();
+    await toCompact(user);
+    expect(within(tile('2')).getAllByRole('img')).toHaveLength(1);
+  });
+
+  it('one tile opens as a full card at a time; × turns it back into a tile', async () => {
+    mockApp('worker', hotel());
+    const user = userEvent.setup();
+    await renderApp();
+    await toCompact(user);
+
+    await user.click(tile('2'));
+    expect(card('2')).toHaveClass('col-span-full');
+    expect(tile('10')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+
+    await user.click(tile('10'));
+    expect(card('10')).toBeInTheDocument();
+    expect(tile('2')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+
+    await user.click(within(card('10')).getByRole('button', { name: 'Close room 10' }));
+    expect(screen.queryByRole('article')).toBeNull();
+    expect(tile('10')).toBeInTheDocument();
+  });
+
+  it('remembers the mode on this device', async () => {
+    mockApp('worker', hotel());
+    const user = userEvent.setup();
+    const { unmount } = await renderApp();
+    await toCompact(user);
+    unmount();
+    await renderApp();
+    expect(await screen.findByRole('button', { name: 'Open room 2' })).toBeInTheDocument();
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+});

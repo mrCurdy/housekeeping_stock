@@ -133,7 +133,12 @@ room admin-only).
   - Docs: `docs/structure.md` (file map: the moved file, `/rooms` and `/settings` sections, the
     API line for `POST /rooms`), README's `/rooms` line if it mentions adding.
 
-- [ ] **4. Card view toggle: full or compact tiles** (skills `ui`, `i18n`)
+- [x] **4. Card view toggle: full or compact tiles** (skills `ui`, `i18n`)
+  - Done: the mode lives in `useRoomView` as `StoredRoomView` (= `RoomView` + `mode`), loaded by
+    the exported `loadRoomView()` (tested in `useRoomView.test.ts`). New `worstStatus` in
+    `roomView.ts` (`roomUrgency` uses it) names the wrench's status. `RoomCard` got optional
+    `onClose` and `className` props. Icons: `Rows2` (full) / `Grid3x3` (compact), `Brush`, `Wrench`.
+    Wrench label "Units: <status>", broom label = the card's cleaning line text.
   - Added by the user after step 3. Decisions (confirmed):
     - **Two modes**, a toggle in the filter bar (two icon buttons with `aria-pressed` and
       translated `aria-label`s, e.g. `LayoutGrid` / `Grid2x2` or `Rows` / `Grid`):
