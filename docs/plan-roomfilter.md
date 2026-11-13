@@ -35,7 +35,9 @@ of data already loaded: no server, storage or API change.
 
 ## Steps
 
-- [ ] **1. The view rules, pure** (skill `ui`)
+- [x] **1. The view rules, pure** (skill `ui`)
+  - Done: `roomStatusList` isn't imported (`unitStatusOf` already uses it). `viewRooms` ignores
+    hide-green while there are no units; `roomUrgency` is 0 and `allGreen` true with no units.
   - New `client/src/pages/rooms/roomView.ts` (+ `roomView.test.ts`):
     - `roomLevel(number)`: the first character, trimmed;
     - `roomLevels(rooms)`: the distinct levels, natural order;
