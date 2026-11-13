@@ -76,7 +76,7 @@ figure** (totals, the counter page, the Overview).
     - (e) A day after `keepFrom` is never touched.
   - Done differently: in a new `shared/src/prune.ts`. `CHECKLIST_DAYS` is an alias of `HISTORY_DAYS`. The carried-over total is computed for every item (not only those with records before `keepFrom`), because departures consume items that have no records. Emptied `records[item]`/`groupRecords[group]` maps are deleted. The "nothing to do" check is `date < K` (matching step 6's cheap SQL check); rows dated exactly K wait for the next day.
 
-- [ ] **6. Prune in the SQLite driver** (skill `sqlite-db`)
+- [x] **6. Prune in the SQLite driver** (skill `sqlite-db`)
   - `createSqliteDb` gets an option `today?: () => string` (default `formatDate(todayLocal())`), so tests can move the clock. Use it in `prune()` and `dailyBackup()`.
   - `prune()` computes `keepFrom = today − HISTORY_DAYS − 2`.
     - Cheap check first: `SELECT 1 FROM records|group_records|counts WHERE date < K LIMIT 1`.
@@ -89,6 +89,7 @@ figure** (totals, the counter page, the Overview).
     - a restore of an old backup is pruned.
   - `client/src/lib/excel.ts` `historyRange`: start at the oldest selectable day (it gets `minDate`), so the carried-over day isn't exported.
   - README and `docs/structure.md`: "stock data older than 30 days is removed; counts carry the totals over". Update the `sqlite-db` skill (pruning section).
+  - Done differently: the tables are `records`, `departures`, `counts` (there is no `group_records`). Start-up and restore needed no extra call: `init()` already runs `prune` after the import and `replace()` goes through `write()`. `exportExcel` takes `{ from: minDate, today }` from `useSelectedDate()`. The daily backup's keep-list also uses the `today` clock. `server/tests/api.test.ts` used fixed October dates that now fall out of the window, so its stock dates are now relative to today.
 
 - [ ] **7. Split the SQLite driver** (skill `sqlite-db`; a pure refactor)
   - `db/sqlite/index.ts` becomes:

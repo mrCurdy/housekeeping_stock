@@ -6,11 +6,16 @@ import ExcelJS from 'exceljs';
 import type { Messages } from '@/i18n/en';
 import { downloadBlob } from './download';
 
-/** First day with data up to max(last day with data, today); empty when there is no data. */
-function historyRange(data: StockData, todayStr: string): string[] {
+/**
+ * First day with data (never before `from`, the oldest selectable day, so the carried-over count
+ * that stock pruning leaves the day before isn't exported) up to max(last day with data, today);
+ * empty when there is no data from `from` on.
+ */
+function historyRange(data: StockData, from: string, todayStr: string): string[] {
   let first: string | null = null;
   let last = todayStr;
   const see = (d: string) => {
+    if (d < from) return;
     if (first === null || d < first) first = d;
     if (d > last) last = d;
   };
@@ -27,11 +32,11 @@ function historyRange(data: StockData, todayStr: string): string[] {
 export async function exportExcel(
   data: StockData,
   math: StockMath,
-  todayStr: string,
+  { from, today: todayStr }: { from: string; today: string },
   t: Messages['excel'],
 ) {
   const { items, groups, groupRecords } = data;
-  const days = historyRange(data, todayStr);
+  const days = historyRange(data, from, todayStr);
   if (items.length === 0 || days.length === 0) return false;
 
   const wb = new ExcelJS.Workbook();

@@ -10,9 +10,19 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addDays, formatDate, todayLocal, type StockData } from '@app/shared';
+import {
+  addDays,
+  createStockMath,
+  dateRange,
+  emptyStockData,
+  formatDate,
+  HISTORY_DAYS,
+  todayLocal,
+  type StockData,
+} from '@app/shared';
 import { loadConfig } from '../src/config';
 import { createDb, type Db } from '../src/db';
+import { createSqliteDb } from '../src/db/sqlite/index';
 
 const day = (n: number) => formatDate(addDays(todayLocal(), n));
 const today = day(0);
@@ -239,6 +249,91 @@ describe('SQLite driver', () => {
       expect(Object.keys(snap.checks)).toEqual([kept]);
       expect(Object.keys(snap.notes)).toEqual([kept]);
       expect(snap.tasks.map((t) => t.id)).toEqual(['t-1']);
+    });
+  });
+  describe('stock pruning', () => {
+    // The clock starts 30 days back, so the 60 seeded days are all kept; then it moves to `today`.
+    let clock = day(-30);
+    const keepFrom = day(-HISTORY_DAYS - 2);
+    const K = day(-HISTORY_DAYS - 3);
+    const visible = dateRange(day(-HISTORY_DAYS), today);
+
+    /** 60 days of income, consumption, counts, departures and room counts (one removed room). */
+    const sixtyDays = (): StockData => {
+      const data: StockData = {
+        ...emptyStockData(),
+        items: [
+          { id: 'towel', name: 'Towel', multipliers: { g: 2 } },
+          { id: 'soap', name: 'Soap', multipliers: {} },
+          { id: 'sheet', name: 'Sheet', multipliers: { g: 1 } }, // only consumed by departures
+        ],
+        groups: [{ id: 'g', name: 'DOUBLE' }],
+        locations: [{ id: 'room', name: '1 level' }],
+      };
+      for (let n = -59; n <= 0; n++) {
+        const d = day(n);
+        (data.records.towel ??= {})[d] = n % 10 === 0 ? { m: 100 + n } : { i: 5, c: 3 };
+        if (n % 3 === 0) (data.records.soap ??= {})[d] = { i: 2 };
+        if (n % 4 === 0) (data.groupRecords.g ??= {})[d] = { d: 1 };
+        if (n % 7 === 0) data.counts[d] = { room: { soap: 4 }, gone: { soap: 1 } };
+      }
+      return data;
+    };
+    const totals = (data: StockData) => {
+      const math = createStockMath(data, { minDateStr: day(-HISTORY_DAYS) });
+      return data.items.map((item) => visible.map((d) => math.calculateTotal(item.id, d)));
+    };
+    const openAt = async () => {
+      const db = createSqliteDb(join(dir, 'stock.db'), { backupDays: 0, today: () => clock });
+      await db.init();
+      opened.push(db);
+      return db;
+    };
+    const minDate = (data: StockData) =>
+      [
+        ...Object.values(data.records).flatMap(Object.keys),
+        ...Object.values(data.groupRecords).flatMap(Object.keys),
+        ...Object.keys(data.counts),
+      ].sort()[0];
+
+    beforeEach(() => {
+      clock = day(-30);
+    });
+
+    it('drops rows before keepFrom on the first write of a later day, keeping every total', async () => {
+      const db = await openAt();
+      await db.replace(sixtyDays());
+      const before = await db.snapshot();
+      expect(minDate(before)).toBe(day(-59));
+
+      clock = today;
+      await db.locations.create('Later'); // any write
+      const after = await db.snapshot();
+      expect(minDate(after)).toBe(K);
+      expect(Object.keys(after.counts).every((d) => d >= keepFrom)).toBe(true);
+      expect(Object.values(after.groupRecords.g ?? {}).length).toBeGreaterThan(0);
+      expect(Object.keys(after.groupRecords.g ?? {}).every((d) => d >= keepFrom)).toBe(true);
+      const math = createStockMath(before, { minDateStr: K });
+      expect(after.records.towel?.[K]).toEqual({ m: math.calculateTotal('towel', K) });
+      expect(after.records.sheet?.[K]).toEqual({ m: math.calculateTotal('sheet', K) });
+      expect(totals(after)).toEqual(totals(before));
+    });
+
+    it('prunes on start', async () => {
+      await (await openAt()).replace(sixtyDays());
+      await opened.pop()!.close();
+      clock = today;
+      expect(minDate(await (await openAt()).snapshot())).toBe(K);
+    });
+
+    it('prunes a restored old backup', async () => {
+      clock = today;
+      const db = await openAt();
+      const old = sixtyDays();
+      await db.replace(old);
+      const snap = await db.snapshot();
+      expect(minDate(snap)).toBe(K);
+      expect(totals(snap)).toEqual(totals(old));
     });
   });
 });

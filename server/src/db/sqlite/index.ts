@@ -23,6 +23,7 @@ import {
   emptyStockData,
   formatDate,
   type Group,
+  HISTORY_DAYS,
   groupOf,
   type Item,
   isTaskOn,
@@ -31,6 +32,8 @@ import {
   type PinRole,
   newTask,
   normalizeStockData,
+  parseDateLocal,
+  pruneStock,
   pruneTasks,
   removeTaskFrom,
   removeTaskGroupIn,
@@ -129,15 +132,22 @@ type NamedTable = 'items' | 'groups' | 'locations' | 'task_groups';
  * Before the first change of each day the whole dataset is written as JSON to
  * backups/db-YYYY-MM-DD.json (= the data at the start of that day, in the Backup/Restore format);
  * copies older than `backupDays` are deleted. Checklist ticks, notes and task history older than
- * CHECKLIST_DAYS are dropped on start and with every change.
+ * CHECKLIST_DAYS are dropped on start and with every change. Stock data (records, departures, room
+ * counts) older than HISTORY_DAYS + 2 days is dropped the same way, with `pruneStock` carrying the
+ * totals over as counts. `today` is the clock (tests move it).
  *
  * On the first start of an empty database, `importFrom` (the old data/db.json) is imported and
  * renamed to *.imported.
  */
 export function createSqliteDb(
   filePath: string,
-  { backupDays = 30, importFrom }: { backupDays?: number; importFrom?: string } = {},
+  {
+    backupDays = 30,
+    importFrom,
+    today = () => formatDate(todayLocal()),
+  }: { backupDays?: number; importFrom?: string; today?: () => string } = {},
 ): Db {
+  const daysAgo = (n: number) => formatDate(addDays(parseDateLocal(today()), -n));
   let sql!: Database.Database;
   const backupDir = join(dirname(filePath), 'backups');
   const backupName = (date: string) => `db-${date}.json`;
@@ -311,11 +321,33 @@ export function createSqliteDb(
     writeSetting('saluteText', data.settings.saluteText);
   };
 
-  /** The same 30-day rule as pruneChecklist(), as SQL deletes plus pruneTasks(). */
+  /**
+   * Stock data before `keepFrom` (2 days before the oldest selectable day) goes; the day before it,
+   * K, keeps one carried-over `m` per item. A cheap SQL check first: it finds a row (date < K)
+   * about once a day.
+   */
+  const pruneStockRows = () => {
+    const keepFrom = daysAgo(HISTORY_DAYS + 2);
+    const K = daysAgo(HISTORY_DAYS + 3);
+    const old = (table: string) => !!get(`SELECT 1 FROM ${table} WHERE date < ? LIMIT 1`, K);
+    if (!old('records') && !old('departures') && !old('counts')) return;
+    const data = snapshot();
+    if (!pruneStock(data, keepFrom)) return;
+    for (const table of ['records', 'departures', 'counts'])
+      run(`DELETE FROM ${table} WHERE date <= ?`, K);
+    const rec = sql.prepare('INSERT INTO records (item_id, date, m) VALUES (?, ?, ?)');
+    for (const [itemId, byDate] of Object.entries(data.records)) {
+      const m = byDate[K]?.m;
+      if (m != null) rec.run(itemId, K, m);
+    }
+  };
+
+  /** The same 30-day rule as pruneChecklist(), as SQL deletes plus pruneTasks(); then the stock. */
   const prune = () => {
-    const minDate = formatDate(addDays(todayLocal(), -CHECKLIST_DAYS));
+    const minDate = daysAgo(CHECKLIST_DAYS);
     run('DELETE FROM checks WHERE date < ?', minDate);
     run('DELETE FROM notes WHERE date < ?', minDate);
+    pruneStockRows();
     const data = { ...emptyStockData(), tasks: readTasks() };
     if (!pruneTasks(data, minDate)) return;
     run('DELETE FROM tasks');
@@ -323,21 +355,17 @@ export function createSqliteDb(
   };
 
   const dailyBackup = () => {
-    const today = formatDate(new Date());
-    if (!backupDays || lastBackup === today) return;
+    const day = today();
+    if (!backupDays || lastBackup === day) return;
     mkdirSync(backupDir, { recursive: true });
-    const target = join(backupDir, backupName(today));
+    const target = join(backupDir, backupName(day));
     if (!existsSync(target)) {
       // tmp + rename: a crash never leaves half a backup; an existing one was made before a restart
       writeFileSync(`${target}.tmp`, JSON.stringify(snapshot(), null, 2));
       renameSync(`${target}.tmp`, target);
     }
-    lastBackup = today;
-    const keep = new Set(
-      Array.from({ length: backupDays }, (_, n) =>
-        backupName(formatDate(new Date(Date.now() - n * 86_400_000))),
-      ),
-    );
+    lastBackup = day;
+    const keep = new Set(Array.from({ length: backupDays }, (_, n) => backupName(daysAgo(n))));
     for (const f of readdirSync(backupDir)) {
       if (f.startsWith('db-') && !keep.has(f)) unlinkSync(join(backupDir, f));
     }

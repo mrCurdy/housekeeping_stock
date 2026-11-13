@@ -55,8 +55,18 @@ with a default, then update the row interface, `snapshot()` and `fill()`.
 Every change goes through `write(fn)`:
 1. the daily backup (`data/backups/db-YYYY-MM-DD.json`, i.e. `backups/` next to the DB file; the start-of-day `snapshot()` in the
    Backup/Restore format; pruned after `BACKUP_DAYS`; failures are only logged);
-2. `fn` and `prune()` (checklist ticks/notes/task history older than `CHECKLIST_DAYS`) in one
-   `sql.transaction`.
+2. `fn` and `prune()` in one `sql.transaction`.
+
+## Pruning
+
+`prune()` runs on start (after a `db.json` import), and inside every `write()` (so also after
+`replace()`, i.e. a Restore: an old backup is accepted whole, then pruned). The clock is the
+`today` option of `createSqliteDb` (default `formatDate(todayLocal())`); tests pass their own.
+- Checklist ticks, notes and task history older than `CHECKLIST_DAYS`: SQL deletes plus `pruneTasks`.
+- Stock (`pruneStockRows`): `keepFrom = today − HISTORY_DAYS − 2`, K = the day before. A cheap
+  `SELECT 1 … WHERE date < K LIMIT 1` on `records`/`departures`/`counts` first; only on a hit it
+  runs `pruneStock` on `snapshot()`, deletes `date ≤ K` from those tables and inserts the
+  carried-over `m` rows at K. Totals never change, since a count closes the past.
 
 better-sqlite3 is synchronous; repo methods are `async` only to fit the `Db` interface.
 

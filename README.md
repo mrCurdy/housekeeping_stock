@@ -61,7 +61,8 @@ cp .env.example .env   # set ADMIN_PIN, WORKER_PIN (first start only), APP_PORT;
 - `data/stock.db` (SQLite, `SQLITE_PATH`) holds everything. PINs and sessions are stored there too, but never in backups.
 - An old `data/db.json` from before the switch is imported automatically on the first start and renamed `db.json.imported`.
 - Before the first change of each day the server writes a JSON snapshot (backup format) to `data/backups/db-YYYY-MM-DD.json` (kept for `BACKUP_DAYS`, default 30).
-- **Backup** in the header downloads the data as JSON. **Restore** (admin) replaces all data with a backup file (old-format backups work too). **Excel** downloads the full day-by-day history.
+- **Backup** in the header downloads the data as JSON. **Restore** (admin) replaces all data with a backup file (old-format backups work too). **Excel** downloads the day-by-day history of the selectable days.
+- Stock data older than 30 days is removed; counts carry the totals over, so no figure changes. Older history remains only in the daily backups (`BACKUP_DAYS`): keep a monthly Excel/Backup download if you need longer history.
 
 ## Adding a feature
 

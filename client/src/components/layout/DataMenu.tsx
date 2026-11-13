@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import { Button, Tooltip } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useSelectedDate } from '@/context/DateContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
@@ -13,6 +14,7 @@ import { downloadBlob } from '@/lib/download';
 /** Header toolbar: Excel history, Backup (JSON download) and Restore (JSON upload). */
 export function DataMenu() {
   const { data, math } = useStock();
+  const { today, minDate } = useSelectedDate();
   const toast = useToast();
   const confirm = useConfirm();
   const { t } = useI18n();
@@ -25,7 +27,7 @@ export function DataMenu() {
     setExporting(true);
     try {
       const { exportExcel } = await import('@/lib/excel');
-      if (!(await exportExcel(data, math, formatDate(new Date()), t.excel))) {
+      if (!(await exportExcel(data, math, { from: minDate, today }, t.excel))) {
         toast.info(t.data.noHistory);
       }
     } catch (err) {

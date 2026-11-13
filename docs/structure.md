@@ -31,7 +31,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `schemas.ts` (211): the zod request schemas. `backupSchema` reads old-format backups with `''` blanks. `normalizeStockData`/`cleanRecord` make sure only real values get stored. `pruneChecklist` drops ticks and notes older than `CHECKLIST_DAYS`.
 - `auth.ts`: roles, `PERMISSIONS`, `can(role, perm)`, `todayOnly(role)`, `pinSchema`, login/link schemas.
 - `stock.ts` (+ test): `createStockMath(state, { minDateStr })` → `dayFigures`, `calculateTotal`, `autoConsumption`, `roomSum`, `series`.
-- `prune.ts` (+ test): `pruneStock(data, keepFrom)` drops stock data before `keepFrom` and turns the day before it into a carried-over count (`m` = that day's total), so no later figure changes. Not called yet (the driver will).
+- `prune.ts` (+ test): `pruneStock(data, keepFrom)` drops stock data before `keepFrom` and turns the day before it into a carried-over count (`m` = that day's total), so no later figure changes. The SQLite driver calls it (`prune`).
 - `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`, `itemCheckKey`/`checkTaskId` (ticks of checklist lines). Groups: `taskGroupList` (never empty), `groupOf`, `tasksByGroup`, `moveTaskTo` + `applyTaskMove` (drag/arrow reorder, also into another group), `removeTaskGroupIn`.
 - `dates.ts`: local `YYYY-MM-DD` helpers (`formatDate`, `parseDateLocal`, `addDays`, `todayLocal`, `dateRange`). `index.ts`: barrel.
 
@@ -45,10 +45,10 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `sessions.ts`: the `sm_session` cookie (a SHA-256 of the token is stored).
   - `middleware.ts`: `session`, `requireAuth`, `allow(perm)`.
 - `db/types.ts`: the `Db` interface (routes use only this). `db/index.ts`: creates the driver.
-- `db/sqlite/index.ts` (**659**): the whole driver in one closure. Sections, found with `grep -n`:
+- `db/sqlite/index.ts` (**800**): the whole driver in one closure. Sections, found with `grep -n`:
   - helpers;
   - `snapshot` (rows → `StockData`) and `fill` (the reverse);
-  - `prune`, `dailyBackup` (a JSON snapshot each day), `importJson`;
+  - `pruneStockRows` + `prune` (old ticks/notes/task history and stock data), `dailyBackup` (a JSON snapshot each day), `importJson`. `createSqliteDb`'s `today` option is the clock both use (tests move it);
   - then the repo objects `items`, `records`, `departures`, `counts`, `tasks`, `checklist`, `auth`.
 - `db/sqlite/migrations.ts`: numbered schema migrations.
 - `routes/`:
@@ -175,7 +175,8 @@ settings:     { saluteText? }                                   // app-wide pref
   - `i`: income.
   - `m`: a manual stock count, which resets the running total to this value for that day.
 - New IDs are UUIDs. Older data has timestamp IDs (`'1792…'`, `'g_…'`, `'l_…'`). Both are plain strings.
-- Checklist ticks and notes older than `CHECKLIST_DAYS` (30) are deleted by the driver (the `pruneChecklist` rule, on start and with every write). Stock data is never pruned.
+- Checklist ticks and notes older than `CHECKLIST_DAYS` (30) are deleted by the driver (the `pruneChecklist` rule, on start and with every write).
+- **Stock data older than 30 days is removed; counts carry the totals over.** The driver's `prune` (on start, with every write, so also after a Restore) drops records, departures and room counts before `keepFrom` = today − `HISTORY_DAYS` − 2 (2 days before the oldest selectable day, for a server/client date difference around midnight) and writes the day before it, K, as one carried-over `m` per item (`pruneStock`). A cheap `date < K` check means it really runs about once a day; that day's backup was taken before it. The Excel export starts at the oldest selectable day, so K isn't exported.
 - **Task changes apply from a day onwards** (the day shown on `/checklist`). Earlier days keep their list, wording and ticks.
   - A task is on day D when `added ≤ D < removed`.
   - `earlier` holds old wordings, each used before its `until`; the top-level name/description is the current one.
@@ -239,7 +240,7 @@ settings:     { saluteText? }                                   // app-wide pref
   - The fireworks text (up to 12 characters, blank = "Tubli!"), with a Preview button. Saved for everyone (`PATCH /settings`, `setup` permission).
 - **Counter mode** (a QR session): `AppShell` drops the sidebar, menu and toolbar and redirects every other path to `/counter`. The date is locked to today.
 - **Header toolbar** (`DataMenu`), hidden on phones on `/counter` and `/checklist`:
-  - **Excel:** a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
+  - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
   - **Backup:** a JSON download.
   - **Restore:** validates with `backupSchema`, asks for confirmation, then replaces everything, counts included.
 
@@ -247,10 +248,10 @@ settings:     { saluteText? }                                   // app-wide pref
 
 These are known and don't need to be copied. Fix one only when a task touches it.
 
-- **`db/sqlite/index.ts`** is 659 lines in one closure. A split per area (`items.ts`, `tasks.ts`, `auth.ts`…) would make edits cheaper.
+- **`db/sqlite/index.ts`** is 800 lines in one closure. A split per area (`items.ts`, `tasks.ts`, `auth.ts`…) would make edits cheaper.
 - **`StockContext`:**
   - Every mutation lives in one `useMemo`, and every edit runs `structuredClone` on the whole dataset.
   - Every 15 s it polls all of `GET /api/data`.
-  - This is fine for one hotel's data but grows with history, since stock data is never pruned.
+  - Stock data is pruned to ~30 days (see the data model), so the full poll stays small.
   - Any change re-renders every page that uses `useStock()`.
 - **Client tests** cover login, settings, counter mode (incl. the room-done fireworks), the checklist (reorder, line ticks, list editing), i18n and the UI kit. `StockContext.test.tsx` covers the optimistic update, rollback and polling. `Stock.test.tsx` covers the card order and the Overview's per-room rows.
