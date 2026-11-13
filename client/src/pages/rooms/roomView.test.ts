@@ -117,4 +117,20 @@ describe('viewRooms', () => {
     expect(numbers(d, view({ level: '1', sort: 'cleanedNew' }))).toEqual(['115', '102', '101']);
     expect(numbers(d, view({ level: '1', sort: 'cleanedOld' }))).toEqual(['101', '102', '115']);
   });
+
+  it('default order is level by level, then number', () => {
+    const d = data();
+    d.rooms = ['112', '003', '101', '001', '002'].map((number) => ({ id: `r${number}`, number }));
+    expect(numbers(d, view())).toEqual(['001', '002', '003', '101', '112']);
+    d.rooms = ['99', '205', '1010', '101'].map((number) => ({ id: `r${number}`, number }));
+    expect(numbers(d, view())).toEqual(['101', '1010', '205', '99']);
+    expect(numbers(d, view({ level: '1' }))).toEqual(['101', '1010']);
+  });
+
+  it('ties of a sort fall back to level, then number', () => {
+    const d = data();
+    d.rooms = ['99', '205', '1010', '101'].map((number) => ({ id: `r${number}`, number }));
+    expect(numbers(d, view({ sort: 'attention' }))).toEqual(['101', '1010', '205', '99']);
+    expect(numbers(d, view({ sort: 'cleanedNew' }))).toEqual(['101', '1010', '205', '99']);
+  });
 });

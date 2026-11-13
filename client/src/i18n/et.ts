@@ -316,6 +316,18 @@ export const et: Messages = {
       note: 'Märkus',
       notePlaceholder: 'Mida on vaja teha? (valikuline)',
     },
+    filter: {
+      level: 'Korrus',
+      all: 'Kõik toad',
+      sort: 'Järjesta',
+      cleanedNew: 'Hiljuti puhastatud eespool',
+      cleanedOld: 'Hiljuti puhastatud tagapool',
+      attention: 'Tähelepanu vajavad eespool',
+      hideGreen: 'Peida täiesti rohelised toad',
+      noMatch: 'Sobivaid tube pole',
+      noMatchHint: 'Valitud korrusel ja filtritega ei sobi ükski tuba.',
+      showAll: 'Näita kõiki',
+    },
   },
 
   settings: {

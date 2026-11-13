@@ -42,16 +42,17 @@ const card = (number: string) => screen.getByRole('article', { name: `Room ${num
 
 const renderApp = async () => {
   const { default: App } = await import('../App');
-  render(<App />);
+  return render(<App />);
 };
 
+const titles = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+
 describe('rooms page', () => {
-  it('shows the cards sorted by number with type and note', async () => {
+  it('shows the cards level by level with type and note', async () => {
     mockApp('admin', rooms());
     await renderApp();
     await screen.findByRole('heading', { level: 3, name: '2' });
-    const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-    expect(titles).toEqual(['2', '10']);
+    expect(titles()).toEqual(['10', '2']);
     expect(within(card('2')).getByText('Double')).toBeInTheDocument();
     expect(within(card('2')).getByRole('textbox', { name: 'Room note 2' })).toHaveValue('Sea view');
     expect(within(card('10')).getByText('No general cleaning yet')).toBeInTheDocument();
@@ -273,5 +274,135 @@ describe('rooms page', () => {
     mockApp('admin', rooms({ rooms: [] }));
     await renderApp();
     expect(await screen.findByText('No rooms yet')).toBeInTheDocument();
+  });
+});
+
+describe('rooms filter bar', () => {
+  const by = { by: 'Ann', at: '2026-11-01T10:00:00.000Z' };
+  /** 101 all green, 102 yellow, 201 red. */
+  const floors = () =>
+    rooms({
+      rooms: ['201', '102', '101'].map((number) => ({ id: `r${number}`, number })),
+      unitStatus: {
+        r102: { bed: { status: 'attention', ...by } },
+        r201: { shower: { status: 'fix', ...by } },
+      },
+    });
+  const levels = () => screen.getByRole('group', { name: 'Level' });
+  const pressed = (name: string) =>
+    within(levels()).getByRole('button', { name }).getAttribute('aria-pressed');
+
+  it('level buttons come from the rooms; one shows only that level, All shows all', async () => {
+    mockApp('worker', floors());
+    const user = userEvent.setup();
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+
+    expect(
+      within(levels())
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['All rooms', '1', '2']);
+    expect(pressed('All rooms')).toBe('true');
+
+    await user.click(within(levels()).getByRole('button', { name: '2' }));
+    expect(titles()).toEqual(['201']);
+    expect(pressed('2')).toBe('true');
+    expect(pressed('All rooms')).toBe('false');
+
+    await user.click(within(levels()).getByRole('button', { name: 'All rooms' }));
+    expect(titles()).toEqual(['101', '102', '201']);
+  });
+
+  it('a sort toggle reorders the cards; pressing it again restores the number order', async () => {
+    mockApp('admin', floors());
+    const user = userEvent.setup();
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+
+    const attention = screen.getByRole('button', { name: 'Needs attention first' });
+    await user.click(attention);
+    expect(attention).toHaveAttribute('aria-pressed', 'true');
+    expect(titles()).toEqual(['201', '102', '101']);
+
+    const oldest = screen.getByRole('button', { name: 'Recently cleaned last' });
+    await user.click(oldest);
+    expect(attention).toHaveAttribute('aria-pressed', 'false');
+    expect(oldest).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(oldest);
+    expect(oldest).toHaveAttribute('aria-pressed', 'false');
+    expect(titles()).toEqual(['101', '102', '201']);
+  });
+
+  it('hide-green hides an all-green room', async () => {
+    mockApp('admin', floors());
+    const user = userEvent.setup();
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+
+    await user.click(screen.getByRole('button', { name: 'Hide all-green rooms' }));
+    expect(titles()).toEqual(['102', '201']);
+  });
+
+  it('remembers the view on this device', async () => {
+    mockApp('admin', floors());
+    const user = userEvent.setup();
+    const { unmount } = await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+    await user.click(within(levels()).getByRole('button', { name: '2' }));
+    await user.click(screen.getByRole('button', { name: 'Needs attention first' }));
+    unmount();
+
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '201' });
+    expect(titles()).toEqual(['201']);
+    expect(pressed('2')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Needs attention first' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('a stored level that no longer exists falls back to All', async () => {
+    localStorage.setItem(
+      'rooms.view',
+      JSON.stringify({ level: '7', sort: 'number', hideGreen: false }),
+    );
+    mockApp('admin', floors());
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+    expect(pressed('All rooms')).toBe('true');
+    expect(titles()).toEqual(['101', '102', '201']);
+  });
+
+  it('"Show all" resets the level and hide-green when nothing matches', async () => {
+    mockApp(
+      'admin',
+      rooms({ rooms: ['101', '102', '201'].map((number) => ({ id: `r${number}`, number })) }),
+    );
+    const user = userEvent.setup();
+    await renderApp();
+    await screen.findByRole('heading', { level: 3, name: '101' });
+
+    await user.click(within(levels()).getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: 'Hide all-green rooms' }));
+    expect(screen.getByText('No rooms match')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Show all' }));
+    expect(titles()).toEqual(['101', '102', '201']);
+    expect(pressed('All rooms')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Hide all-green rooms' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('no filter bar without rooms', async () => {
+    mockApp('admin', rooms({ rooms: [] }));
+    await renderApp();
+    await screen.findByText('No rooms yet');
+    expect(screen.queryByRole('group', { name: 'Level' })).toBeNull();
   });
 });

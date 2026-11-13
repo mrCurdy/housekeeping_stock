@@ -79,7 +79,7 @@ Outside the kit:
 
 ## Styling
 
-- A "who did it" step before a change: `pages/rooms/WhoDialog.tsx` (a `Modal` with a `<form id>` and the submit button in `footer` via `form={id}`). A per-device remembered value goes in `localStorage` inside try/catch.
+- A "who did it" step before a change: `pages/rooms/WhoDialog.tsx` (a `Modal` with a `<form id>` and the submit button in `footer` via `form={id}`). A per-device remembered value goes in `localStorage` inside try/catch. A remembered view (filters, sort) is a small hook like `pages/rooms/useRoomView.ts`; on/off toggle buttons are `Button` `primary`/`outline` with `aria-pressed` (`RoomFilters.tsx`).
 - Room status colours: take the classes from `ROOM_COLOR_CLASSES[color]` (`@/lib/roomColors`), never build `bg-status-${c}` strings (Tailwind can't find them). Show a status's name with `statusName(s, t.rooms.defaultStatus)` (`pages/rooms/roomText.ts`), so the defaults are translated.
 - Use semantic tokens only: `bg-surface`, `bg-surface-2`, `text-fg`, `text-fg-muted`, `border-border`, `text-primary`, `bg-primary-soft`, and `success|warning|danger|info` (+ `-soft`). Raw colours break dark mode. Merge classes with `cn()`.
 - **Stock figures:**

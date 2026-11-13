@@ -58,7 +58,10 @@ of data already loaded: no server, storage or API change.
     - hide-green with an unstored (default first) status;
     - a level filter combined with a sort.
 
-- [ ] **2. The filter bar on the Rooms page** (skills `ui`, `i18n`)
+- [x] **2. The filter bar on the Rooms page** (skills `ui`, `i18n`)
+  - Done: the default order is `sortByLevel` in `roomView.ts` (its own collator; `sortRooms` stays
+    for the rest of the app). The existing page test now expects `10` before `2` (level 1 first).
+    `useRoomView` keeps a missing stored level (shown as All) so it returns if the level reappears.
   - New `pages/rooms/RoomFilters.tsx`: a row of level buttons ("All rooms", "1", "2"… with a
     "Level" label, `aria-pressed`), the three sort toggles and the hide-green toggle. It wraps on
     phones (no horizontal page scroll) and uses `Button` variants for on/off, never raw colours.

@@ -319,6 +319,18 @@ export const en = {
       note: 'Note',
       notePlaceholder: 'What needs doing? (optional)',
     },
+    filter: {
+      level: 'Level',
+      all: 'All rooms',
+      sort: 'Sort',
+      cleanedNew: 'Recently cleaned first',
+      cleanedOld: 'Recently cleaned last',
+      attention: 'Needs attention first',
+      hideGreen: 'Hide all-green rooms',
+      noMatch: 'No rooms match',
+      noMatchHint: 'No room fits the chosen level and filters.',
+      showAll: 'Show all',
+    },
   },
 
   settings: {

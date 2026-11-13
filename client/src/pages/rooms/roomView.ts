@@ -1,7 +1,6 @@
 // The Rooms page view: level filter, sort and hide-green. Pure, over the data already loaded.
 import {
   latestCleaning,
-  sortRooms,
   unitStatusOf,
   type Room,
   type RoomColor,
@@ -25,10 +24,18 @@ type ViewData = Pick<
 /** A room's level: the first character of its number (101 → "1"). */
 export const roomLevel = (number: string): string => number.trim().charAt(0);
 
+const natural = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 /** The distinct levels of the rooms, in natural order. */
 export const roomLevels = (rooms: readonly Pick<Room, 'number'>[]): string[] =>
-  sortRooms([...new Set(rooms.map((r) => roomLevel(r.number)))].map((number) => ({ number }))).map(
-    (r) => r.number,
+  [...new Set(rooms.map((r) => roomLevel(r.number)))].sort(natural.compare);
+
+/** Level by level (natural order), then by number inside the level: 001, 002, 101 … 112, 201. */
+export const sortByLevel = <T extends Pick<Room, 'number'>>(rooms: readonly T[]): T[] =>
+  [...rooms].sort(
+    (a, b) =>
+      natural.compare(roomLevel(a.number), roomLevel(b.number)) ||
+      natural.compare(a.number, b.number),
   );
 
 const colorUrgency = (color: RoomColor): number =>
@@ -53,11 +60,11 @@ export const allGreen = (
   data.roomUnits.every((u) => unitStatusOf(data, roomId, u.id).status.color === 'green');
 
 /**
- * The rooms to show, in order. Starts from number order (`sortRooms`), so every other sort is
- * stable and ties fall back to the number. Hide-green only applies while units exist.
+ * The rooms to show, in order. Starts from the level-by-level order (`sortByLevel`), so every
+ * other sort is stable and ties fall back to it. Hide-green only applies while units exist.
  */
 export function viewRooms(data: ViewData, view: RoomView): Room[] {
-  let rooms = sortRooms(data.rooms);
+  let rooms = sortByLevel(data.rooms);
   if (view.level !== null) rooms = rooms.filter((r) => roomLevel(r.number) === view.level);
   if (view.hideGreen && data.roomUnits.length) rooms = rooms.filter((r) => !allGreen(data, r.id));
 
