@@ -101,12 +101,13 @@ figure** (totals, the counter page, the Overview).
   - Update the `sqlite-db` skill ("add a repo method" now names the file) and `docs/structure.md`.
   - Done differently: `ctx` also has `prepare` and `transaction` (the code used `sql.prepare`/`sql.transaction`, and `sql` only opens in `init`). A seventh file `settings.ts` holds the `stockCards` and `settings` repos. Groups/locations live in `items.ts`, departures in `records.ts`, task groups in `tasks.ts`; `namedRepo` and the shared read/write helpers (`createRows`) are in `rows.ts`, and each repo file calls `createRows(ctx)` for the ones it needs.
 
-- [ ] **8. Lighter StockContext** (skill `ui`)
+- [x] **8. Lighter StockContext** (skill `ui`)
   - Step 3's tests must pass unchanged.
   - Move the mutations out of the one `useMemo` into `context/stock/mutations.ts`: a `createMutations({ edit, send, data })` grouped by area. `StockContext.tsx` keeps the state, polling, `send` and `edit`.
   - Replace the `structuredClone(prev)` of the whole dataset with copying only the parts an edit touches. Change `edit(fn)` to `edit(key, fn)`, which copies one top-level key (`records`, `counts`, `tasks`…).
   - With step 6 the dataset stays at ~30 days, so the 15 s full poll stays. Note that as the reason in `docs/structure.md`.
   - Done when: the step 3 tests, `CounterMode.test.tsx` and the full suite pass, and the `ui` skill's "feature end to end" template shows the new `edit(key, fn)` form.
+  - Done differently: `edit` takes a key or a list of keys (`edit(['tasks', 'checks'], fn)`), since some edits touch several (removing a group, a task, a task group). The copy is the pure `editData` in `mutations.ts`, tested in `stock/mutations.test.ts`. The context calls it through a `useMutations` hook (the `react-hooks/refs` lint rejects passing `send` to a plain function during render). `restore` stays in `StockContext.tsx` because it replaces the whole dataset (`setData`). The areas are setup (items/groups/locations), daily (records/departures/counts), checklist and settings.
 
 - [ ] **9. Page tests** (skill `ui`)
   - `pages/Stock.test.tsx`:

@@ -17,13 +17,15 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
    - a `Db` method (`sqlite-db` skill);
    - a route in `routes/<area>.ts` with `validateBody(schema)` and `allow(perm)` (`auth` skill);
    - a test in a new `server/tests/<feature>.test.ts` (setup: `tests/helpers.ts`).
-3. **`StockContext.tsx`**: add the method to `StockApi` and implement it like its neighbours:
+3. **`context/stock/mutations.ts`**: add the method to `StockMutations` and implement it in its area's group (`setupMutations`, `dailyMutations`, `checklistMutations`, `settingsMutations`) like its neighbours:
    ```ts
-   setThing: (id, value) => {
-     edit((d) => { /* change the draft, e.g. d.things[id] = value */ }); // optimistic
-     void send(() => api.put(`/things/${id}`, { value }));            // toast + reload on failure
+   setThing: (id: string, value: number) => {
+     // optimistic; copies only d.things (pass ['things', 'other'] when fn changes several keys)
+     edit('things', (d) => { d.things[id] = value; });
+     void send(() => api.put(`/things/${id}`, { value })); // toast + reload on failure
    },
    ```
+   - `edit(key, fn)` deep-copies only the named top-level key(s): `fn` must not change any other part of `d`. `StockContext.tsx` keeps only the state, polling, `send` and `edit`.
    - A rule shared with the server (like `editTask`) goes in `shared/` and is called inside `edit()`.
    - Use `send(..., { rethrow: true })` and `await` it only when the page shows its own error (the counter rows).
    - When the server answers with the merged day (counts, checks), write that answer into the state.
@@ -116,7 +118,7 @@ plurals). Never read the et/ru files whole.
 ## Saving tokens
 
 - Start from `docs/structure.md` and this skill. Don't list or read folders to "get a feel".
-- Read big files in parts: `StockContext.tsx` (grep the method name), `en.ts` (grep the section).
+- Read big files in parts: `stock/mutations.ts` (grep the method name), `en.ts` (grep the section).
 - Copy the nearest existing component and change it. Don't design from scratch.
 - Don't re-read files after editing them. Pipe test and build output through `| tail`.
 - If a change shifts the structure (a new file, page or rule), update `docs/structure.md` in the same commit.
