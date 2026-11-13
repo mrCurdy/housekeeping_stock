@@ -178,7 +178,12 @@ teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { gree
   - Tests in `pages/Settings.test.tsx`: add a unit, rename a status, change its colour, save
     thresholds, reject green ≥ yellow.
 
-- [ ] **7. Close out**
+- [x] **7. Close out**
+  - Done. Most docs were already updated by steps 1–6; added the Settings room-setup section and a
+    "Where to change X" row in `structure.md`, the README `/rooms` line, and the Rooms "Open
+    Settings" link in the `auth` skill's hidden-controls list. Manual check done through the API
+    only (a separate server on :3099 with a scratch DB, admin and worker 0000); no browser, so dark
+    mode and phone width weren't checked by eye.
   - `docs/structure.md`: file map, "Where to change X" if needed, data model, API routes, the
     `/rooms` page and the Settings section. README: one line about Rooms.
   - `ui`, `sqlite-db` skills: mention the new files where they list examples. `auth` skill: add

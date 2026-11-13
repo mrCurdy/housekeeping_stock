@@ -7,22 +7,23 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 
 ## Where to change X
 
-| Change                                  | Files (in order)                                                                                                                                                                | Skill        |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| New page                                | `client/src/pages/<Page>.tsx` (+ `pages/<page>/` for its parts) → route in `App.tsx` → `NAV` in `components/layout/AppShell.tsx` → `nav.*` text                                 | `ui`, `i18n` |
-| New UI text                             | `client/src/i18n/en.ts`, then `et.ts`/`ru.ts` at the same place                                                                                                                 | `i18n`       |
-| New stored value / field                | `shared/src/types.ts` + `schemas.ts` (`backupSchema`, `normalizeStockData`) → `server/src/db/types.ts` → `db/sqlite/` (migration + method) → route → `StockContext` → component | `sqlite-db`  |
-| New request on existing data            | `shared/src/schemas.ts` (zod body) → `server/src/routes/<area>.ts` with `allow(perm)` → `StockContext` mutation → `server/tests/api.test.ts`                                    | `auth`, `ui` |
-| New permission / hide UI by role        | `shared/src/auth.ts` (`PERMISSIONS`, `MATRIX`) → `allow(perm)` on the route → `useAuth().can(perm)` in the UI                                                                   | `auth`       |
-| Stock rule (totals, consumption)        | `shared/src/stock.ts` + `stock.test.ts` only (pure; server and client both use it)                                                                                              | —            |
-| Checklist rule (task history, ticks)    | `shared/src/checklist.ts` + `checklist.test.ts`                                                                                                                                 | —            |
-| Room-card rule (statuses, cleanings)    | `shared/src/rooms.ts` + `rooms.test.ts`                                                                                                                                         | —            |
-| UI component used on more than one page | `client/src/components/ui/<Name>.tsx` + export in `components/ui/index.ts` + a case in `ui.test.tsx`                                                                            | `ui`         |
-| Colour / utility class                  | `client/src/styles/index.css` (tokens on `:root` and `[data-theme='dark']`, `@utility` classes)                                                                                 | `ui`         |
-| Backup / restore format                 | `shared/src/schemas.ts` (`backupSchema`, must still read old files) → `db/sqlite/rows.ts` (`snapshot`, `fill`)                                                                  | `sqlite-db`  |
-| Excel export                            | `client/src/lib/excel.ts` (uses `math.series`)                                                                                                                                  | —            |
-| Env setting                             | `server/src/config.ts` → `.env.example` → `docker-compose.yml` → README                                                                                                         | —            |
-| A multi-session change                  | write `docs/plan-<topic>.md` with numbered steps                                                                                                                                | `plan-step`  |
+| Change                                  | Files (in order)                                                                                                                                                                      | Skill        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| New page                                | `client/src/pages/<Page>.tsx` (+ `pages/<page>/` for its parts) → route in `App.tsx` → `NAV` in `components/layout/AppShell.tsx` → `nav.*` text                                       | `ui`, `i18n` |
+| New UI text                             | `client/src/i18n/en.ts`, then `et.ts`/`ru.ts` at the same place                                                                                                                       | `i18n`       |
+| New stored value / field                | `shared/src/types.ts` + `schemas.ts` (`backupSchema`, `normalizeStockData`) → `server/src/db/types.ts` → `db/sqlite/` (migration + method) → route → `StockContext` → component       | `sqlite-db`  |
+| New request on existing data            | `shared/src/schemas.ts` (zod body) → `server/src/routes/<area>.ts` with `allow(perm)` → `StockContext` mutation → `server/tests/api.test.ts`                                          | `auth`, `ui` |
+| New permission / hide UI by role        | `shared/src/auth.ts` (`PERMISSIONS`, `MATRIX`) → `allow(perm)` on the route → `useAuth().can(perm)` in the UI                                                                         | `auth`       |
+| Stock rule (totals, consumption)        | `shared/src/stock.ts` + `stock.test.ts` only (pure; server and client both use it)                                                                                                    | —            |
+| Checklist rule (task history, ticks)    | `shared/src/checklist.ts` + `checklist.test.ts`                                                                                                                                       | —            |
+| Room-card rule (statuses, cleanings)    | `shared/src/rooms.ts` + `rooms.test.ts`                                                                                                                                               | —            |
+| Room card / room master setup UI        | `client/src/pages/rooms/` (`RoomCard`, `WhoDialog`, `roomText.ts`) · `pages/settings/RoomSetupCard.tsx` (+ `MasterList`, `CleaningThresholds`) · `roomMutations`/`roomSetupMutations` | `ui`, `i18n` |
+| UI component used on more than one page | `client/src/components/ui/<Name>.tsx` + export in `components/ui/index.ts` + a case in `ui.test.tsx`                                                                                  | `ui`         |
+| Colour / utility class                  | `client/src/styles/index.css` (tokens on `:root` and `[data-theme='dark']`, `@utility` classes)                                                                                       | `ui`         |
+| Backup / restore format                 | `shared/src/schemas.ts` (`backupSchema`, must still read old files) → `db/sqlite/rows.ts` (`snapshot`, `fill`)                                                                        | `sqlite-db`  |
+| Excel export                            | `client/src/lib/excel.ts` (uses `math.series`)                                                                                                                                        | —            |
+| Env setting                             | `server/src/config.ts` → `.env.example` → `docker-compose.yml` → README                                                                                                               | —            |
+| A multi-session change                  | write `docs/plan-<topic>.md` with numbered steps                                                                                                                                      | `plan-step`  |
 
 ## File map
 
@@ -262,6 +263,7 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
   - The admin and worker PINs (each new PIN typed twice).
   - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.
   - The fireworks text (up to 12 characters, blank = "Tubli!"), with a Preview button. Saved for everyone (`PATCH /settings`, `setup` permission).
+  - Room cards (`RoomSetupCard`, `setup` permission): the master layout every room shares. Units (rename in place, ↑/↓, remove confirmed: drops their statuses on every card), statuses (name + a colour from the 10, green/yellow/red first; remove confirmed: its units go back to the first; the last one can't be removed), room types (remove confirmed: cleared on its cards), and the cleaning thresholds (green up to N days, yellow up to M, red above; 0 ≤ green < yellow, checked before saving).
 - **Counter mode** (a QR session): `AppShell` drops the sidebar, menu and toolbar and redirects every other path to `/counter`. The date is locked to today.
 - **Header toolbar** (`DataMenu`), hidden on phones on `/counter` and `/checklist`:
   - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
