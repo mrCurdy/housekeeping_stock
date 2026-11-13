@@ -1,11 +1,20 @@
 import { Boxes, Delete } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
 import { ApiError, apiErrorMessage } from '@/lib/api';
 
 const LENGTH = 4;
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+/** A phone or tablet: focusing the field there would open the OS keyboard over the keypad. */
+function isTouch(): boolean {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+}
 
 interface LoginProps {
   /** Logs in; throws ApiError (401 = wrong PIN, 429 = too many tries). */
@@ -18,6 +27,9 @@ interface LoginProps {
  * The PIN screen: a keypad, plus a numeric field for typing. It submits as soon as the 4th digit is
  * typed and clears the PIN on a wrong one. A PIN that arrives whole (the browser's saved password,
  * a paste) waits for the Log in button or Enter, so autofill can't log straight back in after logout.
+ * On a desktop the field is focused (on open and after a wrong PIN) so typing works at once; on a
+ * touch screen it isn't, so only the keypad shows (tapping the field still opens the keyboard and
+ * the browser's saved password).
  */
 export default function Login({ onSubmit, notice }: LoginProps) {
   const { t } = useI18n();
@@ -25,6 +37,12 @@ export default function Login({ onSubmit, notice }: LoginProps) {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const [touch] = useState(isTouch);
+
+  // After a wrong PIN, once the field is enabled again.
+  useEffect(() => {
+    if (!touch && !busy) input.current?.focus();
+  }, [touch, busy, error]);
 
   const change = (next: string) => {
     next = next.replace(/\D/g, '').slice(0, LENGTH);
@@ -44,7 +62,6 @@ export default function Login({ onSubmit, notice }: LoginProps) {
       setError(
         err instanceof ApiError && err.status === 401 ? t.auth.wrongPin : apiErrorMessage(err, t),
       );
-      input.current?.focus();
     }
   };
 
@@ -74,7 +91,7 @@ export default function Login({ onSubmit, notice }: LoginProps) {
             type="password"
             inputMode="numeric"
             autoComplete="current-password"
-            autoFocus
+            autoFocus={!touch}
             maxLength={LENGTH}
             value={pin}
             disabled={busy}

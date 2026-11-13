@@ -91,6 +91,7 @@ Outside the kit:
 - **Phones:**
   - Wrap grids as `grid grid-cols-1 …` with `minmax(0,…)` columns, so a wide table scrolls inside its card and not the page.
   - Fields get 16px text on touch screens automatically (no iOS zoom), so don't override `font-size` on inputs.
+  - Don't auto-focus a field on a touch screen when the page has its own buttons for it (the PIN keypad in `Login.tsx`): `matchMedia('(pointer: coarse)')` in try/catch; focusing opens the OS keyboard on top.
   - The header holds only the language, palette, theme and log-out buttons on every page; admin tools go in Settings cards, not the header.
 - Icons come from `lucide-react` at `h-4 w-4`. Icon-only buttons need `aria-label` and `title`.
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/context/AuthContext';
@@ -68,5 +68,52 @@ describe('Login', () => {
     app();
     await userEvent.type(await screen.findByLabelText('PIN'), '1111');
     expect(await screen.findByRole('alert')).toHaveTextContent(/15 minutes/);
+  });
+
+  describe('focus', () => {
+    const pointer = (coarse: boolean) =>
+      vi.stubGlobal('matchMedia', (q: string) => ({
+        matches: coarse && q === '(pointer: coarse)',
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }));
+    const api = () =>
+      mockApi((method, path, body) => {
+        if (path === '/auth/me') return unauthorized;
+        if (method === 'POST' && path === '/auth/login') {
+          return (body as { pin: string }).pin === '1234'
+            ? { status: 200, body: { role: 'admin' } }
+            : unauthorized;
+        }
+      });
+    const press = async (pin: string) => {
+      for (const d of pin) await userEvent.click(screen.getByRole('button', { name: d }));
+    };
+
+    it('on a touch screen leaves the field unfocused, so the OS keyboard stays shut', async () => {
+      pointer(true);
+      api();
+      app();
+      const input = await screen.findByLabelText('PIN');
+      expect(input).not.toHaveFocus();
+      await press('9999');
+      expect(await screen.findByRole('alert')).toHaveTextContent('Wrong PIN');
+      expect(input).not.toHaveFocus();
+      await press('1234');
+      expect(await screen.findByText('Inside the app')).toBeInTheDocument();
+    });
+
+    it('on a desktop focuses the field on open and after a wrong PIN', async () => {
+      pointer(false);
+      api();
+      app();
+      const input = await screen.findByLabelText('PIN');
+      expect(input).toHaveFocus();
+      await press('9999');
+      expect(await screen.findByRole('alert')).toHaveTextContent('Wrong PIN');
+      await waitFor(() => expect(input).toHaveFocus());
+      await press('1234');
+      expect(await screen.findByText('Inside the app')).toBeInTheDocument();
+    });
   });
 });

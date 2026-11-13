@@ -96,7 +96,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
 
   - Done: `lib/excelRows.ts` also has `hasExcelData(data)` (items or rooms), used by `DataCard`. Items without days of data still give "No history" unless rooms exist. A never-cleaned room's date cell is red italic.
 
-- [ ] **4. Login on phones: the keypad without the OS keyboard** (skill `ui`)
+- [x] **4. Login on phones: the keypad without the OS keyboard** (skill `ui`)
   - Problem: on a phone the PIN screen shows the on-screen keypad, and the OS keyboard opens on top
     of it. Cause: the PIN `<input>` in `pages/Login.tsx` has `autoFocus`, and `submit()` calls
     `input.current?.focus()` after a wrong PIN.
@@ -109,6 +109,9 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     on open nor after a wrong PIN; fine pointer → focused on open and after a wrong PIN. The
     keypad still logs in on both.
   - Docs: `docs/structure.md` `Login.tsx` line (phones: not focused, so only the keypad shows).
+
+  - Done: the refocus after a wrong PIN moved into a `useEffect` on `busy`/`error`: the old
+    `focus()` ran while the field was still disabled, so it never worked.
 
 - [ ] **5. Edit and remove rooms in Settings** (skills `ui`, `i18n`)
   - Today Settings can only **add** a room card (`AddRoomDialog`); editing the number/type and
