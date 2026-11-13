@@ -319,7 +319,7 @@ export const en = {
     },
     filter: {
       level: 'Level',
-      all: 'All rooms',
+      all: 'All',
       sort: 'Sort',
       attention: 'Needs attention first',
       hideGreen: 'Hide all-green rooms',
@@ -327,7 +327,7 @@ export const en = {
       noMatchHint: 'No room fits the search, the chosen level and filters.',
       showAll: 'Show all',
       search: 'Search rooms',
-      searchPlaceholder: 'Room number or type',
+      searchPlaceholder: 'Enter a room number',
       searchClear: 'Clear search',
       view: 'View',
       viewFull: 'Full cards',
@@ -340,7 +340,7 @@ export const en = {
 
   cleaning: {
     title: 'Cleaning',
-    description: 'Days since each room’s last general cleaning. Tap a room to register one.',
+    description: 'Tap a room to register a cleaning.',
     dirtyFirst: 'Dirty first',
     cleanedToday: 'Cleaned today',
     /** A tile's accessible name: the room and its cleaning in words (`cleaningText`) */

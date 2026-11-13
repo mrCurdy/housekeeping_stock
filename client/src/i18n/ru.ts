@@ -315,7 +315,7 @@ export const ru: Messages = {
     },
     filter: {
       level: 'Этаж',
-      all: 'Все номера',
+      all: 'Все',
       sort: 'Сортировка',
       attention: 'Требующие внимания сначала',
       hideGreen: 'Скрыть полностью зелёные',
@@ -323,7 +323,7 @@ export const ru: Messages = {
       noMatchHint: 'Ни один номер не подходит под поиск, выбранный этаж и фильтры.',
       showAll: 'Показать все',
       search: 'Поиск номеров',
-      searchPlaceholder: 'Номер или тип',
+      searchPlaceholder: 'Введите номер комнаты',
       searchClear: 'Очистить поиск',
       view: 'Вид',
       viewFull: 'Полные карточки',
@@ -336,8 +336,7 @@ export const ru: Messages = {
 
   cleaning: {
     title: 'Уборка',
-    description:
-      'Дней с последней генеральной уборки каждого номера. Нажмите на номер, чтобы отметить уборку.',
+    description: 'Нажмите на номер, чтобы отметить уборку.',
     dirtyFirst: 'Сначала грязные',
     cleanedToday: 'Убрано сегодня',
     tile: (number, state) => `Номер ${number}: ${state}`,

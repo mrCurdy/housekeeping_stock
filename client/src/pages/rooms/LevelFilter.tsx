@@ -9,7 +9,7 @@ export const toggleProps = (on: boolean) => ({
   'aria-pressed': on,
 });
 
-/** "Level: All rooms 1 2 3…": one level at a time, or all (null). Used on `/rooms` and `/cleaning`. */
+/** "Level: All 1 2 3…": one level at a time, or all (null). Used on `/rooms` and `/cleaning`. */
 export function LevelFilter({
   levels,
   level,

@@ -221,15 +221,15 @@ describe('rooms filter bar', () => {
       within(levels())
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['All rooms', '1', '2']);
-    expect(pressed('All rooms')).toBe('true');
+    ).toEqual(['All', '1', '2']);
+    expect(pressed('All')).toBe('true');
 
     await user.click(within(levels()).getByRole('button', { name: '2' }));
     expect(titles()).toEqual(['201']);
     expect(pressed('2')).toBe('true');
-    expect(pressed('All rooms')).toBe('false');
+    expect(pressed('All')).toBe('false');
 
-    await user.click(within(levels()).getByRole('button', { name: 'All rooms' }));
+    await user.click(within(levels()).getByRole('button', { name: 'All' }));
     expect(titles()).toEqual(['101', '102', '201']);
   });
 
@@ -289,7 +289,7 @@ describe('rooms filter bar', () => {
     mockApp('admin', floors());
     await renderApp();
     await screen.findByRole('heading', { level: 3, name: '101' });
-    expect(pressed('All rooms')).toBe('true');
+    expect(pressed('All')).toBe('true');
     expect(titles()).toEqual(['101', '102', '201']);
   });
 
@@ -309,7 +309,7 @@ describe('rooms filter bar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Show all' }));
     expect(titles()).toEqual(['101', '102', '201']);
-    expect(pressed('All rooms')).toBe('true');
+    expect(pressed('All')).toBe('true');
     expect(screen.getByRole('button', { name: 'Hide all-green rooms' })).toHaveAttribute(
       'aria-pressed',
       'false',
@@ -348,7 +348,7 @@ describe('rooms search', () => {
 
   it('a number matches from its first digit', async () => {
     const user = await start();
-    expect(search()).toHaveAttribute('placeholder', 'Room number or type');
+    expect(search()).toHaveAttribute('placeholder', 'Enter a room number');
     await user.type(search(), '3');
     expect(titles()).toEqual(['301', '315']);
     await user.type(search(), '0');

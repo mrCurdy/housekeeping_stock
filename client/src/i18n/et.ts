@@ -316,7 +316,7 @@ export const et: Messages = {
     },
     filter: {
       level: 'Korrus',
-      all: 'Kõik toad',
+      all: 'Kõik',
       sort: 'Järjesta',
       attention: 'Tähelepanu vajavad eespool',
       hideGreen: 'Peida täiesti rohelised toad',
@@ -324,7 +324,7 @@ export const et: Messages = {
       noMatchHint: 'Otsingu, valitud korruse ja filtritega ei sobi ükski tuba.',
       showAll: 'Näita kõiki',
       search: 'Otsi tube',
-      searchPlaceholder: 'Toa number või tüüp',
+      searchPlaceholder: 'Sisesta toa number',
       searchClear: 'Tühjenda otsing',
       view: 'Vaade',
       viewFull: 'Täiskaardid',
@@ -337,7 +337,7 @@ export const et: Messages = {
 
   cleaning: {
     title: 'Koristus',
-    description: 'Päevi iga toa viimasest suurpuhastusest. Puuduta tuba, et see kirja panna.',
+    description: 'Puuduta tuba, et koristus kirja panna.',
     dirtyFirst: 'Mustemad ees',
     cleanedToday: 'Koristatud täna',
     tile: (number, state) => `Tuba ${number}: ${state}`,
