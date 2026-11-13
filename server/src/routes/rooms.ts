@@ -30,7 +30,7 @@ const notDuplicate = (room: Room | null | 'duplicate'): Room | null => {
   return room;
 };
 
-const rooms = allow('rooms');
+const cleaning = allow('cleaning');
 const setup = allow('setup');
 
 /** POST / · PATCH /:id · DELETE /:id · PUT /order for a master list (room units, room types). */
@@ -52,7 +52,8 @@ function orderedRoutes<T>(r: Router, path: string, repo: OrderedRepo<T>, what: s
 }
 
 /**
- * Room cards (`rooms`: admin and worker) and their master setup (`setup`: admin). Mounted at '/',
+ * Room cards and their master setup (`setup`: admin); general cleanings (`cleaning`: admin and
+ * worker). Mounted at '/',
  * so every route carries its own guard.
  */
 export function roomsRouter({ db }: AppContext) {
@@ -63,20 +64,20 @@ export function roomsRouter({ db }: AppContext) {
     const room = notDuplicate(await db.rooms.create(req.body as RoomCreateInput));
     res.status(201).json(found(room, 'Room type'));
   });
-  r.patch('/rooms/:id', rooms, validateBody(roomPatchSchema), async (req, res) => {
+  r.patch('/rooms/:id', setup, validateBody(roomPatchSchema), async (req, res) => {
     const room = await db.rooms.update(param(req, 'id'), req.body as RoomPatchInput);
     res.json(found(notDuplicate(room), 'Room or room type'));
   });
-  r.delete('/rooms/:id', rooms, async (req, res) => {
+  r.delete('/rooms/:id', setup, async (req, res) => {
     found(await db.rooms.delete(param(req, 'id')), 'Room');
     res.status(204).end();
   });
-  r.put('/rooms/:id/units/:unitId', rooms, validateBody(unitStatusSchema), async (req, res) => {
+  r.put('/rooms/:id/units/:unitId', setup, validateBody(unitStatusSchema), async (req, res) => {
     const input = req.body as UnitStatusInput;
     const set = await db.rooms.setUnitStatus(param(req, 'id'), param(req, 'unitId'), input);
     res.json(found(set, 'Room, unit or status'));
   });
-  r.post('/rooms/:id/cleanings', rooms, validateBody(cleaningSchema), async (req, res) => {
+  r.post('/rooms/:id/cleanings', cleaning, validateBody(cleaningSchema), async (req, res) => {
     const list = await db.rooms.addCleaning(param(req, 'id'), req.body as CleaningInput);
     res.status(201).json(found(list, 'Room'));
   });

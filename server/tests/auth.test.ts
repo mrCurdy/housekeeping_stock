@@ -65,9 +65,15 @@ describe('PIN auth', () => {
     const task = (
       await env.api().post('/api/tasks').send({ name: 'Beds', from: '2026-01-01' }).expect(201)
     ).body;
+    const card = (await env.api().post('/api/rooms').send({ number: '7' }).expect(201)).body;
+    const unit = (await env.api().post('/api/room-units').send({ name: 'Bed' }).expect(201)).body;
     const w = await env.login(WORKER_PIN);
 
     // allowed
+    await w
+      .post(`/api/rooms/${card.id}/cleanings`)
+      .send({ date: '2026-01-01', by: 'Mari' })
+      .expect(201);
     await w.patch(`/api/records/${item.id}/2026-01-01`).send({ i: 5 }).expect(200);
     await w.put(`/api/departures/${group.id}/2026-01-01`).send({ d: 2 }).expect(200);
     await w.put(`/api/counts/2026-01-01/${room.id}/${item.id}`).send({ value: 3 }).expect(200);
@@ -103,6 +109,10 @@ describe('PIN auth', () => {
       ]),
       () => w.patch('/api/settings').send({ cleanGreenDays: 3 }),
       () => w.post('/api/rooms').send({ number: '101', note: 'x' }),
+      () => w.patch(`/api/rooms/${card.id}`).send({ note: 'Sea view' }),
+      () => w.delete(`/api/rooms/${card.id}`),
+      () =>
+        w.put(`/api/rooms/${card.id}/units/${unit.id}`).send({ status: 'attention', by: 'Mari' }),
     ];
     for (const [n, send] of forbidden.entries()) {
       const res = await send();
@@ -113,7 +123,9 @@ describe('PIN auth', () => {
     const data = (await env.api().get('/api/data').expect(200)).body;
     expect(data.items.map((i: { name: string }) => i.name)).toEqual(['Towel']);
     expect(data.tasks).toHaveLength(1);
-    expect(data.rooms).toEqual([]);
+    expect(data.rooms).toHaveLength(1);
+    expect(data.rooms[0].note ?? '').toBe('');
+    expect(data.unitStatus ?? {}).toEqual({});
   });
 
   it('changing the worker PIN logs out every worker', async () => {

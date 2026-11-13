@@ -35,7 +35,7 @@ const NAV: NavItem[] = [
   { to: '/stock', label: (t) => t.nav.stock, icon: Package },
   { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList },
   { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks },
-  { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'rooms' },
+  { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'setup' },
   { to: '/settings', label: (t) => t.nav.settings, icon: Settings, perm: 'pins' },
 ];
 

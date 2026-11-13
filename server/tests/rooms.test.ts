@@ -205,19 +205,22 @@ describe('room cards API', () => {
     expect(res.body).toMatchObject({ cleanGreenDays: 4, cleanYellowDays: 5 });
   });
 
-  it('a worker edits the note, changes statuses and cleans a room the admin added', async () => {
+  it('the admin edits the card and statuses; a worker cleans a room the admin added', async () => {
     const unit = (await env.api().post('/api/room-units').send({ name: 'Bed' }).expect(201)).body;
     const room = (await env.api().post('/api/rooms').send({ number: '7' }).expect(201)).body;
-    const w = await env.login(WORKER_PIN);
-    await w.patch(`/api/rooms/${room.id}`).send({ note: 'Sea view' }).expect(200);
-    await w
+    await env.api().patch(`/api/rooms/${room.id}`).send({ note: 'Sea view' }).expect(200);
+    await env
+      .api()
       .put(`/api/rooms/${room.id}/units/${unit.id}`)
       .send({ status: 'attention', by: 'Mari' })
       .expect(200);
+    const w = await env.login(WORKER_PIN);
     await w
       .post(`/api/rooms/${room.id}/cleanings`)
       .send({ date: '2026-01-01', by: 'Mari' })
       .expect(201);
-    await w.delete(`/api/rooms/${room.id}`).expect(204);
+    await w.patch(`/api/rooms/${room.id}`).send({ note: 'x' }).expect(403);
+    await w.delete(`/api/rooms/${room.id}`).expect(403);
+    await env.api().delete(`/api/rooms/${room.id}`).expect(204);
   });
 });

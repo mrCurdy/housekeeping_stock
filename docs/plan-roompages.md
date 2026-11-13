@@ -52,7 +52,7 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
 
 ## Steps
 
-- [ ] **1. Permissions: statuses and card edits admin-only, `rooms` → `cleaning`** (skill `auth`)
+- [x] **1. Permissions: statuses and card edits admin-only, `rooms` → `cleaning`** (skill `auth`)
   - `shared/src/auth.ts`: rename the permission `rooms` → `cleaning` (worker keeps it); update the
     comment: `cleaning` = register general cleanings; room cards (note, number, type, delete, unit
     statuses), adding rooms and the master layout = `setup`.
@@ -66,6 +66,9 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     PUT, and still 201/200 on a cleaning; `rooms.test.ts` worker cases changed to match (statuses as
     admin, cleanings as worker). `shared` auth tests if they list the matrix.
   - Docs: the `auth` skill matrix, `docs/structure.md` API lines for `/rooms`.
+  - Done. `Rooms.test.tsx`: the worker cases now run as admin; the worker-redirect test sits last in
+    the file (the App's router keeps its location between tests); the worker half of the "no rooms"
+    test was dropped (step 4 covers it on `/cleaning`).
 
 - [ ] **2. The view rules for both pages, pure** (skill `ui`)
   - `pages/rooms/roomView.ts`: `RoomView.sort` becomes `'number' | 'attention'` (drop

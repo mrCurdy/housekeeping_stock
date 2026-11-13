@@ -33,6 +33,7 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
     this.open = false;
   };
+  Element.prototype.scrollTo ??= () => {}; // a worker is redirected to the Stock overview
   window.history.replaceState(null, '', '/rooms');
   localStorage.clear();
 });
@@ -135,7 +136,7 @@ describe('rooms page', () => {
   });
 
   it('Cleaned → "Cleaned today · Name", and the name is remembered', async () => {
-    const fetch = mockApp('worker', rooms(), (method, path) =>
+    const fetch = mockApp('admin', rooms(), (method, path) =>
       method === 'POST' && path === '/rooms/r10/cleanings'
         ? { status: 201, body: [{ date: today, by: 'Mari' }] }
         : undefined,
@@ -236,30 +237,15 @@ describe('rooms page', () => {
     );
   });
 
-  it('a worker sees the page but no Settings link', async () => {
-    mockApp('worker', rooms({ roomUnits: [] }));
-    await renderApp();
-    expect(await screen.findByText('No room units set up yet')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Open Settings' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Rooms' })).toBeInTheDocument();
-  });
-
-  it('without rooms the admin is pointed to Settings, a worker to the admin', async () => {
+  it('without rooms the admin is pointed to Settings', async () => {
     mockApp('admin', rooms({ rooms: [] }));
-    const { unmount } = await renderApp();
+    await renderApp();
     expect(await screen.findByText('No rooms yet')).toBeInTheDocument();
     expect(screen.getByText('Add the rooms in Settings.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
       'href',
       '/settings',
     );
-    unmount();
-
-    mockApp('worker', rooms({ rooms: [] }));
-    await renderApp();
-    expect(await screen.findByText('No rooms yet')).toBeInTheDocument();
-    expect(screen.getByText('Ask the admin to set this up.')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Open Settings' })).toBeNull();
   });
 });
 
@@ -279,7 +265,7 @@ describe('rooms filter bar', () => {
     within(levels()).getByRole('button', { name }).getAttribute('aria-pressed');
 
   it('level buttons come from the rooms; one shows only that level, All shows all', async () => {
-    mockApp('worker', floors());
+    mockApp('admin', floors());
     const user = userEvent.setup();
     await renderApp();
     await screen.findByRole('heading', { level: 3, name: '101' });
@@ -408,7 +394,7 @@ describe('rooms search', () => {
     });
   const search = () => screen.getByRole('textbox', { name: 'Search rooms' });
   const start = async () => {
-    mockApp('worker', hotel());
+    mockApp('admin', hotel());
     const user = userEvent.setup();
     await renderApp();
     await screen.findByRole('heading', { level: 3, name: '101' });
@@ -449,7 +435,7 @@ describe('rooms search', () => {
   });
 
   it('is not remembered', async () => {
-    mockApp('worker', hotel());
+    mockApp('admin', hotel());
     const user = userEvent.setup();
     const { unmount } = await renderApp();
     await user.type(await screen.findByRole('textbox', { name: 'Search rooms' }), '3');
@@ -484,7 +470,7 @@ describe('rooms compact tiles', () => {
   };
 
   it('the toggle switches between full cards and tiles', async () => {
-    mockApp('worker', hotel());
+    mockApp('admin', hotel());
     const user = userEvent.setup();
     await renderApp();
     await toCompact(user);
@@ -532,7 +518,7 @@ describe('rooms compact tiles', () => {
   });
 
   it('one tile opens as a full card at a time; × turns it back into a tile', async () => {
-    mockApp('worker', hotel());
+    mockApp('admin', hotel());
     const user = userEvent.setup();
     await renderApp();
     await toCompact(user);
@@ -554,7 +540,7 @@ describe('rooms compact tiles', () => {
   });
 
   it('remembers the mode on this device', async () => {
-    mockApp('worker', hotel());
+    mockApp('admin', hotel());
     const user = userEvent.setup();
     const { unmount } = await renderApp();
     await toCompact(user);
@@ -562,5 +548,15 @@ describe('rooms compact tiles', () => {
     await renderApp();
     expect(await screen.findByRole('button', { name: 'Open room 2' })).toBeInTheDocument();
     expect(screen.queryByRole('article')).toBeNull();
+  });
+});
+
+// Last: the App's router is created once per file and keeps the /stock it was redirected to.
+describe('rooms page for a worker', () => {
+  it('a worker opening /rooms is redirected, and has no Rooms NAV entry', async () => {
+    mockApp('worker', rooms());
+    await renderApp();
+    await waitFor(() => expect(window.location.pathname).toBe('/stock'));
+    expect(screen.queryByRole('link', { name: 'Rooms' })).toBeNull();
   });
 });

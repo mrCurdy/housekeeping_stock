@@ -96,7 +96,7 @@ Outside the kit:
 
 ## Roles and modes
 
-- `useAuth().can('setup' | 'tasks' | 'restore' | 'pins' | 'qr' | 'daily' | 'checklist' | 'count' | 'rooms')` hides the controls a role can't use (see `ItemsCard`: `setup` shows rename/remove/add).
+- `useAuth().can('setup' | 'tasks' | 'restore' | 'pins' | 'qr' | 'daily' | 'checklist' | 'count' | 'cleaning')` hides the controls a role can't use (see `ItemsCard`: `setup` shows rename/remove/add).
 - Hiding is only cosmetic: the route needs `allow(perm)` as well.
 - A counter (QR) session is `todayOnly(role)`. It sees only `/counter`, and its date is locked to today.
 

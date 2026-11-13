@@ -15,9 +15,9 @@ describe('can', () => {
     for (const p of PERMISSIONS) expect(can('admin', p)).toBe(true);
   });
 
-  it('worker may do the daily work and the room cards only', () => {
+  it('worker may do the daily work and register cleanings only', () => {
     const allowed = PERMISSIONS.filter((p) => can('worker', p));
-    expect(allowed.sort()).toEqual(['checklist', 'count', 'daily', 'rooms']);
+    expect(allowed.sort()).toEqual(['checklist', 'cleaning', 'count', 'daily']);
   });
 
   it('a QR counter session may only count', () => {
