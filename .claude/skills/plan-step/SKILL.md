@@ -1,6 +1,6 @@
 ---
 name: plan-step
-description: Do one numbered step of a plan in docs/ (e.g. docs/plan-auth-sqlite.md) in a fresh session, tests first, with minimal token use. Use when asked to "do step N of docs/<plan>.md" or to continue the plan.
+description: Do one numbered step of a plan in docs/ (e.g. docs/plan-roompages.md) in a fresh session, tests first, with minimal token use. Use when asked to "do step N of docs/<plan>.md" or to continue the plan.
 ---
 
 # Doing one plan step
