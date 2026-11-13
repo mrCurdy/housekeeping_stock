@@ -385,3 +385,138 @@ describe('Settings: data and backups', () => {
     expect(restores(fetch)).toHaveLength(0);
   });
 });
+
+describe('Settings: room list', () => {
+  beforeEach(() => {
+    // jsdom has no <dialog> methods
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+      this.open = false;
+    };
+  });
+
+  function roomApi(
+    rooms = [
+      { id: 'r201', number: '201' },
+      { id: 'r10', number: '10', type: 'dbl' },
+      { id: 'r102', number: '102' },
+    ],
+  ) {
+    return mockApi((method, path) => {
+      if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
+      if (path === '/data') {
+        return {
+          status: 200,
+          body: {
+            ...emptyStockData(),
+            settings: {},
+            rooms,
+            roomTypes: [
+              { id: 'dbl', name: 'Double' },
+              { id: 'sgl', name: 'Single' },
+            ],
+          },
+        };
+      }
+      if (path === '/auth/qr') return { status: 200, body: { active: false } };
+      if (path.startsWith('/rooms/') && (method === 'PATCH' || method === 'DELETE')) {
+        return { status: 204 };
+      }
+    });
+  }
+  const calls = (fetch: ReturnType<typeof mockApi>, method: string) =>
+    fetch.mock.calls
+      .filter(([u, init]) => String(u).startsWith('/api/rooms/') && init?.method === method)
+      .map(([u, init]) => [u, init?.body ? JSON.parse(init.body as string) : undefined]);
+  const list = async () => within(await screen.findByRole('list', { name: 'Rooms' }));
+  const edit = async (number: string) => {
+    await userEvent.click((await list()).getByRole('button', { name: `Edit room ${number}` }));
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('heading', { name: `Edit room ${number}` }),
+    ).toBeInTheDocument();
+    return within(dialog);
+  };
+
+  it('lists the rooms in level order with their type', async () => {
+    roomApi();
+    settings();
+    const items = (await list()).getAllByRole('listitem');
+    expect(items.map((li) => li.textContent)).toEqual(['10Double', '102', '201']);
+  });
+
+  it('says so when there are no rooms', async () => {
+    roomApi([]);
+    settings();
+    expect(await screen.findByText('No rooms yet.')).toBeInTheDocument();
+  });
+
+  it('Edit sends only the changed fields', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    expect(dialog.getByLabelText('Room number')).toHaveValue('10');
+    await userEvent.clear(dialog.getByLabelText('Room number'));
+    await userEvent.type(dialog.getByLabelText('Room number'), '11');
+    await userEvent.selectOptions(dialog.getByLabelText('Room type'), 'sgl');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(calls(fetch, 'PATCH')).toEqual([['/api/rooms/r10', { number: '11', type: 'sgl' }]]),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('clearing the type sends an empty type', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    await userEvent.selectOptions(dialog.getByLabelText('Room type'), '');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(calls(fetch, 'PATCH')).toEqual([['/api/rooms/r10', { type: '' }]]));
+  });
+
+  it('a number taken by another room shows the error and sends nothing', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    await userEvent.clear(dialog.getByLabelText('Room number'));
+    await userEvent.type(dialog.getByLabelText('Room number'), '102');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    expect(dialog.getByText('Room 102 already exists')).toBeInTheDocument();
+    expect(calls(fetch, 'PATCH')).toEqual([]);
+  });
+
+  it('keeping its own number is allowed', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    await userEvent.type(dialog.getByLabelText('Note'), 'Sea view');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(calls(fetch, 'PATCH')).toEqual([['/api/rooms/r10', { note: 'Sea view' }]]),
+    );
+  });
+
+  it('Remove asks, then deletes', async () => {
+    const fetch = roomApi();
+    settings();
+    await userEvent.click((await list()).getByRole('button', { name: 'Delete room 102' }));
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Delete room 102?')).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(calls(fetch, 'DELETE')).toEqual([['/api/rooms/r102', undefined]]));
+    expect((await list()).queryByText('102')).toBeNull();
+  });
+
+  it('cancelling Remove sends nothing', async () => {
+    const fetch = roomApi();
+    settings();
+    await userEvent.click((await list()).getByRole('button', { name: 'Delete room 102' }));
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+    );
+    expect(calls(fetch, 'DELETE')).toEqual([]);
+  });
+});

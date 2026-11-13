@@ -1,6 +1,6 @@
-import { ROOM_COLORS, roomStatusList, type RoomColor } from '@app/shared';
-import { DoorOpen, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { ROOM_COLORS, roomStatusList, type Room, type RoomColor } from '@app/shared';
+import { DoorOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useId, useState } from 'react';
 import {
   Button,
   Card,
@@ -16,14 +16,16 @@ import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
 import { statusName } from '../rooms/roomText';
-import { AddRoomDialog } from './AddRoomDialog';
+import { sortByLevel } from '../rooms/roomView';
+import { RoomDialog } from './RoomDialog';
 import { CleaningThresholds } from './CleaningThresholds';
 import { MasterList, type MasterRow } from './MasterList';
 
 /**
  * The master layout every room card shares (admin, `setup`): units, statuses (name + colour),
- * room types and the general-cleaning thresholds. "Add room" opens `AddRoomDialog` (new cards
- * are admin-only; workers edit them on /rooms).
+ * room types and the general-cleaning thresholds. "Add room" opens `RoomDialog`; the "Rooms" list
+ * under it (level order) edits a card's number/type/note in the same dialog or removes the card
+ * (confirmed). New cards are admin-only; workers edit them on /rooms.
  */
 export function RoomSetupCard() {
   const { t } = useI18n();
@@ -32,6 +34,9 @@ export function RoomSetupCard() {
   const stock = useStock();
   const { data } = stock;
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Room | null>(null);
+  const listId = useId();
+  const typeName = (id?: string) => data.roomTypes.find((rt) => rt.id === id)?.name;
 
   const statuses = roomStatusList(data);
   const statusRows = statuses.map((s) => ({
@@ -66,8 +71,58 @@ export function RoomSetupCard() {
           {tx.addRoom}
         </Button>
       </CardHeader>
-      {adding && <AddRoomDialog onClose={() => setAdding(false)} />}
+      {adding && <RoomDialog onClose={() => setAdding(false)} />}
+      {editing && <RoomDialog room={editing} onClose={() => setEditing(null)} />}
       <CardBody className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <section className="flex min-w-0 flex-col gap-2 lg:col-span-3">
+          <h4 id={listId} className="font-semibold">
+            {tx.roomList}
+          </h4>
+          {data.rooms.length === 0 ? (
+            <p className="text-sm text-fg-muted">{tx.noRooms}</p>
+          ) : (
+            <ul
+              aria-labelledby={listId}
+              className="grid max-h-72 grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-2 overflow-y-auto"
+            >
+              {sortByLevel(data.rooms).map((room) => (
+                <li
+                  key={room.id}
+                  className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-surface-2 py-0.5 pr-0.5 pl-3 text-sm"
+                >
+                  <span className="font-medium text-fg">{room.number}</span>
+                  <span className="min-w-0 flex-1 truncate text-fg-muted">
+                    {typeName(room.type)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t.rooms.edit(room.number)}
+                    title={t.rooms.edit(room.number)}
+                    onClick={() => setEditing(room)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t.rooms.remove(room.number)}
+                    title={t.rooms.remove(room.number)}
+                    onClick={async () => {
+                      if (
+                        await confirmed(t.rooms.removeTitle(room.number), t.rooms.removeDescription)
+                      ) {
+                        stock.removeRoom(room.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
         <MasterList
           title={tx.units}
           hint={tx.unitsHint}

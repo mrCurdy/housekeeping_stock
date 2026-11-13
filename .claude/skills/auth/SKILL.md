@@ -54,7 +54,7 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
   Hidden now: item add/rename/remove (`ItemsCard`), group controls and ⚙ (`DeparturesCard`),
   Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`pages/settings/DataCard`),
   the `/rooms` page itself and its NAV entry (`setup`; a worker is redirected) with its "Open Settings" links (`Rooms`; the master
-  setup and "Add room" (`AddRoomDialog`) are in `RoomSetupCard` on the admin-only Settings page),
+  setup and "Add room" / the room list (`RoomDialog`) are in `RoomSetupCard` on the admin-only Settings page),
   and the Settings NAV entry (`perm: 'pins'` on a `NAV` item in `AppShell`; `/settings` itself
   redirects without `pins`).
 - Counter mode (`todayOnly(role)`): `AppShell` renders no sidebar or menu and redirects

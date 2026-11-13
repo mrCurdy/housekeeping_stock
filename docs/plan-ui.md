@@ -113,7 +113,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Done: the refocus after a wrong PIN moved into a `useEffect` on `busy`/`error`: the old
     `focus()` ran while the field was still disabled, so it never worked.
 
-- [ ] **5. Edit and remove rooms in Settings** (skills `ui`, `i18n`)
+- [x] **5. Edit and remove rooms in Settings** (skills `ui`, `i18n`)
   - Today Settings can only **add** a room card (`AddRoomDialog`); editing the number/type and
     deleting a card happen only on /rooms (`RoomCard`'s ✎). The server and `StockContext` already
     have everything: `updateRoom(id, patch)`, `removeRoom(id)` (`PATCH`/`DELETE` rooms, both
@@ -138,6 +138,8 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     → nothing sent.
   - Docs: `docs/structure.md` file map (`RoomDialog` replaces `AddRoomDialog`) and the Settings
     section; the `RoomSetupCard` doc comment.
+
+  - Done: the row aria-labels reuse `rooms.edit(n)` / `rooms.remove(n)` ("Edit room N" / "Delete room N"), so only `settings.rooms.roomList`, `noRooms` and `editRoomTitle` are new. Edit closes at once (optimistic `updateRoom`); Save with nothing changed sends nothing.
 
 - [ ] **6. Split the worker role into Housekeeper and Reception** (skills `auth`, `sqlite-db`,
       `ui`, `i18n`)
