@@ -270,6 +270,49 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     `names` JSON column. Client: `useStock().data` is already localized (`localizeNames`), so pages
     keep reading `.name`; `rawData` (all versions) is what Backup downloads.
 
+- [ ] **10. Room unit groups: editable, drag to reorder and regroup** (skills `sqlite-db`, `ui`,
+  `i18n`)
+  - Request (from the user): room units (the things in a room) belong to groups such as
+    "Bathroom", "Electronics", "Furniture". The groups are adjustable, and units can be dragged
+    to reorder and to move into another group, the same way as the checklist (reuse its drag
+    code and gestures, mouse and touch).
+  - Groups: add, rename, remove, reorder (drag too). Removing a group that still has units is
+    blocked (a message says to move them first). Group names get per-language versions exactly
+    like step 9 (`names?`, `renameIn`, `localizeNames`, the rename sends `lang`).
+  - If units already have a group field (free text or otherwise), turn it into real groups in a
+    migration: each distinct value becomes a group (its text as the base name), every unit keeps
+    its group and current order; units without a group go to one group created for them only if
+    any exist. Old JSON backups still restore the same way. Nothing in an existing `stock.db` is
+    lost; the migration runs by itself.
+  - Order is stored (a `position` per group and per unit within its group); a drop sends one
+    small request (move unit: group + position) through `StockContext` optimistically.
+  - Who: only roles with the permission that sets up rooms today (keep the routes' existing
+    `allow(perm)`; new routes get one too).
+  - Text: group dialog, delete-blocked message, drag handle aria-labels; en/et/ru.
+  - Tests: server: create/rename(lang)/reorder/delete-blocked, move unit across groups, migration
+    of an old DB, backup/restore round trip; client: drag reorders and regroups, groups editable.
+  - Docs: `docs/structure.md` (data model, Rooms/Settings), `sqlite-db` and `ui` skills.
+
+- [ ] **11. Admin sees which names lack the current language** (skills `ui`, `i18n`)
+  - Request (from the user): for the admin only, a name with no version in the current UI
+    language (shown from the base name as a fallback) is drawn in a different font colour, so
+    it's clear what still needs translating. Other roles see names as before.
+  - Applies to every name with per-language versions: stock items, room types, room units, room
+    statuses, room unit groups. Use a semantic token (e.g. `text-warning`, or add one to the
+    theme for light and dark), never a raw colour; add a `title`/tooltip saying the name isn't
+    translated yet (en/et/ru).
+  - Rule: a name is "missing" in a language when it has no override for that language. The base
+    name has no stored language, so every old name shows as missing in all three languages until
+    the admin saves it in each one; that is intended. To confirm the base text for a language, the
+    admin saves the name unchanged: change `renameIn` so a value equal to the base name **stores**
+    the override instead of dropping it (and `normalizeStockData` keeps it). Helper
+    `hasOwnName(entity, lang)` in `shared/src/names.ts`; `localizeNames` passes a flag (e.g.
+    `nameMissing`) so pages don't need `rawData`. Edit dialogs that skip unchanged fields must
+    still send the name when it is missing in the current language.
+  - Tests: shared helper; client: admin sees the colour on a fallback name and not on a
+    translated one; housekeeper never sees it.
+  - Docs: `docs/structure.md`, `ui` and `i18n` skills.
+
 ## Token rules for these sessions
 
 - Start from `docs/structure.md`, this plan and the step's skill. Don't explore.
