@@ -106,7 +106,10 @@ teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { gree
   - Tests in `server/tests/sqlite.test.ts`: round-trip a backup with rooms; old backup without
     them still restores; pruning keeps each room's latest cleaning.
 
-- [ ] **3. API routes** (skill `auth`)
+- [x] **3. API routes** (skill `auth`)
+  - Done. Differences: `POST /rooms` with an unknown type → 404. `PATCH /settings` with a single
+    threshold reads the stored pair via `db.snapshot()` + `cleanThresholds` (400 unless green <
+    yellow). Worker/counter 403 cases also added in `qr.test.ts` for the room-card routes.
   - New `server/src/routes/rooms.ts`, mounted at `'/'` in `app.ts`, so each route carries its own
     `allow(perm)` (a guard on a `'/'` mount would turn unknown routes into 403):
     - `allow('rooms')`: `POST /rooms`, `PATCH /rooms/:id` (number, type, note; `note: ''` clears it), `DELETE /rooms/:id`,

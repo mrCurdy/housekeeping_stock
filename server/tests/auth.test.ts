@@ -95,6 +95,13 @@ describe('PIN auth', () => {
       () => w.delete(`/api/tasks/${task.id}/2026-01-01`),
       () => w.post('/api/restore').send({}),
       () => w.put('/api/auth/pins').send({ role: 'worker', pin: '5555' }),
+      ...['room-units', 'room-types', 'room-statuses'].flatMap((list) => [
+        () => w.post(`/api/${list}`).send({ name: 'X', color: 'blue' }),
+        () => w.patch(`/api/${list}/ok`).send({ name: 'X' }),
+        () => w.delete(`/api/${list}/ok`),
+        () => w.put(`/api/${list}/order`).send({ ids: [] }),
+      ]),
+      () => w.patch('/api/settings').send({ cleanGreenDays: 3 }),
     ];
     for (const [n, send] of forbidden.entries()) {
       const res = await send();

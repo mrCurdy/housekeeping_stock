@@ -57,6 +57,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `checklist.ts`: tasks, task groups, checks, notes.
   - `daily.ts`: records, departures, counts.
   - `setup.ts`: items, groups, locations, the Stock page's card order (`PUT /stock-cards/order`) and the app settings (`PATCH /settings`).
+  - `rooms.ts`: room cards (unit statuses, cleanings) and their master lists (units, statuses, types), each route with its own guard.
   - `data.ts`: `GET /data`, `POST /restore`.
   - `system.ts`: health.
 - `lib/`:
@@ -88,7 +89,10 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `/task-groups` (`tasks` permission): `POST`, `PATCH /:id` `{ name }`, `PUT /order` `{ ids }`, `DELETE /:id` (its tasks move to the group above, or below for the first; the last group → 409).
   - `PUT /checks/:date/:taskId` `{ done, item? }` returns the day's ticks. `item` ticks one checklist line of the task's instructions instead.
   - `PUT /notes/:date` `{ text }`.
-- **`setup`:** `/items`, `/groups`, `/locations`, each with POST/PATCH/DELETE.
+- **`setup`:** `/items`, `/groups`, `/locations`, each with POST/PATCH/DELETE. `PATCH /settings`: a single cleaning threshold is checked against the stored other one (400 unless green < yellow).
+- **`rooms`:**
+  - `rooms` permission (admin, worker): `POST /rooms` `{ number, type?, note? }`, `PATCH /rooms/:id` (`type: ''`/`note: ''` clear), `DELETE /rooms/:id`, `PUT /rooms/:id/units/:unitId` `{ status, by, note? }`, `POST /rooms/:id/cleanings` `{ date, by }` (returns the room's cleanings, newest first). A duplicate number → 409.
+  - `setup` permission: `/room-units`, `/room-types` (`{ name }`) and `/room-statuses` (`{ name, color }`), each `POST`, `PATCH /:id`, `DELETE /:id`, `PUT /order` `{ ids }`. Deleting the last status → 409.
 - **`daily`:**
   - `PATCH /records/:itemId/:date`.
   - `PUT /departures/:groupId/:date`.

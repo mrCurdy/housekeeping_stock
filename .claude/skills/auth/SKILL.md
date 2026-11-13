@@ -7,16 +7,17 @@ description: Fomka's PIN login and roles (admin, worker, counter). Use when addi
 
 ## The matrix (`shared/src/auth.ts`, the only source)
 
-| permission  | what                                                          | admin | worker | counter (QR) |
-| ----------- | ------------------------------------------------------------- | ----- | ------ | ------------ |
-| `setup`     | items, groups, rooms (add/rename/delete, items-per-departure) | ✓     |        |              |
-| `tasks`     | checklist task editing (add/edit/reorder/remove)              | ✓     |        |              |
-| `restore`   | `POST /restore`                                               | ✓     |        |              |
-| `pins`      | `PUT /auth/pins`                                              | ✓     |        |              |
-| `qr`        | `GET/POST/DELETE /auth/qr`                                    | ✓     |        |              |
-| `daily`     | departures, records (consumption, income, manual stock)       | ✓     | ✓      |              |
-| `checklist` | ticks, notes                                                  | ✓     | ✓      |              |
-| `count`     | room counts                                                   | ✓     | ✓      | today only   |
+| permission  | what                                                                                                                  | admin | worker | counter (QR) |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- | ----- | ------ | ------------ |
+| `setup`     | items, groups, rooms (add/rename/delete, items-per-departure), room master setup (units, statuses, types, thresholds) | ✓     |        |              |
+| `tasks`     | checklist task editing (add/edit/reorder/remove)                                                                      | ✓     |        |              |
+| `restore`   | `POST /restore`                                                                                                       | ✓     |        |              |
+| `pins`      | `PUT /auth/pins`                                                                                                      | ✓     |        |              |
+| `qr`        | `GET/POST/DELETE /auth/qr`                                                                                            | ✓     |        |              |
+| `daily`     | departures, records (consumption, income, manual stock)                                                               | ✓     | ✓      |              |
+| `checklist` | ticks, notes                                                                                                          | ✓     | ✓      |              |
+| `count`     | room counts                                                                                                           | ✓     | ✓      | today only   |
+| `rooms`     | room cards: create/edit/delete, unit statuses, cleanings                                                              | ✓     | ✓      |              |
 
 Reading (`GET /data`, Excel, Backup) needs only a login. To change who may do what, edit `MATRIX`
 and `shared/src/auth.test.ts`; never check role names directly elsewhere, always `can(role, perm)`.

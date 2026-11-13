@@ -54,6 +54,8 @@ describe('QR counter access', () => {
     const task = (
       await env.api().post('/api/tasks').send({ name: 'Beds', from: '2026-01-01' }).expect(201)
     ).body;
+    const roomCard = (await env.api().post('/api/rooms').send({ number: '101' }).expect(201)).body;
+    const unit = (await env.api().post('/api/room-units').send({ name: 'Bed' }).expect(201)).body;
     const { token } = (await env.api().post('/api/auth/qr').expect(201)).body;
     const c = await link(token);
     const today = formatDate(todayLocal());
@@ -81,6 +83,17 @@ describe('QR counter access', () => {
       () => c.get('/api/auth/qr'),
       () => c.post('/api/auth/qr'),
       () => c.delete('/api/auth/qr'),
+      () => c.post('/api/rooms').send({ number: '102' }),
+      () => c.patch(`/api/rooms/${roomCard.id}`).send({ note: 'x' }),
+      () => c.delete(`/api/rooms/${roomCard.id}`),
+      () => c.put(`/api/rooms/${roomCard.id}/units/${unit.id}`).send({ status: 'ok', by: 'A' }),
+      () => c.post(`/api/rooms/${roomCard.id}/cleanings`).send({ date: today, by: 'A' }),
+      ...['room-units', 'room-types', 'room-statuses'].flatMap((list) => [
+        () => c.post(`/api/${list}`).send({ name: 'X', color: 'blue' }),
+        () => c.patch(`/api/${list}/ok`).send({ name: 'X' }),
+        () => c.delete(`/api/${list}/ok`),
+        () => c.put(`/api/${list}/order`).send({ ids: [] }),
+      ]),
     ];
     for (const [n, send] of forbidden.entries()) {
       const res = await send();
