@@ -206,6 +206,20 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     NAV follows it.
   - Docs: `docs/structure.md` (settings, role matrix), `.claude/skills/auth`.
 
+- [ ] **8. Mark a room cleaned on a chosen date** (skills `ui`, `i18n`)
+  - Request (from the user): the date a room was cleaned can be chosen, not only today. Where a
+    room is marked cleaned (the Cleaning page tile/dialog), show two buttons side by side: on the
+    left **Choose date** (`variant` secondary) opens a date picker (local `YYYY-MM-DD`, not in
+    the future) and marks the room cleaned on that date; on the right **Cleaned today** (primary)
+    keeps today's behaviour (fireworks included). On phones both stay on one row.
+  - If the server/`StockContext` mutation can't take a date yet, add it through the layers (shared
+    zod → `Db` → route with its existing `allow(perm)`), keeping the last-cleaned rule from
+    `docs/structure.md` (a past date must not overwrite a later cleaning).
+  - Text: button labels, picker title; en/et/ru.
+  - Tests: client: Choose date marks the room cleaned on the picked date, Cleaned today on today;
+    server (if changed): a past date is stored, a future date is refused (400).
+  - Docs: `docs/structure.md` (Cleaning page).
+
 ## Token rules for these sessions
 
 - Start from `docs/structure.md`, this plan and the step's skill. Don't explore.
