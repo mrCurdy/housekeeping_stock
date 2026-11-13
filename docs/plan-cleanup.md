@@ -47,7 +47,7 @@ figure** (totals, the counter page, the Overview).
   - This step is the safety net for step 7.
   - Done differently: the providers include Auth (`DateProvider` calls `useAuth`). A local `fakeApi` with deferred replies replaces `mockApi`, so (a) and (c) can hold a request open. `POLL_MS` is now exported. Each case was checked to fail when its rule is removed.
 
-- [ ] **4. Stock math starts at the latest count** (`shared/src/stock.ts`)
+- [x] **4. Stock math starts at the latest count** (`shared/src/stock.ts`)
   - In `createStockMath`, build once per item a sorted list of its counted days: days with `m`, plus days where `roomSum` isn't null.
   - `calculateTotal(item, D)` and `series` start at the latest counted day ≤ D (that day's total is the count) and replay forward from there. They fall back to `earliestDate()` when there's none.
   - The Overview and Excel still show every day: `series` must return the same map, only cheaper. The days before the anchor are filled by the old replay from `earliestDate()` only when `series` is asked for them.
@@ -56,6 +56,7 @@ figure** (totals, the counter page, the Overview).
     - for a generated dataset (counts, `mc`, income, departures, room counts in removed rooms), assert `calculateTotal` equals `referenceTotal` for every day;
     - assert `series` matches too.
   - CLAUDE.md "Rules" and the "Stock calculation" part of `docs/structure.md`: replace "replays from the earliest record date" with "replays from the latest count".
+  - Done differently: CLAUDE.md "Rules" never mentioned the replay, so only `docs/structure.md` changed. `series` is unchanged: it already is one forward pass where each count resets the total, so it can't get cheaper while returning every day. An extra test (a `Proxy` on departures) proves `calculateTotal` reads nothing before the latest count.
 
 - [ ] **5. The pruning rule, pure** (`shared/`)
   - `shared/src/types.ts`:

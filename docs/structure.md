@@ -201,7 +201,7 @@ settings:     { saluteText? }                                   // app-wide pref
 - **Consumption** is `mc` if set, otherwise auto + `c`, where auto = Σ over groups of `multipliers[g] × d`.
 - A manual count `m` is intentionally the end-of-day figure, so that day's income and consumption are ignored (confirmed by the user).
 - Totals are never stored.
-  - `calculateTotal` replays from the earliest record date.
+  - `calculateTotal` replays from the latest count (`m` or room counts) on or before the day, since a count closes the past; with no count it replays from the earliest record date. Each item's counted days are listed once per `createStockMath`.
   - `series(item, toDate)` returns every day in one pass; the Overview and the Excel export use it.
 - Negative totals are shortages (`val-short`).
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { backupSchema } from './schemas';
+import { dateRange } from './dates';
 import { createStockMath, type StockState } from './stock';
+import type { Item } from './types';
 
 const make = (overrides: Partial<StockState> = {}) =>
   createStockMath(
@@ -94,6 +96,103 @@ describe('stock rules', () => {
     const s = math.series({ id: 'towel', name: 'Towel', multipliers: { g1: 2 } }, '2026-10-06');
     for (const [date, f] of s) expect(f.total).toBe(math.calculateTotal('towel', date));
     expect(s.get('2026-10-05')?.total).toBe(1);
+  });
+});
+
+/** Today's replay, copied as the reference: every item replayed from the earliest record. */
+function referenceTotal(state: StockState, minDateStr: string, item: Item, target: string) {
+  const math = createStockMath(state, { minDateStr });
+  let total = 0;
+  for (const d of dateRange(math.earliestDate(), target))
+    total = math.dayFigures(item, d, total).total;
+  return total;
+}
+
+/** Deterministic pseudo-random numbers (mulberry32). */
+function rng(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function generated(seed: number): StockState {
+  const r = rng(seed);
+  const pick = (p: number) => r() < p;
+  const n = (max: number) => Math.floor(r() * max);
+  const items: Item[] = [
+    { id: 'towel', name: 'Towel', multipliers: { g1: 2, g2: 1 } },
+    { id: 'soap', name: 'Soap', multipliers: { g2: 3 } },
+    { id: 'sheet', name: 'Sheet', multipliers: {} },
+  ];
+  const state: StockState = {
+    items,
+    records: {},
+    groups: [
+      { id: 'g1', name: 'DOUBLE' },
+      { id: 'g2', name: 'SINGLE' },
+    ],
+    groupRecords: {},
+    counts: {},
+  };
+  for (const d of dateRange('2026-08-01', '2026-10-31')) {
+    for (const item of items) {
+      const rec: Record<string, number> = {};
+      if (pick(0.3)) rec.i = n(40);
+      if (pick(0.1)) rec.c = n(5);
+      if (pick(0.05)) rec.mc = n(10);
+      if (pick(0.04)) rec.m = n(80);
+      if (Object.keys(rec).length) (state.records[item.id] ??= {})[d] = rec;
+      // Room counts, including rooms that have been removed since
+      if (pick(0.05)) {
+        const byLoc = (state.counts[d] ??= {});
+        for (const loc of ['l1', 'l2', 'gone']) if (pick(0.6)) (byLoc[loc] ??= {})[item.id] = n(30);
+      }
+    }
+    for (const g of state.groups) if (pick(0.4)) (state.groupRecords[g.id] ??= {})[d] = { d: n(6) };
+  }
+  return state;
+}
+
+describe('stock math starts at the latest count', () => {
+  const minDateStr = '2026-10-01';
+
+  for (const seed of [1, 2, 3]) {
+    it(`calculateTotal and series equal the full replay (seed ${seed})`, () => {
+      const state = generated(seed);
+      const math = createStockMath(state, { minDateStr });
+      for (const item of state.items) {
+        const s = math.series(item, '2026-11-10');
+        expect(s.size).toBe(dateRange('2026-08-01', '2026-11-10').length);
+        for (const d of dateRange('2026-07-25', '2026-11-10')) {
+          const ref = referenceTotal(state, minDateStr, item, d);
+          expect(math.calculateTotal(item.id, d), `${item.id} ${d}`).toBe(ref);
+          if (d >= '2026-08-01') expect(s.get(d)?.total, `series ${item.id} ${d}`).toBe(ref);
+        }
+      }
+    });
+  }
+
+  it('calculateTotal does not replay the days before the latest count', () => {
+    const read: string[] = [];
+    const departures = new Proxy<Record<string, { d: number }>>(
+      { '2026-10-02': { d: 1 }, '2026-10-06': { d: 1 } },
+      {
+        get(target, key, receiver) {
+          if (typeof key === 'string') read.push(key);
+          return Reflect.get(target, key, receiver);
+        },
+      },
+    );
+    const math = make({
+      records: { towel: { '2026-10-01': { i: 20 } } },
+      groupRecords: { g1: departures },
+      counts: { '2026-10-05': { l1: { towel: 10 } } },
+    });
+    expect(math.calculateTotal('towel', '2026-10-07')).toBe(8);
+    expect(read.filter((d) => d < '2026-10-05')).toEqual([]);
   });
 });
 
