@@ -322,8 +322,6 @@ export const en = {
       level: 'Level',
       all: 'All rooms',
       sort: 'Sort',
-      cleanedNew: 'Recently cleaned first',
-      cleanedOld: 'Recently cleaned last',
       attention: 'Needs attention first',
       hideGreen: 'Hide all-green rooms',
       noMatch: 'No rooms match',

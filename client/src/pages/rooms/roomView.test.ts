@@ -2,10 +2,12 @@ import { emptyStockData, type StockData } from '@app/shared';
 import { describe, expect, it } from 'vitest';
 import {
   allGreen,
+  cleaningDays,
   matchesSearch,
   roomLevel,
   roomLevels,
   roomUrgency,
+  viewCleaning,
   viewRooms,
   worstStatus,
   type RoomView,
@@ -92,20 +94,6 @@ describe('viewRooms', () => {
     expect(numbers(d, view({ level: '2' }))).toEqual(['201', '205']);
   });
 
-  it('sorts by the latest cleaning, newest first, never-cleaned last, ties by number', () => {
-    const d = data();
-    d.cleanings = {
-      r205: [{ date: '2026-11-10', by: 'Ann' }],
-      r115: [{ date: '2026-11-01', by: 'Ann' }],
-      r201: [
-        { date: '2026-11-10', by: 'Ann' },
-        { date: '2026-10-01', by: 'Ann' },
-      ],
-    };
-    expect(numbers(d, view({ sort: 'cleanedNew' }))).toEqual(['201', '205', '115', '101', '102']);
-    expect(numbers(d, view({ sort: 'cleanedOld' }))).toEqual(['101', '102', '115', '201', '205']);
-  });
-
   it('sorts by attention, ties by number', () => {
     const d = data();
     d.unitStatus = {
@@ -131,12 +119,8 @@ describe('viewRooms', () => {
 
   it('combines a level filter with a sort', () => {
     const d = data();
-    d.cleanings = {
-      r102: [{ date: '2026-11-02', by: 'Ann' }],
-      r115: [{ date: '2026-11-05', by: 'Ann' }],
-    };
-    expect(numbers(d, view({ level: '1', sort: 'cleanedNew' }))).toEqual(['115', '102', '101']);
-    expect(numbers(d, view({ level: '1', sort: 'cleanedOld' }))).toEqual(['101', '102', '115']);
+    d.unitStatus = { r115: { bed: { status: 'fix', ...by } } };
+    expect(numbers(d, view({ level: '1', sort: 'attention' }))).toEqual(['115', '101', '102']);
   });
 
   it('default order is level by level, then number', () => {
@@ -152,7 +136,6 @@ describe('viewRooms', () => {
     const d = data();
     d.rooms = ['99', '205', '1010', '101'].map((number) => ({ id: `r${number}`, number }));
     expect(numbers(d, view({ sort: 'attention' }))).toEqual(['101', '1010', '205', '99']);
-    expect(numbers(d, view({ sort: 'cleanedNew' }))).toEqual(['101', '1010', '205', '99']);
   });
 });
 
@@ -199,9 +182,81 @@ describe('search', () => {
       viewRooms(d, { ...view(over), search }).map((r) => r.number);
     expect(searched({ level: '2' }, '1')).toEqual(['101', '102', '115']);
     expect(searched({ level: '1' }, 'dou')).toEqual(['115', '205']);
-    d.cleanings = { r115: [{ date: '2026-11-05', by: 'Ann' }] };
-    expect(searched({ level: '2', sort: 'cleanedNew' }, '1')).toEqual(['115', '101', '102']);
+    d.unitStatus = { r115: { bed: { status: 'attention', ...by } } };
+    expect(searched({ level: '2', sort: 'attention' }, '1')).toEqual(['115', '101', '102']);
     d.unitStatus = { r102: { bed: { status: 'fix', ...by } } };
     expect(searched({ level: '2', hideGreen: true }, '1')).toEqual(['102']);
+  });
+});
+
+describe('viewCleaning', () => {
+  const today = '2026-11-13';
+  const cleaned = (date: string) => [{ date, by: 'Ann' }];
+  const order = (
+    d: StockData,
+    over: { level?: string | null; dirtyFirst?: boolean; search?: string } = {},
+  ) => viewCleaning(d, { level: null, dirtyFirst: false, ...over }, today).map((r) => r.number);
+
+  it('off = level order, with the level filter', () => {
+    const d = data();
+    expect(order(d)).toEqual(['101', '102', '115', '201', '205']);
+    expect(order(d, { level: '2' })).toEqual(['201', '205']);
+  });
+
+  it('dirty first: never cleaned on top, then most days since cleaning, ties by level order', () => {
+    const d = data();
+    d.cleanings = {
+      r101: cleaned('2026-11-13'),
+      r115: cleaned('2026-10-01'),
+      r201: cleaned('2026-11-01'),
+      r205: [
+        { date: '2026-11-01', by: 'Ann' },
+        { date: '2026-09-01', by: 'Ann' },
+      ],
+    };
+    // 102 never cleaned; 115 43 days; 201 and 205 12 days (tie → level order); 101 today.
+    expect(order(d, { dirtyFirst: true })).toEqual(['102', '115', '201', '205', '101']);
+    expect(order(d, { dirtyFirst: false })).toEqual(['101', '102', '115', '201', '205']);
+  });
+
+  it('never-cleaned ties keep level order', () => {
+    const d = data();
+    d.cleanings = { r102: cleaned('2026-11-01') };
+    expect(order(d, { dirtyFirst: true })).toEqual(['101', '115', '201', '205', '102']);
+  });
+
+  it('a search looks across levels (the level waits) and keeps dirty-first', () => {
+    const d = data();
+    d.roomTypes = [{ id: 'dbl', name: 'Double' }];
+    d.rooms = d.rooms.map((r) => (r.number.endsWith('5') ? { ...r, type: 'dbl' } : r));
+    d.cleanings = { r115: cleaned('2026-11-10') };
+    expect(order(d, { level: '2', search: '1' })).toEqual(['101', '102', '115']);
+    expect(order(d, { level: '1', search: 'dou' })).toEqual(['115', '205']);
+    expect(order(d, { level: '2', search: 'dou', dirtyFirst: true })).toEqual(['205', '115']);
+    expect(order(d, { level: '2', search: '  ' })).toEqual(['201', '205']);
+  });
+});
+
+describe('cleaningDays', () => {
+  const today = '2026-11-13';
+  it('days since the latest cleaning, coloured at the green/yellow/red thresholds', () => {
+    const d = data(); // defaults: green ≤ 15, yellow ≤ 29
+    const at = (date: string) => {
+      d.cleanings = { r101: [{ date, by: 'Ann' }] };
+      return cleaningDays(d, 'r101', today);
+    };
+    expect(at('2026-11-13')).toEqual({ days: 0, color: 'green' });
+    expect(at('2026-10-29')).toEqual({ days: 15, color: 'green' });
+    expect(at('2026-10-28')).toEqual({ days: 16, color: 'yellow' });
+    expect(at('2026-10-15')).toEqual({ days: 29, color: 'yellow' });
+    expect(at('2026-10-14')).toEqual({ days: 30, color: 'red' });
+  });
+
+  it('uses the stored thresholds; never cleaned = null, red', () => {
+    const d = data();
+    d.settings = { cleanGreenDays: 2, cleanYellowDays: 5 };
+    d.cleanings = { r101: [{ date: '2026-11-10', by: 'Ann' }] };
+    expect(cleaningDays(d, 'r101', today)).toEqual({ days: 3, color: 'yellow' });
+    expect(cleaningDays(d, 'r102', today)).toEqual({ days: null, color: 'red' });
   });
 });

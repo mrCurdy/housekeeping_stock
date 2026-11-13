@@ -319,8 +319,6 @@ export const et: Messages = {
       level: 'Korrus',
       all: 'Kõik toad',
       sort: 'Järjesta',
-      cleanedNew: 'Hiljuti puhastatud eespool',
-      cleanedOld: 'Hiljuti puhastatud tagapool',
       attention: 'Tähelepanu vajavad eespool',
       hideGreen: 'Peida täiesti rohelised toad',
       noMatch: 'Sobivaid tube pole',

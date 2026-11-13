@@ -3,7 +3,8 @@ import { useState } from 'react';
 import type { RoomSort, RoomView } from './roomView';
 
 const KEY = 'rooms.view';
-const SORTS: readonly RoomSort[] = ['number', 'cleanedNew', 'cleanedOld', 'attention'];
+/** An old stored sort (`cleanedNew` / `cleanedOld`, removed) is not here, so it loads as `number`. */
+const SORTS: readonly RoomSort[] = ['number', 'attention'];
 /** Below Tailwind's `sm`: a phone starts with compact tiles. */
 const PHONE = '(max-width: 639px)';
 

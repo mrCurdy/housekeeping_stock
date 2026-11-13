@@ -286,7 +286,7 @@ describe('rooms filter bar', () => {
     expect(titles()).toEqual(['101', '102', '201']);
   });
 
-  it('a sort toggle reorders the cards; pressing it again restores the number order', async () => {
+  it('the attention toggle reorders the cards; pressing it again restores the number order', async () => {
     mockApp('admin', floors());
     const user = userEvent.setup();
     await renderApp();
@@ -297,13 +297,11 @@ describe('rooms filter bar', () => {
     expect(attention).toHaveAttribute('aria-pressed', 'true');
     expect(titles()).toEqual(['201', '102', '101']);
 
-    const oldest = screen.getByRole('button', { name: 'Recently cleaned last' });
-    await user.click(oldest);
-    expect(attention).toHaveAttribute('aria-pressed', 'false');
-    expect(oldest).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Recently cleaned last' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Recently cleaned first' })).toBeNull();
 
-    await user.click(oldest);
-    expect(oldest).toHaveAttribute('aria-pressed', 'false');
+    await user.click(attention);
+    expect(attention).toHaveAttribute('aria-pressed', 'false');
     expect(titles()).toEqual(['101', '102', '201']);
   });
 

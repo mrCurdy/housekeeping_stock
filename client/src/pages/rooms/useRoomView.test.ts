@@ -42,6 +42,14 @@ describe('loadRoomView mode', () => {
     });
   });
 
+  it('an old stored cleaning sort loads as level order', () => {
+    screen(false);
+    localStorage.setItem('rooms.view', JSON.stringify({ level: '2', sort: 'cleanedOld' }));
+    expect(loadRoomView()).toMatchObject({ level: '2', sort: 'number' });
+    localStorage.setItem('rooms.view', JSON.stringify({ sort: 'cleanedNew' }));
+    expect(loadRoomView().sort).toBe('number');
+  });
+
   it('works without matchMedia or storage', () => {
     vi.stubGlobal('matchMedia', undefined);
     expect(loadRoomView().mode).toBe('full');

@@ -70,7 +70,7 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     the file (the App's router keeps its location between tests); the worker half of the "no rooms"
     test was dropped (step 4 covers it on `/cleaning`).
 
-- [ ] **2. The view rules for both pages, pure** (skill `ui`)
+- [x] **2. The view rules for both pages, pure** (skill `ui`)
   - `pages/rooms/roomView.ts`: `RoomView.sort` becomes `'number' | 'attention'` (drop
     `cleanedNew` / `cleanedOld` and their code). `useRoomView` reads a stored old sort as
     `'number'`.
@@ -84,6 +84,8 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     an old stored `cleanedOld` view loads as `'number'`.
   - The Rooms page filter bar loses the two cleaning sorts here (its tests updated), so the step
     stays green.
+  - Done. `viewCleaning` takes a `CleaningQuery` type (exported from `roomView.ts`). The now-unused
+    `rooms.filter.cleanedNew` / `cleanedOld` texts were removed from en/et/ru here, not in step 3.
 
 - [ ] **3. Room statuses page (admin only)** (skills `ui`, `i18n`)
   - `Rooms.tsx`: redirect to `/cleaning` without `setup` (route only exists after step 4: until

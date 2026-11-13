@@ -1,5 +1,8 @@
-// The Rooms page view: search, level filter, sort and hide-green. Pure, over the data already loaded.
+// The Rooms and Cleaning page views: search, level filter, sorts, hide-green and the days since a
+// room's general cleaning. Pure, over the data already loaded.
 import {
+  cleaningLevel,
+  cleanThresholds,
   latestCleaning,
   unitStatusOf,
   type Room,
@@ -9,7 +12,8 @@ import {
   type StockData,
 } from '@app/shared';
 
-export type RoomSort = 'number' | 'cleanedNew' | 'cleanedOld' | 'attention';
+/** `number` = level order; `attention` = the worst unit status first. */
+export type RoomSort = 'number' | 'attention';
 
 export interface RoomView {
   /** A level from `roomLevels`, or null = all rooms. */
@@ -107,16 +111,48 @@ export function viewRooms(data: ViewData, view: RoomQuery): Room[] {
     const urgency = new Map(rooms.map((r) => [r.id, roomUrgency(data, r.id)]));
     return rooms.sort((a, b) => urgency.get(b.id)! - urgency.get(a.id)!);
   }
-  if (view.sort === 'cleanedNew' || view.sort === 'cleanedOld') {
-    const newest = view.sort === 'cleanedNew';
-    const last = new Map(rooms.map((r) => [r.id, latestCleaning(data, r.id)?.date ?? '']));
-    // Never cleaned = '' : last when newest first, first when oldest first.
-    return rooms.sort((a, b) => {
-      const da = last.get(a.id)!;
-      const db = last.get(b.id)!;
-      if (da === db) return 0;
-      return (da < db ? -1 : 1) * (newest ? -1 : 1);
-    });
-  }
   return rooms;
+}
+
+/** The Cleaning page view: a level (null = all) and the dirty-first toggle, plus the typed search. */
+export interface CleaningQuery {
+  level: string | null;
+  dirtyFirst: boolean;
+  search?: string;
+}
+
+/**
+ * The days since a room's latest general cleaning (`0` today, null never) and its colour from the
+ * stored thresholds (`cleaningLevel`). `today` is the real local today.
+ */
+export const cleaningDays = (
+  data: Pick<StockData, 'cleanings' | 'settings'>,
+  roomId: string,
+  today: string,
+) => cleaningLevel(latestCleaning(data, roomId)?.date, today, cleanThresholds(data.settings));
+
+/**
+ * The Cleaning page's rooms, in order. Level filter and search as in `viewRooms` (a search looks
+ * across every level). Dirty first = most days since the latest cleaning first, never cleaned at
+ * the very top, ties in level order; off = level order.
+ */
+export function viewCleaning(
+  data: Pick<StockData, 'rooms' | 'roomTypes' | 'cleanings' | 'settings'>,
+  view: CleaningQuery,
+  today: string,
+): Room[] {
+  let rooms = sortByLevel(data.rooms);
+  const search = view.search?.trim() ?? '';
+  if (search) rooms = rooms.filter((r) => matchesSearch(r, search, data.roomTypes));
+  else if (view.level !== null) rooms = rooms.filter((r) => roomLevel(r.number) === view.level);
+  if (!view.dirtyFirst) return rooms;
+
+  const days = new Map(
+    rooms.map((r) => [r.id, cleaningDays(data, r.id, today).days ?? Number.POSITIVE_INFINITY]),
+  );
+  return rooms.sort((a, b) => {
+    const da = days.get(a.id)!;
+    const db = days.get(b.id)!;
+    return da === db ? 0 : db > da ? 1 : -1;
+  });
 }

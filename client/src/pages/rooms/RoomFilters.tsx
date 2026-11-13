@@ -10,11 +10,11 @@ const MODES = [
   { mode: 'compact', icon: Grid3x3 },
 ] as const satisfies readonly { mode: RoomMode; icon: unknown }[];
 
-const SORTS = ['cleanedNew', 'cleanedOld', 'attention'] as const satisfies readonly RoomSort[];
+const SORTS = ['attention'] as const satisfies readonly RoomSort[];
 
 /**
- * The bar above the room cards: one level at a time (or All), one of three sort toggles
- * (pressing the active one goes back to number order), hide-green (only with units) and the
+ * The bar above the room cards: one level at a time (or All), the attention sort toggle
+ * (pressing it again goes back to level order), hide-green (only with units) and the
  * full cards / compact tiles switch.
  */
 export function RoomFilters({
