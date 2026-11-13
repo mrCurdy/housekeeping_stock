@@ -26,7 +26,7 @@ export function PinForm({ role }: { role: PinRole }) {
       await api.put('/auth/pins', { role, pin });
       setPin('');
       setRepeat('');
-      toast.success(role === 'admin' ? tx.adminChanged : tx.workerChanged);
+      toast.success(tx.changed[role]);
     } catch (err) {
       setErrors({
         server:
@@ -52,9 +52,9 @@ export function PinForm({ role }: { role: PinRole }) {
     <form aria-labelledby={titleId} onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div>
         <h4 id={titleId} className="font-semibold">
-          {role === 'admin' ? tx.admin : tx.worker}
+          {tx.label[role]}
         </h4>
-        <p className="text-sm text-fg-muted">{role === 'admin' ? tx.adminHint : tx.workerHint}</p>
+        <p className="text-sm text-fg-muted">{tx.hint[role]}</p>
       </div>
       <FormField label={tx.newPin} error={errors.pin}>
         <Input {...field} value={pin} onChange={(e) => setPin(digits(e.target.value))} />

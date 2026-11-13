@@ -74,8 +74,12 @@ const sample = (): StockData => ({
     { id: 'rt-1', name: 'Double' },
   ],
   roomUnits: [
-    { id: 'u-2', name: 'Shower' },
-    { id: 'u-1', name: 'Bed' },
+    { id: 'u-2', name: 'Shower', group: 'ug-b' },
+    { id: 'u-1', name: 'Bed', group: 'ug-a' },
+  ],
+  roomUnitGroups: [
+    { id: 'ug-b', name: 'Bathroom' },
+    { id: 'ug-a', name: 'Furniture' },
   ],
   roomStatuses: [
     { id: 's-2', name: 'Broken', color: 'red' },
@@ -187,6 +191,7 @@ describe('SQLite driver', () => {
       rooms: _r,
       roomTypes: _t,
       roomUnits: _u,
+      roomUnitGroups: _ug,
       roomStatuses: _s,
       unitStatus: _us,
       cleanings: _c,

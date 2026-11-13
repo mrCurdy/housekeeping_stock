@@ -1,7 +1,7 @@
 import { DEFAULT_SALUTE_TEXT, formatDate } from '@app/shared';
 import { DoorOpen, SearchX } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { Link, Navigate } from 'react-router';
+import { Link } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Salute } from '@/components/Salute';
 import { Alert, Button, buttonVariants, Card, EmptyState, Spinner } from '@/components/ui';
@@ -16,7 +16,7 @@ import { RoomSearch } from './rooms/RoomSearch';
 import { roomLevels, viewCleaning } from './rooms/roomView';
 
 /**
- * /cleaning (admin and worker): every room as a small square tile with the days since its latest
+ * /cleaning (admin and housekeeper): every room as a small square tile with the days since its latest
  * general cleaning, under the room search, the level buttons and "Dirty first"
  * (`viewCleaning` in `rooms/roomView.ts`). Tapping a tile opens `CleaningDialog`, which registers
  * a cleaning for today. Days count from the real today, not the date switcher's day.
@@ -33,7 +33,6 @@ export default function Cleaning() {
   const [salute, setSalute] = useState(false);
   const endSalute = useCallback(() => setSalute(false), []);
 
-  if (!can('cleaning')) return <Navigate to="/stock" replace />;
   const today = formatDate(new Date());
   const rooms = viewCleaning(data, { ...view, search }, today);
   const open = openId === null ? undefined : data.rooms.find((r) => r.id === openId);

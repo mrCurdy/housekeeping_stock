@@ -1,3 +1,5 @@
+import type { RolePermissions } from './auth';
+import type { LocalizedNames } from './names';
 /**
  * The whole dataset, as stored in data/db.json and returned by GET /api/data.
  * Dates are local-time 'YYYY-MM-DD' strings (see dates.ts), so string comparison sorts them.
@@ -6,6 +8,10 @@
 export interface Item {
   id: string;
   name: string;
+  /** Per-language versions of the name (`names.ts`). */
+  names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
   /** Items used per departure, per group: { [groupId]: qty } */
   multipliers: Record<string, number>;
 }
@@ -112,8 +118,10 @@ export interface StockData {
   rooms: Room[];
   /** The room types a card can pick, in dropdown order. */
   roomTypes: RoomType[];
-  /** The master layout every room shares, in display order. */
+  /** The master layout every room shares, in display order (within their group). */
   roomUnits: RoomUnit[];
+  /** The groups the units are listed in ("Bathroom"…), in display order. [] only without units. */
+  roomUnitGroups: RoomUnitGroup[];
   /** Unit statuses, in order. [] = DEFAULT_ROOM_STATUSES (see `roomStatusList`). */
   roomStatuses: RoomStatus[];
   /** { [roomId]: { [unitId]: current status } }; missing = the first status. */
@@ -135,13 +143,34 @@ export interface Room {
 export interface RoomType {
   id: string;
   name: string;
+  names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
 }
 
 /** A part of a room (bed, shower…) whose status is tracked. */
 export interface RoomUnit {
   id: string;
   name: string;
+  names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
+  /** The `RoomUnitGroup` it is listed in. Missing or unknown = the default group (`unitGroupOf`). */
+  group?: string;
 }
+
+/** A group of room units ("Bathroom", "Electronics"…). Not tracked per day. */
+export interface RoomUnitGroup {
+  id: string;
+  /** '' = unnamed (the group old units were put in); the client shows a translated title. */
+  name: string;
+  names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
+}
+
+/** The group units without one (old data and backups) are put in. */
+export const DEFAULT_UNIT_GROUP_ID = 'units';
 
 /** Status colours: the 3 main ones (ok, needs attention, needs fixing), then 7 additional ones. */
 export const ROOM_COLORS = [
@@ -161,6 +190,9 @@ export type RoomColor = (typeof ROOM_COLORS)[number];
 export interface RoomStatus {
   id: string;
   name: string;
+  names?: LocalizedNames;
+  /** Shown data only (`localizeNames`): no version in the UI language. Never stored or sent. */
+  nameMissing?: boolean;
   color: RoomColor;
 }
 
@@ -202,6 +234,8 @@ export interface AppSettings {
   cleanGreenDays?: number;
   /** Days a general cleaning stays yellow (red after). Unset = DEFAULT_CLEAN_DAYS.yellow. */
   cleanYellowDays?: number;
+  /** What the housekeeper and reception may do. Unset = DEFAULT_ROLE_PERMISSIONS (never stored equal to it). */
+  rolePermissions?: RolePermissions;
 }
 
 export const DEFAULT_SALUTE_TEXT = 'Tubli!';
@@ -241,6 +275,7 @@ export const emptyStockData = (): StockData => ({
   rooms: [],
   roomTypes: [],
   roomUnits: [],
+  roomUnitGroups: [],
   roomStatuses: [],
   unitStatus: {},
   cleanings: {},

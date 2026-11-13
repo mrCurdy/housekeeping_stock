@@ -2,13 +2,23 @@ import { randomUUID } from 'node:crypto';
 import {
   emptyStockData,
   removeStatusIn,
+  renameIn,
   type Room,
   type RoomStatus,
   type RoomType,
   type RoomUnit,
+  type RoomUnitGroup,
   type UnitStatus,
+  DEFAULT_UNIT_GROUP_ID,
+  removeUnitGroupIn,
 } from '@app/shared';
-import type { OrderedRepo, RoomRepo, RoomStatusRepo } from '../types';
+import type {
+  OrderedRepo,
+  RoomRepo,
+  RoomStatusRepo,
+  RoomUnitGroupRepo,
+  RoomUnitRepo,
+} from '../types';
 import { type Ctx, createRows, namedRepo, type NamedTable } from './rows';
 
 /** Room cards: number, type, note, the units' current statuses and the general cleanings. */
@@ -104,7 +114,7 @@ export function createRooms(ctx: Ctx): RoomRepo {
 }
 
 /** A master list with create / rename / delete (+ `onDelete`) / reorder. */
-const orderedRepo = <T extends RoomType | RoomUnit>(
+const orderedRepo = <T extends RoomType | RoomUnit | RoomUnitGroup>(
   ctx: Ctx,
   table: NamedTable,
   onDelete: (id: string) => void,
@@ -118,11 +128,82 @@ const orderedRepo = <T extends RoomType | RoomUnit>(
   };
 };
 
-/** The master layout every room shares; removing a unit drops its statuses on every card. */
-export const createRoomUnits = (ctx: Ctx) =>
-  orderedRepo<RoomUnit>(ctx, 'room_units', (id) =>
-    ctx.run('DELETE FROM unit_status WHERE unit_id = ?', id),
+/**
+ * The master layout every room shares; removing a unit drops its statuses on every card. Each
+ * unit is in a group (`room_units.group_id`); `pos` orders all units, so also within a group.
+ */
+export function createRoomUnits(ctx: Ctx): RoomUnitRepo {
+  const { get, run, prepare, write } = ctx;
+  const { nextPos, readUnits, hasRow, readNamed } = createRows(ctx);
+  /** The group a new unit goes to: `group` if it exists, else the first one, else a new default. */
+  const groupFor = (group: string | undefined) => {
+    if (group && hasRow('room_unit_groups', group)) return group;
+    const first = readNamed('room_unit_groups')[0];
+    if (first) return first.id;
+    run(
+      'INSERT INTO room_unit_groups (id, name, pos) VALUES (?, ?, ?)',
+      DEFAULT_UNIT_GROUP_ID,
+      '',
+      nextPos('room_unit_groups'),
+    );
+    return DEFAULT_UNIT_GROUP_ID;
+  };
+  const named = namedRepo<RoomUnit>(ctx, 'room_units', (id) =>
+    run('DELETE FROM unit_status WHERE unit_id = ?', id),
   );
+  return {
+    ...named,
+    async create(name, group) {
+      return write(() => {
+        const unit: RoomUnit = { id: randomUUID(), name, group: groupFor(group) };
+        run(
+          'INSERT INTO room_units (id, name, group_id, pos) VALUES (?, ?, ?, ?)',
+          unit.id,
+          name,
+          unit.group,
+          nextPos('room_units'),
+        );
+        return unit;
+      });
+    },
+    async rename(id, name, lang) {
+      const done = await named.rename(id, name, lang);
+      const row =
+        done &&
+        get<{ group_id: string | null }>('SELECT group_id FROM room_units WHERE id = ?', id);
+      return done && { ...done, ...(row?.group_id && { group: row.group_id }) };
+    },
+    async reorder(ids, move) {
+      return write(() => {
+        const rank = new Map(ids.map((id, n) => [id, n]));
+        const at = (id: string) => rank.get(id) ?? Infinity;
+        const units = readUnits().sort((a, b) => at(a.id) - at(b.id)); // stable: unlisted keep order
+        const unit = move && units.find((u) => u.id === move.id);
+        if (unit && hasRow('room_unit_groups', move.group)) {
+          unit.group = move.group;
+          run('UPDATE room_units SET group_id = ? WHERE id = ?', move.group, unit.id);
+        }
+        const stmt = prepare('UPDATE room_units SET pos = ? WHERE id = ?');
+        units.forEach((u, pos) => stmt.run(pos, u.id));
+        return units;
+      });
+    },
+  };
+}
+
+/** The groups the units are listed in. One that still has units isn't deleted ('notEmpty'). */
+export function createRoomUnitGroups(ctx: Ctx): RoomUnitGroupRepo {
+  const ordered = orderedRepo<RoomUnitGroup>(ctx, 'room_unit_groups', () => {});
+  const { readUnits, readNamed } = createRows(ctx);
+  return {
+    ...ordered,
+    async delete(id) {
+      const data = { roomUnits: readUnits(), roomUnitGroups: readNamed('room_unit_groups') };
+      const done = removeUnitGroupIn(data, id);
+      return done === true ? ordered.delete(id) : done;
+    },
+  };
+}
 
 /** Removing a type clears it on its cards. */
 export const createRoomTypes = (ctx: Ctx) =>
@@ -147,10 +228,11 @@ export function createRoomStatuses(ctx: Ctx): RoomStatusRepo {
         const list = readRoomStatuses();
         const status = list.find((s) => s.id === id);
         if (!status) return null;
-        if (patch.name !== undefined) status.name = patch.name;
-        if (patch.color !== undefined) status.color = patch.color;
+        const at = list.indexOf(status);
+        if (patch.name !== undefined) list[at] = renameIn(status, patch.name, patch.lang);
+        if (patch.color !== undefined) list[at]!.color = patch.color;
         writeRoomStatuses(list);
-        return status;
+        return list[at]!;
       });
     },
     async delete(id) {

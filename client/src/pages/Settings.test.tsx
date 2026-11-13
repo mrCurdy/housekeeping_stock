@@ -41,6 +41,7 @@ function adminApi(pins: () => { status: number; body?: unknown } = () => ({ stat
       return { status: 201, body: { token: 'tok', createdAt: '2026-10-17T08:00:00.000Z' } };
     }
     if (path === '/auth/pins' && method === 'PUT') return pins();
+    if (path === '/settings' && method === 'PATCH') return { status: 200, body: {} };
   });
 }
 
@@ -55,10 +56,21 @@ const pinPuts = (fetch: ReturnType<typeof mockApi>) =>
   fetch.mock.calls.filter(([url, init]) => url === '/api/auth/pins' && init?.method === 'PUT');
 
 describe('Settings: PINs', () => {
+  it('has a PIN form for each role', async () => {
+    adminApi();
+    settings();
+    for (const name of ['Admin PIN', 'Housekeeper PIN', 'Reception PIN']) {
+      expect(await screen.findByRole('form', { name })).toBeInTheDocument();
+    }
+    expect(
+      screen.getByText('Every reception device will be logged out and needs the new PIN.'),
+    ).toBeInTheDocument();
+  });
+
   it('needs exactly 4 digits', async () => {
     const fetch = adminApi();
     settings();
-    await fill(await screen.findByRole('form', { name: 'Worker PIN' }), '123', '123');
+    await fill(await screen.findByRole('form', { name: 'Housekeeper PIN' }), '123', '123');
     expect(await screen.findByText('Use 4 digits')).toBeInTheDocument();
     expect(pinPuts(fetch)).toHaveLength(0);
   });
@@ -66,31 +78,29 @@ describe('Settings: PINs', () => {
   it('needs the PIN typed twice the same', async () => {
     const fetch = adminApi();
     settings();
-    await fill(await screen.findByRole('form', { name: 'Worker PIN' }), '1111', '2222');
+    await fill(await screen.findByRole('form', { name: 'Housekeeper PIN' }), '1111', '2222');
     expect(await screen.findByText('The PINs do not match')).toBeInTheDocument();
     expect(pinPuts(fetch)).toHaveLength(0);
   });
 
-  it('saves a new worker PIN and clears the form', async () => {
+  it('saves a new reception PIN and clears the form', async () => {
     const fetch = adminApi();
     settings();
-    const form = await screen.findByRole('form', { name: 'Worker PIN' });
+    const form = await screen.findByRole('form', { name: 'Reception PIN' });
     await fill(form, '5678', '5678');
-    expect(await screen.findByText('Worker PIN changed')).toBeInTheDocument();
+    expect(await screen.findByText('Reception PIN changed')).toBeInTheDocument();
     expect(JSON.parse(pinPuts(fetch)[0]?.[1]?.body as string)).toEqual({
-      role: 'worker',
+      role: 'reception',
       pin: '5678',
     });
     expect(within(form).getByLabelText('New PIN')).toHaveValue('');
   });
 
-  it('explains when the PIN is the same as the other role', async () => {
+  it('explains when another role has the PIN', async () => {
     adminApi(() => ({ status: 400, body: { error: { code: 'BAD_REQUEST', message: 'x' } } }));
     settings();
     await fill(await screen.findByRole('form', { name: 'Admin PIN' }), '0000', '0000');
-    expect(
-      await screen.findByText('The admin and worker PINs must be different'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Another role already has this PIN')).toBeInTheDocument();
   });
 });
 
@@ -139,25 +149,16 @@ describe('Settings: room cards setup', () => {
       .filter(([u, init]) => u === url && init?.method === method)
       .map(([, init]) => JSON.parse(init?.body as string));
 
-  it('adds a unit', async () => {
-    const fetch = roomsApi();
-    settings();
-    await userEvent.type(await screen.findByPlaceholderText('New unit (bed, shower…)'), 'Bed');
-    await userEvent.click(screen.getByRole('button', { name: 'Add unit' }));
-    expect(await screen.findByLabelText('Unit name Bed')).toHaveValue('Bed');
-    expect(sent(fetch, '/api/room-units', 'POST')).toEqual([{ name: 'Bed' }]);
-  });
-
   it('renames a status and changes its colour', async () => {
     const fetch = roomsApi();
     settings();
     const name = await screen.findByLabelText('Status name OK');
     await userEvent.clear(name);
     await userEvent.type(name, 'Fine{Enter}');
-    expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([{ name: 'Fine' }]);
+    expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([{ name: 'Fine', lang: 'en' }]);
     await userEvent.selectOptions(screen.getByLabelText('Colour of Fine'), 'Blue');
     expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([
-      { name: 'Fine' },
+      { name: 'Fine', lang: 'en' },
       { color: 'blue' },
     ]);
   });
@@ -383,5 +384,179 @@ describe('Settings: data and backups', () => {
     expect(await screen.findByText('Not a backup')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(restores(fetch)).toHaveLength(0);
+  });
+});
+
+describe('Settings: room list', () => {
+  beforeEach(() => {
+    // jsdom has no <dialog> methods
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+      this.open = false;
+    };
+  });
+
+  function roomApi(
+    rooms = [
+      { id: 'r201', number: '201' },
+      { id: 'r10', number: '10', type: 'dbl' },
+      { id: 'r102', number: '102' },
+    ],
+  ) {
+    return mockApi((method, path) => {
+      if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
+      if (path === '/data') {
+        return {
+          status: 200,
+          body: {
+            ...emptyStockData(),
+            settings: {},
+            rooms,
+            roomTypes: [
+              { id: 'dbl', name: 'Double' },
+              { id: 'sgl', name: 'Single' },
+            ],
+          },
+        };
+      }
+      if (path === '/auth/qr') return { status: 200, body: { active: false } };
+      if (path.startsWith('/rooms/') && (method === 'PATCH' || method === 'DELETE')) {
+        return { status: 204 };
+      }
+    });
+  }
+  const calls = (fetch: ReturnType<typeof mockApi>, method: string) =>
+    fetch.mock.calls
+      .filter(([u, init]) => String(u).startsWith('/api/rooms/') && init?.method === method)
+      .map(([u, init]) => [u, init?.body ? JSON.parse(init.body as string) : undefined]);
+  const list = async () => within(await screen.findByRole('list', { name: 'Rooms' }));
+  const edit = async (number: string) => {
+    await userEvent.click((await list()).getByRole('button', { name: `Edit room ${number}` }));
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('heading', { name: `Edit room ${number}` }),
+    ).toBeInTheDocument();
+    return within(dialog);
+  };
+
+  it('lists the rooms in level order with their type', async () => {
+    roomApi();
+    settings();
+    const items = (await list()).getAllByRole('listitem');
+    expect(items.map((li) => li.textContent)).toEqual(['10Double', '102', '201']);
+  });
+
+  it('says so when there are no rooms', async () => {
+    roomApi([]);
+    settings();
+    expect(await screen.findByText('No rooms yet.')).toBeInTheDocument();
+  });
+
+  it('Edit sends only the changed fields', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    expect(dialog.getByLabelText('Room number')).toHaveValue('10');
+    await userEvent.clear(dialog.getByLabelText('Room number'));
+    await userEvent.type(dialog.getByLabelText('Room number'), '11');
+    await userEvent.selectOptions(dialog.getByLabelText('Room type'), 'sgl');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(calls(fetch, 'PATCH')).toEqual([['/api/rooms/r10', { number: '11', type: 'sgl' }]]),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('clearing the type sends an empty type', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    await userEvent.selectOptions(dialog.getByLabelText('Room type'), '');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(calls(fetch, 'PATCH')).toEqual([['/api/rooms/r10', { type: '' }]]));
+  });
+
+  it('a number taken by another room shows the error and sends nothing', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    await userEvent.clear(dialog.getByLabelText('Room number'));
+    await userEvent.type(dialog.getByLabelText('Room number'), '102');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    expect(dialog.getByText('Room 102 already exists')).toBeInTheDocument();
+    expect(calls(fetch, 'PATCH')).toEqual([]);
+  });
+
+  it('keeping its own number is allowed', async () => {
+    const fetch = roomApi();
+    settings();
+    const dialog = await edit('10');
+    await userEvent.type(dialog.getByLabelText('Note'), 'Sea view');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(calls(fetch, 'PATCH')).toEqual([['/api/rooms/r10', { note: 'Sea view' }]]),
+    );
+  });
+
+  it('Remove asks, then deletes', async () => {
+    const fetch = roomApi();
+    settings();
+    await userEvent.click((await list()).getByRole('button', { name: 'Delete room 102' }));
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Delete room 102?')).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(calls(fetch, 'DELETE')).toEqual([['/api/rooms/r102', undefined]]));
+    expect((await list()).queryByText('102')).toBeNull();
+  });
+
+  it('cancelling Remove sends nothing', async () => {
+    const fetch = roomApi();
+    settings();
+    await userEvent.click((await list()).getByRole('button', { name: 'Delete room 102' }));
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+    );
+    expect(calls(fetch, 'DELETE')).toEqual([]);
+  });
+});
+
+describe('Settings: roles', () => {
+  const patches = (fetch: ReturnType<typeof mockApi>) =>
+    fetch.mock.calls
+      .filter(([url, init]) => url === '/api/settings' && init?.method === 'PATCH')
+      .map(([, init]) => JSON.parse(String(init?.body)) as unknown);
+
+  it('shows the defaults and saves a change for both roles', async () => {
+    const fetch = adminApi();
+    settings();
+    const daily = await screen.findByRole('checkbox', { name: 'Daily stock: Reception' });
+    expect(daily).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Checklist: Reception' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'General cleaning: Housekeeper' })).toBeChecked();
+    await userEvent.click(daily);
+    expect(daily).toBeChecked();
+    expect(patches(fetch)).toEqual([
+      {
+        rolePermissions: {
+          housekeeper: ['count', 'cleaning'],
+          reception: ['daily', 'checklist'],
+        },
+      },
+    ]);
+  });
+
+  it('Reset to defaults sends the defaults', async () => {
+    const fetch = adminApi();
+    settings();
+    const reset = await screen.findByRole('button', { name: 'Reset to defaults' });
+    expect(reset).toBeDisabled();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Inventory count: Housekeeper' }));
+    await userEvent.click(reset);
+    expect(patches(fetch).at(-1)).toEqual({
+      rolePermissions: { housekeeper: ['count', 'cleaning'], reception: ['checklist'] },
+    });
+    expect(screen.getByRole('checkbox', { name: 'Inventory count: Housekeeper' })).toBeChecked();
   });
 });

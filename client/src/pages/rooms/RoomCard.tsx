@@ -1,4 +1,4 @@
-import { ROOM_NOTE_MAX, roomStatusList, unitStatusOf, type Room } from '@app/shared';
+import { ROOM_NOTE_MAX, roomStatusList, unitsByGroup, unitStatusOf, type Room } from '@app/shared';
 import { Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Card, CardTitle, CommitTextarea, Input, Select } from '@/components/ui';
@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
+import { useUntranslated } from '@/lib/untranslated';
 import { roomExists, statusName, typeOptions } from './roomText';
 import { WhoDialog } from './WhoDialog';
 
@@ -29,7 +30,10 @@ export function RoomCard({
 }) {
   const { data, updateRoom, removeRoom, setUnitStatus } = useStock();
   const { t, locale } = useI18n();
+  const untranslated = useUntranslated();
   const tx = t.rooms;
+  // The units group by group (a heading per group once there are several)
+  const unitGroups = unitsByGroup(data).filter((g) => g.units.length > 0);
   const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
@@ -80,7 +84,14 @@ export function RoomCard({
           <div className="flex items-start gap-2 px-5 pt-4">
             <div className="flex min-w-0 flex-1 flex-col">
               <CardTitle className="text-xl break-words">{room.number}</CardTitle>
-              {type && <p className="text-sm text-fg-muted">{type.name}</p>}
+              {type && (
+                <p
+                  title={untranslated(type).title}
+                  className={cn('text-sm text-fg-muted', untranslated(type).className)}
+                >
+                  {type.name}
+                </p>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -119,41 +130,62 @@ export function RoomCard({
             rows={2}
           />
 
-          {data.roomUnits.length > 0 && (
-            <ul className="flex flex-col gap-2">
-              {data.roomUnits.map((unit) => {
-                const { status, entry } = unitStatusOf(data, room.id, unit.id);
-                const colors = ROOM_COLOR_CLASSES[status.color];
-                return (
-                  <li
-                    key={unit.id}
-                    className={cn('rounded-md border-l-4 px-3 py-2', colors.border, colors.soft)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 text-sm font-medium break-words">
-                        {unit.name}
-                      </span>
-                      <Select
-                        value={status.id}
-                        onChange={(e) => setPending({ unitId: unit.id, statusId: e.target.value })}
-                        options={statusOptions}
-                        aria-label={tx.statusOf(unit.name, room.number)}
-                        className="w-40 shrink-0"
-                      />
-                    </div>
-                    {entry?.note && (
-                      <p className="mt-1 text-sm whitespace-pre-wrap">{entry.note}</p>
-                    )}
-                    {entry && (
-                      <p className="mt-0.5 text-xs text-fg-muted">
-                        {tx.setBy(entry.by, when(entry.at))}
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          {unitGroups.map(({ group, units }) => (
+            <section key={group.id} className="flex flex-col gap-2">
+              {unitGroups.length > 1 && (
+                <h4
+                  title={untranslated(group).title}
+                  className={cn(
+                    'text-xs font-semibold tracking-wide text-fg-muted uppercase',
+                    untranslated(group).className,
+                  )}
+                >
+                  {group.name || t.settings.rooms.defaultGroup}
+                </h4>
+              )}
+              <ul className="flex flex-col gap-2">
+                {units.map((unit) => {
+                  const { status, entry } = unitStatusOf(data, room.id, unit.id);
+                  const colors = ROOM_COLOR_CLASSES[status.color];
+                  return (
+                    <li
+                      key={unit.id}
+                      className={cn('rounded-md border-l-4 px-3 py-2', colors.border, colors.soft)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          title={untranslated(unit).title}
+                          className={cn(
+                            'min-w-0 flex-1 text-sm font-medium break-words',
+                            untranslated(unit).className,
+                          )}
+                        >
+                          {unit.name}
+                        </span>
+                        <Select
+                          value={status.id}
+                          onChange={(e) =>
+                            setPending({ unitId: unit.id, statusId: e.target.value })
+                          }
+                          options={statusOptions}
+                          aria-label={tx.statusOf(unit.name, room.number)}
+                          className="w-40 shrink-0"
+                        />
+                      </div>
+                      {entry?.note && (
+                        <p className="mt-1 text-sm whitespace-pre-wrap">{entry.note}</p>
+                      )}
+                      {entry && (
+                        <p className="mt-0.5 text-xs text-fg-muted">
+                          {tx.setBy(entry.by, when(entry.at))}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
         </div>
       </Card>
 

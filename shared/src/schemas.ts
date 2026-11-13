@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { isDefaultRolePermissions, rolePermissionsSchema, STAFF_ROLES } from './auth';
 import { pruneTasks, taskGroupList } from './checklist';
-import { roomStatusList } from './rooms';
+import { cleanNames, NAME_LANGS, type LocalizedNames, type NameLang } from './names';
+import { roomStatusList, unitGroupList, unitGroupOf } from './rooms';
 import {
   emptyStockData,
   ROOM_COLORS,
@@ -28,10 +30,13 @@ const qty = z.number().finite().min(0);
 const nullableQty = qty.nullable();
 
 export const nameSchema = z.object({ name });
+/** The UI language a rename is for: only that language's version changes. Missing = the base name. */
+const lang = z.enum(NAME_LANGS).optional();
 export type NameInput = z.infer<typeof nameSchema>;
 
 export const itemPatchSchema = z.object({
   name: name.optional(),
+  lang,
   /** Only the groups given are changed; null removes the group from the item. */
   multipliers: z.record(z.string(), nullableQty).optional(),
 });
@@ -100,6 +105,8 @@ export const settingsPatchSchema = z
     saluteText: z.string().trim().max(SALUTE_TEXT_MAX).optional(),
     cleanGreenDays: days.optional(),
     cleanYellowDays: days.optional(),
+    /** The whole matrix for both staff roles (the defaults = reset). */
+    rolePermissions: rolePermissionsSchema.optional(),
   })
   .refine(
     (s) =>
@@ -149,7 +156,7 @@ export const roomPatchSchema = z.object({
 export type RoomPatchInput = z.infer<typeof roomPatchSchema>;
 
 /** Room types and units: create and rename use `nameSchema`-like bodies with a non-blank name. */
-export const roomNameSchema = z.object({ name: name.pipe(z.string().min(1)) });
+export const roomNameSchema = z.object({ name: name.pipe(z.string().min(1)), lang });
 export type RoomNameInput = z.infer<typeof roomNameSchema>;
 
 export const roomStatusCreateSchema = z.object({
@@ -158,8 +165,22 @@ export const roomStatusCreateSchema = z.object({
 });
 export type RoomStatusCreateInput = z.infer<typeof roomStatusCreateSchema>;
 
-export const roomStatusPatchSchema = roomStatusCreateSchema.partial();
+export const roomStatusPatchSchema = roomStatusCreateSchema.partial().extend({ lang });
 export type RoomStatusPatchInput = z.infer<typeof roomStatusPatchSchema>;
+
+/** A new room unit, in `group` (missing or unknown: the first group, see `roomUnits.create`). */
+export const roomUnitCreateSchema = roomNameSchema.extend({ group: z.string().min(1).optional() });
+export type RoomUnitCreateInput = z.infer<typeof roomUnitCreateSchema>;
+
+/**
+ * The unit ids in their new order (ids not listed keep their place at the end); `move` also puts
+ * that unit into another group (`moveUnitTo`).
+ */
+export const unitOrderSchema = z.object({
+  ids: z.array(z.string()),
+  move: z.object({ id: z.string(), group: z.string() }).optional(),
+});
+export type UnitOrderInput = z.infer<typeof unitOrderSchema>;
 
 /** Units, statuses or room types in their new order (ids not listed keep their place at the end). */
 export const idOrderSchema = z.object({ ids: z.array(z.string()) });
@@ -186,12 +207,19 @@ const looseNumber = z.preprocess(
 );
 
 const idName = z.object({ id: z.string().min(1), name: z.string().catch('') });
+/** Per-language name versions (added later: older backups don't have them). */
+const nameVersion = z.string().optional().catch(undefined);
+const names = z
+  .object({ en: nameVersion, et: nameVersion, ru: nameVersion } satisfies Record<NameLang, unknown>)
+  .optional()
+  .catch(undefined);
+const localized = idName.extend({ names });
 
 /** A backup file (also the format of data/db.json). Unknown fields are dropped, blanks pruned. */
 export const backupSchema = z
   .object({
     items: z.array(
-      idName.extend({ multipliers: z.record(z.string(), looseNumber).catch({}).default({}) }),
+      localized.extend({ multipliers: z.record(z.string(), looseNumber).catch({}).default({}) }),
     ),
     groups: z.array(idName).default([]),
     locations: z.array(idName).default([]),
@@ -239,6 +267,7 @@ export const backupSchema = z
         saluteText: z.string().max(SALUTE_TEXT_MAX).optional().catch(undefined),
         cleanGreenDays: days.optional().catch(undefined),
         cleanYellowDays: days.optional().catch(undefined),
+        rolePermissions: rolePermissionsSchema.optional().catch(undefined),
       })
       .catch({})
       .default({}),
@@ -254,10 +283,14 @@ export const backupSchema = z
       )
       .catch([])
       .default([]),
-    roomTypes: z.array(idName).catch([]).default([]),
-    roomUnits: z.array(idName).catch([]).default([]),
+    roomTypes: z.array(localized).catch([]).default([]),
+    roomUnits: z
+      .array(localized.extend({ group: z.string().optional().catch(undefined) }))
+      .catch([])
+      .default([]),
+    roomUnitGroups: z.array(localized).catch([]).default([]),
     roomStatuses: z
-      .array(idName.extend({ color: z.enum(ROOM_COLORS).catch('grey') }))
+      .array(localized.extend({ color: z.enum(ROOM_COLORS).catch('grey') }))
       .catch([])
       .default([]),
     unitStatus: z
@@ -288,7 +321,12 @@ type Loose<T> = { [K in keyof T]?: T[K] | null };
 
 /** Drops empty values and records, so stored data only contains what was really entered. */
 export function normalizeStockData(raw: {
-  items: { id: string; name: string; multipliers: Record<string, number | null> }[];
+  items: {
+    id: string;
+    name: string;
+    names?: LocalizedNames;
+    multipliers: Record<string, number | null>;
+  }[];
   groups: { id: string; name: string }[];
   locations: { id: string; name: string }[];
   records: Record<string, Record<string, Loose<DayRecord>>>;
@@ -301,8 +339,9 @@ export function normalizeStockData(raw: {
   stockCards?: StockCard[];
   settings?: AppSettings;
   rooms?: Room[];
-  roomTypes?: { id: string; name: string }[];
-  roomUnits?: { id: string; name: string }[];
+  roomTypes?: { id: string; name: string; names?: LocalizedNames }[];
+  roomUnits?: { id: string; name: string; names?: LocalizedNames; group?: string }[];
+  roomUnitGroups?: { id: string; name: string; names?: LocalizedNames }[];
   roomStatuses?: RoomStatus[];
   unitStatus?: Record<string, Record<string, UnitStatus>>;
   cleanings?: Record<string, Cleaning[]>;
@@ -311,6 +350,7 @@ export function normalizeStockData(raw: {
   out.items = raw.items.map((i) => ({
     id: i.id,
     name: i.name,
+    ...withNames(i),
     multipliers: Object.fromEntries(
       Object.entries(i.multipliers).filter((e): e is [string, number] => e[1] != null && e[1] > 0),
     ),
@@ -366,15 +406,46 @@ export function normalizeStockData(raw: {
     if (green !== undefined) out.settings.cleanGreenDays = green;
     if (yellow !== undefined) out.settings.cleanYellowDays = yellow;
   }
+  const perms = raw.settings?.rolePermissions;
+  if (perms) {
+    const parsed = rolePermissionsSchema.safeParse(
+      Object.fromEntries(STAFF_ROLES.map((r) => [r, perms[r] ?? []])),
+    );
+    if (parsed.success && !isDefaultRolePermissions(parsed.data))
+      out.settings.rolePermissions = parsed.data;
+  }
   normalizeRooms(raw, out);
   return out;
 }
 
+/** `{ names }` when the entity has real per-language versions, else nothing. */
+const withNames = (e: { name: string; names?: LocalizedNames }) => {
+  const n = cleanNames(e.names);
+  return n ? { names: n } : {};
+};
+
 /** Rooms: blank notes dropped, references to unknown types/rooms/units/statuses dropped, no empty maps. */
 function normalizeRooms(raw: Parameters<typeof normalizeStockData>[0], out: StockData) {
-  out.roomTypes = (raw.roomTypes ?? []).map(({ id, name }) => ({ id, name }));
-  out.roomUnits = (raw.roomUnits ?? []).map(({ id, name }) => ({ id, name }));
-  out.roomStatuses = (raw.roomStatuses ?? []).map(({ id, name, color }) => ({ id, name, color }));
+  out.roomTypes = (raw.roomTypes ?? []).map((t) => ({ id: t.id, name: t.name, ...withNames(t) }));
+  // Every unit gets a known group: without one (old backups) the default group, created for them
+  const groups = (raw.roomUnitGroups ?? []).map((g) => ({
+    id: g.id,
+    name: g.name,
+    ...withNames(g),
+  }));
+  out.roomUnitGroups = unitGroupList({ roomUnits: raw.roomUnits ?? [], roomUnitGroups: groups });
+  out.roomUnits = (raw.roomUnits ?? []).map((u) => ({
+    id: u.id,
+    name: u.name,
+    ...withNames(u),
+    group: unitGroupOf(u, out.roomUnitGroups),
+  }));
+  out.roomStatuses = (raw.roomStatuses ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    color: s.color,
+    ...withNames(s),
+  }));
   const typeIds = new Set(out.roomTypes.map((t) => t.id));
   out.rooms = (raw.rooms ?? []).map(({ id, number, type, note }) => ({
     id,

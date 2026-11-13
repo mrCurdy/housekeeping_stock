@@ -5,13 +5,12 @@ import {
   type LinkInput,
   linkSchema,
   loginSchema,
-  PIN_ROLES,
   type LoginInput,
   type PinChangeInput,
   pinChangeSchema,
 } from '@app/shared';
 import { allow, requireAuth } from '../auth/middleware';
-import { hashPin, roleForPin, verifyPin } from '../auth/pins';
+import { hashPin, pinTakenBy, roleForPin } from '../auth/pins';
 import { clearSessionCookie, hashToken, newToken, startSession } from '../auth/sessions';
 import type { AppContext } from '../context';
 import { HttpError } from '../lib/errors';
@@ -63,14 +62,14 @@ export function authRouter({ config, db }: AppContext) {
     res.status(204).end();
   });
 
-  /** Changes a PIN. Worker PIN: every worker is logged out. Admin PIN: the other admins are. */
+  /**
+   * Changes a PIN; it must differ from every other role's. Every device of that role is logged out
+   * (for the admin PIN: the other admins, not this one).
+   */
   r.put('/pins', allow('pins'), validateBody(pinChangeSchema), async (req, res) => {
     const { role, pin } = req.body as PinChangeInput;
-    const other = PIN_ROLES.find((r) => r !== role)!;
-    const otherHash = (await db.auth.pinHashes())[other];
-    if (otherHash && (await verifyPin(pin, otherHash))) {
-      throw HttpError.badRequest('The admin and worker PINs must be different');
-    }
+    const other = await pinTakenBy(db, pin, role);
+    if (other) throw HttpError.badRequest(`This PIN is already the ${other} PIN`);
     await db.auth.setPinHash(role, await hashPin(pin));
     await db.auth.deleteSessions(role, role === req.role ? req.sessionHash : undefined);
     res.status(204).end();

@@ -20,6 +20,7 @@ import type {
   RoomStatusPatchInput,
   RoomType,
   RoomUnit,
+  RoomUnitGroup,
   StockCard,
   SettingsPatchInput,
   StockData,
@@ -28,6 +29,7 @@ import type {
   TaskPatchInput,
   UnitStatus,
   UnitStatusInput,
+  NameLang,
 } from '@app/shared';
 
 /**
@@ -38,7 +40,8 @@ import type {
 
 export interface NamedRepo<T> {
   create(name: string): Promise<T>;
-  rename(id: string, name: string): Promise<T | null>;
+  /** `lang`: rename only that language's version (lists with localized names); missing = the base name. */
+  rename(id: string, name: string, lang?: NameLang): Promise<T | null>;
   delete(id: string): Promise<boolean>;
 }
 
@@ -106,6 +109,8 @@ export interface StockCardRepo {
 }
 
 export interface SettingsRepo {
+  /** All settings (a missing one = its default). The auth guard reads it once per request. */
+  read(): Promise<AppSettings>;
   /** Changes the listed settings ('' resets one to its default); returns all of them. */
   update(patch: SettingsPatchInput): Promise<AppSettings>;
 }
@@ -128,6 +133,22 @@ export interface RoomRepo {
 export interface OrderedRepo<T> extends NamedRepo<T> {
   /** Puts the listed ids first, in that order. Returns the whole list. */
   reorder(ids: string[]): Promise<T[]>;
+}
+
+/** Room units: each is in a group (`RoomUnitGroupRepo`). */
+export interface RoomUnitRepo extends OrderedRepo<RoomUnit> {
+  /** In `group`; a missing or unknown one = the first group (created as the default when none). */
+  create(name: string, group?: string): Promise<RoomUnit>;
+  /**
+   * Puts the listed units first, in that order, and `move.id` into group `move.group` (ignored
+   * when either is unknown). Returns the whole list.
+   */
+  reorder(ids: string[], move?: { id: string; group: string }): Promise<RoomUnit[]>;
+}
+
+export interface RoomUnitGroupRepo extends Omit<OrderedRepo<RoomUnitGroup>, 'delete'> {
+  /** 'notEmpty' (nothing deleted) while units are in it. */
+  delete(id: string): Promise<boolean | 'notEmpty'>;
 }
 
 /** Unit statuses. Stored only once changed: until then the defaults are used (and get stored). */
@@ -184,7 +205,9 @@ export interface Db {
   settings: SettingsRepo;
   rooms: RoomRepo;
   /** Removing a unit removes its status on every card. */
-  roomUnits: OrderedRepo<RoomUnit>;
+  roomUnits: RoomUnitRepo;
+  /** A group with units isn't deleted. */
+  roomUnitGroups: RoomUnitGroupRepo;
   /** Removing a type clears it on its cards. */
   roomTypes: OrderedRepo<RoomType>;
   roomStatuses: RoomStatusRepo;

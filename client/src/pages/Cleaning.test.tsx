@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { addDays, formatDate, type StockData } from '@app/shared';
@@ -188,6 +188,61 @@ describe('cleaning page', () => {
     expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveValue('Kati');
   });
 
+  it('Choose date registers a cleaning on the picked day, without the salute; no future days', async () => {
+    const fetch = mockApp('admin', hotel(), (method, path, body) =>
+      method === 'POST' && path === '/rooms/r102/cleanings'
+        ? { status: 201, body: [body, { date: daysAgo(30), by: 'Mari' }] }
+        : undefined,
+    );
+    const user = userEvent.setup();
+    await renderApp();
+    await loaded();
+
+    await user.click(tile('102'));
+    const choose = screen.getByRole('button', { name: 'Choose date' });
+    expect(choose).toBeDisabled();
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Kati');
+    await user.click(choose);
+
+    const picker = screen.getByRole('dialog');
+    expect(
+      within(picker).getByRole('heading', { name: 'When was room 102 cleaned?' }),
+    ).toBeInTheDocument();
+    const date = within(picker).getByLabelText('Cleaning date');
+    expect(date).toHaveAttribute('max', today);
+    const mark = within(picker).getByRole('button', { name: 'Mark cleaned' });
+    fireEvent.change(date, { target: { value: formatDate(addDays(new Date(), 1)) } });
+    expect(mark).toBeDisabled();
+    fireEvent.change(date, { target: { value: daysAgo(5) } });
+    await user.click(mark);
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/rooms/r102/cleanings',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+    const call = fetch.mock.calls.find(([url]) => url === '/api/rooms/r102/cleanings')!;
+    expect(JSON.parse(String(call[1]?.body))).toEqual({ date: daysAgo(5), by: 'Kati' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.querySelector('.salute')).toBeNull();
+    expect(tile('102')).toHaveAccessibleName('Room 102: Cleaned 5 days ago · Kati');
+  });
+
+  it('Back from the date picker returns to the room dialog and sends nothing', async () => {
+    const fetch = mockApp('admin', hotel());
+    const user = userEvent.setup();
+    await renderApp();
+    await loaded();
+    await user.click(tile('205'));
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Kati');
+    await user.click(screen.getByRole('button', { name: 'Choose date' }));
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('heading', { name: 'Room 205' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveValue('Kati');
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+  });
+
   it('Cancel sends nothing', async () => {
     const fetch = mockApp('admin', hotel());
     const user = userEvent.setup();
@@ -210,9 +265,9 @@ describe('cleaning page', () => {
   });
 });
 
-describe('cleaning page for a worker', () => {
-  it('a worker sees the page and its NAV entry, but no Room statuses', async () => {
-    mockApp('worker', hotel());
+describe('cleaning page for a housekeeper', () => {
+  it('a housekeeper sees the page and its NAV entry, but no Room statuses', async () => {
+    mockApp('housekeeper', hotel());
     await renderApp();
     await loaded();
     expect(window.location.pathname).toBe('/cleaning');
@@ -220,8 +275,8 @@ describe('cleaning page for a worker', () => {
     expect(screen.queryByRole('link', { name: 'Room statuses' })).toBeNull();
   });
 
-  it('no rooms: a worker is told to ask the admin', async () => {
-    mockApp('worker', hotel({ rooms: [], cleanings: {} }));
+  it('no rooms: a housekeeper is told to ask the admin', async () => {
+    mockApp('housekeeper', hotel({ rooms: [], cleanings: {} }));
     await renderApp();
     expect(await screen.findByText('No rooms yet')).toBeInTheDocument();
     expect(screen.getByText('Ask the admin to set this up.')).toBeInTheDocument();

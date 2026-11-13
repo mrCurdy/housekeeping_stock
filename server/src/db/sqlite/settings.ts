@@ -1,4 +1,4 @@
-import { stockCardOrder } from '@app/shared';
+import { isDefaultRolePermissions, stockCardOrder } from '@app/shared';
 import type { SettingsRepo, StockCardRepo } from '../types';
 import { type Ctx, createRows } from './rows';
 
@@ -19,6 +19,9 @@ export function createStockCards(ctx: Ctx): StockCardRepo {
 export function createSettings(ctx: Ctx): SettingsRepo {
   const { readSettings, writeSetting } = createRows(ctx);
   return {
+    async read() {
+      return readSettings();
+    },
     async update(patch) {
       return ctx.write(() => {
         if (patch.saluteText !== undefined) writeSetting('saluteText', patch.saluteText.trim());
@@ -26,6 +29,10 @@ export function createSettings(ctx: Ctx): SettingsRepo {
           writeSetting('cleanGreenDays', patch.cleanGreenDays);
         if (patch.cleanYellowDays !== undefined)
           writeSetting('cleanYellowDays', patch.cleanYellowDays);
+        if (patch.rolePermissions !== undefined) {
+          const perms = patch.rolePermissions;
+          writeSetting('rolePermissions', isDefaultRolePermissions(perms) ? undefined : perms);
+        }
         return readSettings();
       });
     },

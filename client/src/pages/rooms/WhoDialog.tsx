@@ -26,11 +26,15 @@ function rememberName(name: string) {
  * "Who did it" before a room change: a required name (prefilled with the last one typed on this
  * device) and, with `withNote`, an optional note. Cancel changes nothing. `children` show above the
  * name (the cleaning dialog's latest cleaning and history); `confirmLabel` replaces "Confirm".
+ * `extraAction` adds a secondary button left of the confirm one (the cleaning dialog's "Choose
+ * date"): it also needs the name and remembers it. With it, Cancel hides on phones (the × closes)
+ * so both actions share one row.
  */
 export function WhoDialog({
   title,
   description,
   confirmLabel,
+  extraAction,
   withNote = false,
   children,
   onCancel,
@@ -39,6 +43,7 @@ export function WhoDialog({
   title: string;
   description?: string;
   confirmLabel?: string;
+  extraAction?: { label: string; onClick: (by: string) => void };
   withNote?: boolean;
   children?: ReactNode;
   onCancel: () => void;
@@ -60,10 +65,32 @@ export function WhoDialog({
       size="sm"
       footer={
         <>
-          <Button variant="ghost" onClick={onCancel}>
+          <Button
+            variant="ghost"
+            onClick={onCancel}
+            className={extraAction ? 'hidden sm:inline-flex' : undefined}
+          >
             {t.common.cancel}
           </Button>
-          <Button type="submit" form={formId} disabled={!by}>
+          {extraAction && (
+            <Button
+              variant="secondary"
+              className="flex-1 sm:flex-none"
+              disabled={!by}
+              onClick={() => {
+                rememberName(by);
+                extraAction.onClick(by);
+              }}
+            >
+              {extraAction.label}
+            </Button>
+          )}
+          <Button
+            type="submit"
+            form={formId}
+            disabled={!by}
+            className={extraAction ? 'flex-1 sm:flex-none' : undefined}
+          >
             {confirmLabel ?? t.common.confirm}
           </Button>
         </>

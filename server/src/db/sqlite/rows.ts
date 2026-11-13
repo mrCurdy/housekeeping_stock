@@ -8,6 +8,9 @@ import {
   type Group,
   type Item,
   type Location,
+  type LocalizedNames,
+  type NameLang,
+  renameIn,
   type Room,
   type RoomStatus,
   roomStatusList,
@@ -16,6 +19,7 @@ import {
   type Task,
   type RoomType,
   type RoomUnit,
+  type RoomUnitGroup,
   type TaskGroup,
   taskGroupList,
 } from '@app/shared';
@@ -26,6 +30,25 @@ export interface NamedRow {
   id: string;
   name: string;
 }
+/** A row of a table with per-language names (`LOCALIZED_TABLES`): `names` is JSON or NULL. */
+export interface LocalizedRow extends NamedRow {
+  names: string | null;
+}
+/** Tables whose names have per-language versions (migration 7). */
+export const LOCALIZED_TABLES = new Set<string>([
+  'items',
+  'room_types',
+  'room_units',
+  'room_unit_groups',
+  'room_statuses',
+]);
+export const toLocalized = <R extends LocalizedRow>({ names, ...rest }: R) => ({
+  ...rest,
+  ...(names && { names: JSON.parse(names) as LocalizedNames }),
+});
+export const namesJson = (names: LocalizedNames | undefined) =>
+  names && Object.keys(names).length ? JSON.stringify(names) : null;
+
 export interface MultiplierRow {
   item_id: string;
   group_id: string;
@@ -125,15 +148,30 @@ export const DATA_TABLES = [
   'rooms',
   'room_types',
   'room_units',
+  'room_unit_groups',
   'room_statuses',
   'unit_status',
   'cleanings',
 ] as const;
 export type NamedTable =
-  'items' | 'groups' | 'locations' | 'task_groups' | 'room_types' | 'room_units';
+  | 'items'
+  | 'groups'
+  | 'locations'
+  | 'task_groups'
+  | 'room_types'
+  | 'room_units'
+  | 'room_unit_groups';
 
 /** Settings stored as numbers (the key/value table holds text). */
 const NUMBER_SETTINGS = new Set<keyof AppSettings>(['cleanGreenDays', 'cleanYellowDays']);
+/** Settings stored as JSON text. */
+const JSON_SETTINGS = new Set<keyof AppSettings>(['rolePermissions']);
+
+const settingValue = (key: keyof AppSettings, value: string): unknown => {
+  if (NUMBER_SETTINGS.has(key)) return Number(value);
+  if (JSON_SETTINGS.has(key)) return JSON.parse(value) as unknown;
+  return value;
+};
 
 /**
  * What every repo file gets from `index.ts`: the query helpers on the open connection, and
@@ -162,28 +200,30 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     order.forEach((id, pos) => stmt.run(id, pos));
   };
 
-  /** Settings are key/value rows (numbers as text); a missing row is the default. */
+  /** Settings are key/value rows (numbers as text, objects as JSON); a missing row is the default. */
   const readSettings = (): AppSettings =>
     Object.fromEntries(
       all<{ key: keyof AppSettings; value: string }>('SELECT key, value FROM settings').map((r) => [
         r.key,
-        NUMBER_SETTINGS.has(r.key) ? Number(r.value) : r.value,
+        settingValue(r.key, r.value),
       ]),
     );
   /** undefined or '' deletes the row (= the default); 0 is stored. */
-  const writeSetting = (key: keyof AppSettings, value: string | number | undefined) => {
+  const writeSetting = (key: keyof AppSettings, value: string | number | object | undefined) => {
     if (value !== undefined && value !== '') {
       run(
         'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
         key,
-        String(value),
+        typeof value === 'object' ? JSON.stringify(value) : String(value),
       );
     } else run('DELETE FROM settings WHERE key = ?', key);
   };
 
-  /** A { id, name } list in display order. */
+  /** A { id, name } list in display order (with `names` where the table has them). */
   const readNamed = (table: NamedTable) =>
-    all<NamedRow>(`SELECT id, name FROM ${table} ORDER BY pos`);
+    LOCALIZED_TABLES.has(table)
+      ? all<LocalizedRow>(`SELECT id, name, names FROM ${table} ORDER BY pos`).map(toLocalized)
+      : all<NamedRow>(`SELECT id, name FROM ${table} ORDER BY pos`);
   /** Puts the listed ids first, in that order (unknown ids are ignored); returns the list. */
   const reorderRows = <T extends { id: string }>(table: string, rows: T[], ids: string[]) => {
     const rank = new Map(ids.map((id, n) => [id, n]));
@@ -194,21 +234,34 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     return sorted;
   };
 
+  /** The units in order, each with its group (`group_id`, set for every unit since migration 8). */
+  const readUnits = (): RoomUnit[] =>
+    all<LocalizedRow & { group_id: string | null }>(
+      'SELECT id, name, names, group_id FROM room_units ORDER BY pos',
+    ).map(({ group_id, ...row }) => ({
+      ...toLocalized(row),
+      ...(group_id && { group: group_id }),
+    }));
+
   const readRoom = (id: string) => {
     const row = get<RoomRow>('SELECT * FROM rooms WHERE id = ?', id);
     return row && toRoom(row);
   };
-  const hasRow = (table: 'rooms' | 'room_types' | 'room_units', id: string) =>
+  const hasRow = (table: 'rooms' | 'room_types' | 'room_units' | 'room_unit_groups', id: string) =>
     !!get(`SELECT 1 FROM ${table} WHERE id = ?`, id);
   /** The statuses in order; the defaults while none is stored. Never empty. */
   const readRoomStatuses = () =>
     roomStatusList({
-      roomStatuses: all<RoomStatus>('SELECT id, name, color FROM room_statuses ORDER BY pos'),
+      roomStatuses: all<LocalizedRow & { color: RoomStatus['color'] }>(
+        'SELECT id, name, color, names FROM room_statuses ORDER BY pos',
+      ).map(toLocalized),
     });
   const writeRoomStatuses = (list: RoomStatus[]) => {
     run('DELETE FROM room_statuses');
-    const stmt = prepare('INSERT INTO room_statuses (id, name, color, pos) VALUES (?, ?, ?, ?)');
-    list.forEach((s, pos) => stmt.run(s.id, s.name, s.color, pos));
+    const stmt = prepare(
+      'INSERT INTO room_statuses (id, name, color, names, pos) VALUES (?, ?, ?, ?, ?)',
+    );
+    list.forEach((s, pos) => stmt.run(s.id, s.name, s.color, namesJson(s.names), pos));
   };
   const readCleanings = (roomId: string) =>
     all<CleaningRow>(
@@ -251,8 +304,9 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
 
   const hasItem = (id: string) => !!get('SELECT 1 FROM items WHERE id = ?', id);
   const readItem = (id: string): Item | null => {
-    const row = get<NamedRow>('SELECT id, name FROM items WHERE id = ?', id);
-    if (!row) return null;
+    const raw = get<LocalizedRow>('SELECT id, name, names FROM items WHERE id = ?', id);
+    if (!raw) return null;
+    const row = toLocalized(raw);
     const multipliers = Object.fromEntries(
       all<MultiplierRow>('SELECT * FROM multipliers WHERE item_id = ? ORDER BY rowid', id).map(
         (m) => [m.group_id, m.qty],
@@ -264,8 +318,8 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
   const snapshot = (): StockData => {
     const data = emptyStockData();
     const items = new Map<string, Item>();
-    for (const r of all<NamedRow>('SELECT id, name FROM items ORDER BY pos')) {
-      const item: Item = { id: r.id, name: r.name, multipliers: {} };
+    for (const r of readNamed('items')) {
+      const item: Item = { ...r, multipliers: {} };
       items.set(r.id, item);
       data.items.push(item);
     }
@@ -301,8 +355,11 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     data.settings = readSettings();
     data.rooms = all<RoomRow>('SELECT * FROM rooms ORDER BY rowid').map(toRoom);
     data.roomTypes = readNamed('room_types');
-    data.roomUnits = readNamed('room_units');
-    data.roomStatuses = all<RoomStatus>('SELECT id, name, color FROM room_statuses ORDER BY pos');
+    data.roomUnits = readUnits();
+    data.roomUnitGroups = readNamed('room_unit_groups');
+    data.roomStatuses = all<LocalizedRow & { color: RoomStatus['color'] }>(
+      'SELECT id, name, color, names FROM room_statuses ORDER BY pos',
+    ).map(toLocalized);
     for (const r of all<UnitStatusRow>('SELECT * FROM unit_status ORDER BY rowid')) {
       (data.unitStatus[r.room_id] ??= {})[r.unit_id] = {
         status: r.status_id,
@@ -320,9 +377,14 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
   /** Deletes everything and inserts `data` (no backup, no transaction: callers wrap it). */
   const fill = (data: StockData) => {
     for (const table of DATA_TABLES) run(`DELETE FROM ${table}`);
-    const named = (table: NamedTable, rows: NamedRow[]) => {
-      const stmt = prepare(`INSERT INTO ${table} (id, name, pos) VALUES (?, ?, ?)`);
-      rows.forEach((r, pos) => stmt.run(r.id, r.name, pos));
+    const named = (table: NamedTable, rows: (NamedRow & { names?: LocalizedNames })[]) => {
+      if (LOCALIZED_TABLES.has(table)) {
+        const stmt = prepare(`INSERT INTO ${table} (id, name, names, pos) VALUES (?, ?, ?, ?)`);
+        rows.forEach((r, pos) => stmt.run(r.id, r.name, namesJson(r.names), pos));
+      } else {
+        const stmt = prepare(`INSERT INTO ${table} (id, name, pos) VALUES (?, ?, ?)`);
+        rows.forEach((r, pos) => stmt.run(r.id, r.name, pos));
+      }
     };
     named('items', data.items);
     named('groups', data.groups);
@@ -372,11 +434,18 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     writeSetting('saluteText', data.settings.saluteText);
     writeSetting('cleanGreenDays', data.settings.cleanGreenDays);
     writeSetting('cleanYellowDays', data.settings.cleanYellowDays);
+    writeSetting('rolePermissions', data.settings.rolePermissions);
 
     const room = prepare('INSERT INTO rooms (id, number, type_id, note) VALUES (?, ?, ?, ?)');
     for (const r of data.rooms) room.run(r.id, r.number, r.type ?? null, r.note ?? null);
     named('room_types', data.roomTypes);
-    named('room_units', data.roomUnits);
+    named('room_unit_groups', data.roomUnitGroups);
+    const unitRow = prepare(
+      'INSERT INTO room_units (id, name, names, group_id, pos) VALUES (?, ?, ?, ?, ?)',
+    );
+    data.roomUnits.forEach((u, pos) =>
+      unitRow.run(u.id, u.name, namesJson(u.names), u.group ?? null, pos),
+    );
     if (data.roomStatuses.length) writeRoomStatuses(data.roomStatuses);
     const unit = prepare(
       'INSERT INTO unit_status (room_id, unit_id, status_id, by, at, note) VALUES (?, ?, ?, ?, ?, ?)',
@@ -400,6 +469,7 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     writeSetting,
     readNamed,
     reorderRows,
+    readUnits,
     readRoom,
     hasRow,
     readRoomStatuses,
@@ -420,13 +490,28 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
 }
 
 /** create / rename / delete for the { id, name } lists; `onDelete` drops dependent rows. */
-export const namedRepo = <T extends Group | Location | TaskGroup | RoomType | RoomUnit>(
+export const namedRepo = <
+  T extends Group | Location | TaskGroup | RoomType | RoomUnit | RoomUnitGroup,
+>(
   ctx: Ctx,
   table: NamedTable,
   onDelete: (id: string) => void,
 ): NamedRepo<T> => {
-  const { run, write } = ctx;
+  const { run, get, write } = ctx;
   const { nextPos } = createRows(ctx);
+  /** In a table with per-language names, `lang` renames only that version (`renameIn`). */
+  const renameLocalized = (id: string, name: string, lang?: NameLang) => {
+    const row = get<LocalizedRow>(`SELECT id, name, names FROM ${table} WHERE id = ?`, id);
+    if (!row) return null;
+    const next = renameIn(toLocalized(row), name, lang);
+    run(
+      `UPDATE ${table} SET name = ?, names = ? WHERE id = ?`,
+      next.name,
+      namesJson(next.names),
+      id,
+    );
+    return next as T;
+  };
   return {
     async create(name) {
       return write(() => {
@@ -435,12 +520,13 @@ export const namedRepo = <T extends Group | Location | TaskGroup | RoomType | Ro
         return row as T;
       });
     },
-    async rename(id, name) {
-      return write(() =>
-        run(`UPDATE ${table} SET name = ? WHERE id = ?`, name, id).changes
+    async rename(id, name, lang) {
+      return write(() => {
+        if (LOCALIZED_TABLES.has(table)) return renameLocalized(id, name, lang);
+        return run(`UPDATE ${table} SET name = ? WHERE id = ?`, name, id).changes
           ? ({ id, name } as T)
-          : null,
-      );
+          : null;
+      });
     },
     async delete(id) {
       return write(() => {

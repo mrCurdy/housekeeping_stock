@@ -41,9 +41,10 @@ const sample = (): StockData => {
   ];
   d.roomTypes = [{ id: 't1', name: 'Double' }];
   d.roomUnits = [
-    { id: 'u1', name: 'Bed' },
-    { id: 'u2', name: 'Shower' },
+    { id: 'u1', name: 'Bed', group: 'g1' },
+    { id: 'u2', name: 'Shower', group: 'g1' },
   ];
+  d.roomUnitGroups = [{ id: 'g1', name: 'Furniture' }];
   d.roomStatuses = [
     { id: 's1', name: 'OK', color: 'green' },
     { id: 's2', name: 'Broken', color: 'red' },

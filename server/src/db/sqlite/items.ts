@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { Group, Item, Location } from '@app/shared';
+import { type Group, type Item, type Location, renameIn } from '@app/shared';
 import type { ItemRepo, NamedRepo } from '../types';
-import { type Ctx, createRows, namedRepo } from './rows';
+import { type Ctx, createRows, namedRepo, namesJson } from './rows';
 
 export function createItems(ctx: Ctx): ItemRepo {
   const { run, write } = ctx;
@@ -26,7 +26,15 @@ export function createItems(ctx: Ctx): ItemRepo {
     async update(id, patch) {
       return write(() => {
         if (!hasItem(id)) return null;
-        if (patch.name !== undefined) run('UPDATE items SET name = ? WHERE id = ?', patch.name, id);
+        if (patch.name !== undefined) {
+          const next = renameIn(readItem(id)!, patch.name, patch.lang);
+          run(
+            'UPDATE items SET name = ?, names = ? WHERE id = ?',
+            next.name,
+            namesJson(next.names),
+            id,
+          );
+        }
         for (const [groupId, qty] of Object.entries(patch.multipliers ?? {})) {
           if (qty) {
             run(

@@ -1,6 +1,6 @@
 # Fomka
 
-A small tool for tracking daily housekeeping stock (linens, amenities, …) in a hotel. Consumption is partly derived from guest departures per room group, and stock can be counted per room on a phone. It is standalone (no integration with a hotel system) and protected by a 4-digit PIN: an **admin** PIN (sets up items, groups, rooms, checklist tasks, PINs, QR code, Restore) and a **worker** PIN (everything day-to-day). A QR code made by the admin opens today's room counting without a PIN.
+A small tool for tracking daily housekeeping stock (linens, amenities, …) in a hotel. Consumption is partly derived from guest departures per room group, and stock can be counted per room on a phone. It is standalone (no integration with a hotel system) and protected by a 4-digit PIN: an **admin** PIN (everything: sets up items, groups, rooms, checklist tasks, PINs, QR code, Restore, and the daily stock figures), a **housekeeper** PIN (general cleanings and room counts) and a **reception** PIN (the checklist). Everyone can look at the Stock page. A QR code made by the admin opens today's room counting without a PIN.
 
 | Layer   | Stack                                                                             |
 | ------- | --------------------------------------------------------------------------------- |
@@ -21,9 +21,9 @@ npm install
 npm run dev        # client http://localhost:5173 · API http://localhost:3000
 ```
 
-On the first start the PINs are admin **1234** and worker **0000** (or `ADMIN_PIN`/`WORKER_PIN` from `.env`); change them under **Settings**. A browser stays logged in until **Logout**.
+On the first start the PINs are admin **1234**, housekeeper **1111** and reception **0000** (or `ADMIN_PIN`/`HOUSEKEEPER_PIN`/`RECEPTION_PIN` from `.env`; the old `WORKER_PIN` still sets the housekeeper's). An upgraded install keeps its worker PIN as the housekeeper PIN, and reception gets the first free one of 0000/1111/2222… (logged); change them under **Settings**. A browser stays logged in until **Logout**.
 
-Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` ("Room statuses", admin: one card per hotel room with each unit's status and a note; search, level filter and an attention sort), `/cleaning` (admin and worker: every room as a tile with the days since its last general cleaning; tap to register one, a "Dirty first" sort), `/settings` (admin: PINs, the counting QR code, Excel/Backup/Restore, adding rooms and the room cards' units, statuses, types and cleaning thresholds).
+Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` ("Room statuses", admin: one card per hotel room with each unit's status and a note; search, level filter and an attention sort), `/cleaning` (admin and housekeeper: every room as a tile with the days since its last general cleaning; tap to register one, a "Dirty first" sort), `/settings` (admin: PINs, the counting QR code, Excel/Backup/Restore, adding rooms and the room cards' units, statuses, types and cleaning thresholds).
 
 | Command             | What it does                                                                                                                     |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,7 +43,7 @@ Optional settings are in `.env.example` (copy to `.env`).
 docker compose up --build -d     # http://localhost:3000 (APP_PORT=8080 to change)
 ```
 
-The data lives in the `app-data` volume. Set `ADMIN_PIN`/`WORKER_PIN` in your shell or `.env` before the first start. To move existing data in, open the app as admin and use **Restore** with a backup file (or an old `data/db.json`).
+The data lives in the `app-data` volume. Set `ADMIN_PIN`/`HOUSEKEEPER_PIN`/`RECEPTION_PIN` in your shell or `.env` before the first start. To move existing data in, open the app as admin and use **Restore** with a backup file (or an old `data/db.json`).
 
 ### Deploying to a server
 
@@ -51,7 +51,7 @@ The `production` branch is the deployable one. On the server (Docker with the co
 
 ```bash
 git clone -b production <repo-url> fomka && cd fomka
-cp .env.example .env   # set ADMIN_PIN, WORKER_PIN (first start only), APP_PORT; HTTPS_ONLY=true behind TLS
+cp .env.example .env   # set ADMIN_PIN, HOUSEKEEPER_PIN, RECEPTION_PIN (first start only), APP_PORT; HTTPS_ONLY=true behind TLS
 ./deploy.sh            # later updates: just ./deploy.sh again
 ```
 

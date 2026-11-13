@@ -61,6 +61,7 @@ describe('REST API', () => {
       rooms: [],
       roomTypes: [],
       roomUnits: [],
+      roomUnitGroups: [],
       roomStatuses: [],
       unitStatus: {},
       cleanings: {},
@@ -403,7 +404,8 @@ describe('REST API', () => {
           { id: 'r_2', number: '102' },
         ],
         roomTypes: [{ id: 'rt_1', name: 'Double' }],
-        roomUnits: [{ id: 'u_1', name: 'Bed' }],
+        roomUnits: [{ id: 'u_1', name: 'Bed', group: 'ug_1' }],
+        roomUnitGroups: [{ id: 'ug_1', name: 'Furniture' }],
         roomStatuses: [
           { id: 's_ok', name: 'Clean', color: 'green' },
           { id: 's_bad', name: 'Broken', color: 'red' },
@@ -424,6 +426,7 @@ describe('REST API', () => {
       expect(d.rooms).toEqual(backup.rooms);
       expect(d.roomTypes).toEqual(backup.roomTypes);
       expect(d.roomUnits).toEqual(backup.roomUnits);
+      expect(d.roomUnitGroups).toEqual(backup.roomUnitGroups);
       expect(d.roomStatuses).toEqual(backup.roomStatuses);
       expect(d.unitStatus).toEqual(backup.unitStatus);
       expect(d.cleanings).toEqual(backup.cleanings);

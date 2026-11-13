@@ -99,8 +99,8 @@ describe('stock page', () => {
     );
   });
 
-  it('shows no grips to a worker', async () => {
-    start('worker');
+  it('shows no grips to a housekeeper', async () => {
+    start('housekeeper');
     const { default: App } = await import('../App');
     render(<App />);
     await screen.findByRole('heading', { name: 'Overview' });
@@ -176,8 +176,8 @@ describe('stock items', () => {
     );
   });
 
-  it('a worker sees no rename or remove controls', async () => {
-    mockApp('worker');
+  it('a housekeeper sees no rename or remove controls', async () => {
+    mockApp('housekeeper');
     const { default: App } = await import('../App');
     render(<App />);
 
@@ -200,16 +200,19 @@ describe('stock items', () => {
 });
 
 describe('header', () => {
-  it.each(['admin', 'worker'])('has no Excel, Backup or Restore for the %s', async (role) => {
-    mockApp(role);
-    const { default: App } = await import('../App');
-    render(<App />);
-    expect(
-      await screen.findByRole('spinbutton', { name: 'Total stock Towels' }),
-    ).toBeInTheDocument();
-    const header = screen.getByRole('banner');
-    for (const name of [/Excel/, /Backup/, /Restore/]) {
-      expect(within(header).queryByRole('button', { name })).not.toBeInTheDocument();
-    }
-  });
+  it.each(['admin', 'housekeeper', 'reception'])(
+    'has no Excel, Backup or Restore for the %s',
+    async (role) => {
+      mockApp(role);
+      const { default: App } = await import('../App');
+      render(<App />);
+      expect(
+        await screen.findByRole('spinbutton', { name: 'Total stock Towels' }),
+      ).toBeInTheDocument();
+      const header = screen.getByRole('banner');
+      for (const name of [/Excel/, /Backup/, /Restore/]) {
+        expect(within(header).queryByRole('button', { name })).not.toBeInTheDocument();
+      }
+    },
+  );
 });
