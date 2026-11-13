@@ -48,9 +48,9 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `middleware.ts`: `session`, `requireAuth`, `allow(perm)`.
 - `db/types.ts`: the `Db` interface (routes use only this). `db/index.ts`: creates the driver.
 - `db/sqlite/`: the driver, split per area. Each repo file exports `createX(ctx)`, where `ctx = { all, get, run, prepare, transaction, write }` (`Ctx` in `rows.ts`).
-  - `index.ts`: the connection, `write()`, `init`, `pruneStockRows` + `prune` (old ticks/notes/task history and stock data), `dailyBackup` (a JSON snapshot each day), `importJson`. `createSqliteDb`'s `today` option is the clock both use (tests move it);
+  - `index.ts`: the connection, `write()`, `init`, `pruneStockRows` + `pruneCleaningRows` + `prune` (old ticks/notes/task history, stock data and room cleanings), `dailyBackup` (a JSON snapshot each day), `importJson`. `createSqliteDb`'s `today` option is the clock both use (tests move it);
   - `rows.ts`: the row types, `DATA_TABLES`, `Ctx`, `createRows` (`snapshot` rows → `StockData`, `fill` the reverse, and the shared read/write helpers) and `namedRepo`;
-  - `items.ts` (items, groups, locations), `records.ts` (records, departures), `counts.ts`, `tasks.ts` (tasks, task groups), `checklist.ts` (ticks, notes), `settings.ts` (stock-card order, app settings), `auth.ts`.
+  - `items.ts` (items, groups, locations), `records.ts` (records, departures), `counts.ts`, `tasks.ts` (tasks, task groups), `checklist.ts` (ticks, notes), `settings.ts` (stock-card order, app settings; the cleaning thresholds are stored as text and read back as numbers), `rooms.ts` (room cards with unit statuses and cleanings, room units, room types, room statuses), `auth.ts`.
 - `db/sqlite/migrations.ts`: numbered schema migrations.
 - `routes/`:
   - `auth.ts`: login, me, logout, pins, QR create/revoke, link.
@@ -184,6 +184,7 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
   - `m`: a manual stock count, which resets the running total to this value for that day.
 - New IDs are UUIDs. Older data has timestamp IDs (`'1792…'`, `'g_…'`, `'l_…'`). Both are plain strings.
 - Checklist ticks and notes older than `CHECKLIST_DAYS` (30) are deleted by the driver (the `pruneChecklist` rule, on start and with every write).
+- Room cleanings older than `HISTORY_DAYS` are deleted by the same `prune`, except each room's latest (`pruneCleanings`; cheap check: a room with an old cleaning and more than one).
 - **Stock data older than 30 days is removed; counts carry the totals over.** The driver's `prune` (on start, with every write, so also after a Restore) drops records, departures and room counts before `keepFrom` = today − `HISTORY_DAYS` − 2 (2 days before the oldest selectable day, for a server/client date difference around midnight) and writes the day before it, K, as one carried-over `m` per item (`pruneStock`). A cheap `date < K` check means it really runs about once a day; that day's backup was taken before it. The Excel export starts at the oldest selectable day, so K isn't exported.
 - **Task changes apply from a day onwards** (the day shown on `/checklist`). Earlier days keep their list, wording and ticks.
   - A task is on day D when `added ≤ D < removed`.

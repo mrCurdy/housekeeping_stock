@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   addDays,
+  backupSchema,
   createStockMath,
   dateRange,
   emptyStockData,
@@ -63,13 +64,36 @@ const sample = (): StockData => ({
   checks: { [day(-1)]: { 't-1': '2026-01-01T10:00:00.000Z' } },
   notes: { [day(-1)]: 'Order soap' },
   stockCards: ['overview', 'items', 'departures'],
-  settings: { saluteText: 'Hurraa!' },
-  rooms: [],
-  roomTypes: [],
-  roomUnits: [],
-  roomStatuses: [],
-  unitStatus: {},
-  cleanings: {},
+  settings: { saluteText: 'Hurraa!', cleanGreenDays: 0, cleanYellowDays: 20 },
+  rooms: [
+    { id: 'r-b', number: '201', type: 'rt-2', note: 'Sea view' },
+    { id: 'r-a', number: '101' },
+  ],
+  roomTypes: [
+    { id: 'rt-2', name: 'Suite' },
+    { id: 'rt-1', name: 'Double' },
+  ],
+  roomUnits: [
+    { id: 'u-2', name: 'Shower' },
+    { id: 'u-1', name: 'Bed' },
+  ],
+  roomStatuses: [
+    { id: 's-2', name: 'Broken', color: 'red' },
+    { id: 's-1', name: 'Fine', color: 'green' },
+  ],
+  unitStatus: {
+    'r-b': {
+      'u-2': { status: 's-2', by: 'Anna', at: '2026-01-01T10:00:00.000Z', note: 'Leaks' },
+      'u-1': { status: 's-1', by: 'Mari', at: '2026-01-02T10:00:00.000Z' },
+    },
+  },
+  cleanings: {
+    'r-b': [
+      { date: day(-1), by: 'Anna' },
+      { date: day(-1), by: 'Mari' },
+      { date: day(-9), by: 'Anna' },
+    ],
+  },
 });
 
 describe('SQLite driver', () => {
@@ -154,6 +178,149 @@ describe('SQLite driver', () => {
     await db.replace(sample());
     await db.close();
     expect(await (await open()).snapshot()).toEqual(sample());
+  });
+
+  it('restores an old backup without rooms', async () => {
+    const db = await open();
+    await db.replace(sample());
+    const {
+      rooms: _r,
+      roomTypes: _t,
+      roomUnits: _u,
+      roomStatuses: _s,
+      unitStatus: _us,
+      cleanings: _c,
+      ...old
+    } = sample();
+    await db.replace(backupSchema.parse({ ...old, settings: { saluteText: 'Hurraa!' } }));
+    const snap = await db.snapshot();
+    expect(snap.rooms).toEqual([]);
+    expect(snap.roomUnits).toEqual([]);
+    expect(snap.unitStatus).toEqual({});
+    expect(snap.cleanings).toEqual({});
+    expect(snap.settings).toEqual({ saluteText: 'Hurraa!' });
+    expect(snap.items).toEqual(sample().items);
+  });
+
+  it('stores the cleaning thresholds as numbers', async () => {
+    const db = await open();
+    expect(await db.settings.update({ cleanGreenDays: 0, cleanYellowDays: 7 })).toEqual({
+      cleanGreenDays: 0,
+      cleanYellowDays: 7,
+    });
+    await db.close();
+    expect((await (await open()).snapshot()).settings).toEqual({
+      cleanGreenDays: 0,
+      cleanYellowDays: 7,
+    });
+  });
+
+  describe('rooms', () => {
+    it('creates, edits and deletes room cards; numbers are unique', async () => {
+      const db = await open();
+      const suite = await db.roomTypes.create('Suite');
+      const room = await db.rooms.create({ number: '101', type: suite.id, note: 'Sea view' });
+      expect(room).toEqual({
+        id: expect.any(String),
+        number: '101',
+        type: suite.id,
+        note: 'Sea view',
+      });
+      if (!room || room === 'duplicate') throw new Error('not created');
+      expect(await db.rooms.create({ number: '101' })).toBe('duplicate');
+      expect(await db.rooms.create({ number: '102', type: 'nope' })).toBeNull();
+      const other = await db.rooms.create({ number: '102', type: '', note: ' ' });
+      expect(other).toEqual({ id: expect.any(String), number: '102' });
+      expect(await db.rooms.update(room.id, { number: '102' })).toBe('duplicate');
+      expect(await db.rooms.update(room.id, { note: '', type: '' })).toEqual({
+        id: room.id,
+        number: '101',
+      });
+      expect(await db.rooms.update(room.id, { number: '103' })).toEqual({
+        id: room.id,
+        number: '103',
+      });
+      expect(await db.rooms.update('nope', { number: '1' })).toBeNull();
+      expect(await db.rooms.update(room.id, { type: 'nope' })).toBeNull();
+
+      const unit = await db.roomUnits.create('Bed');
+      expect(
+        await db.rooms.setUnitStatus(room.id, unit.id, {
+          status: 'fix',
+          by: 'Anna',
+          note: 'Squeaks',
+        }),
+      ).toEqual({ status: 'fix', by: 'Anna', at: expect.any(String), note: 'Squeaks' });
+      expect(
+        await db.rooms.setUnitStatus(room.id, unit.id, { status: 'nope', by: 'A' }),
+      ).toBeNull();
+      expect(await db.rooms.setUnitStatus(room.id, 'nope', { status: 'ok', by: 'A' })).toBeNull();
+      expect(await db.rooms.setUnitStatus('nope', unit.id, { status: 'ok', by: 'A' })).toBeNull();
+      expect(await db.rooms.addCleaning(room.id, { date: day(-3), by: 'Anna' })).toEqual([
+        { date: day(-3), by: 'Anna' },
+      ]);
+      expect(await db.rooms.addCleaning(room.id, { date: today, by: 'Mari' })).toEqual([
+        { date: today, by: 'Mari' },
+        { date: day(-3), by: 'Anna' },
+      ]);
+      expect(await db.rooms.addCleaning('nope', { date: today, by: 'Mari' })).toBeNull();
+
+      expect(await db.rooms.delete(room.id)).toBe(true);
+      expect(await db.rooms.delete(room.id)).toBe(false);
+      const snap = await db.snapshot();
+      expect(snap.rooms.map((r) => r.number)).toEqual(['102']);
+      expect(snap.unitStatus).toEqual({});
+      expect(snap.cleanings).toEqual({});
+    });
+
+    it('removing a unit, status or type applies to every card', async () => {
+      const db = await open();
+      const suite = await db.roomTypes.create('Suite');
+      const room = (await db.rooms.create({ number: '1', type: suite.id })) as { id: string };
+      const bed = await db.roomUnits.create('Bed');
+      const tv = await db.roomUnits.create('TV');
+      await db.rooms.setUnitStatus(room.id, bed.id, { status: 'fix', by: 'A' });
+      await db.rooms.setUnitStatus(room.id, tv.id, { status: 'attention', by: 'A' });
+
+      expect(await db.roomUnits.reorder([tv.id])).toEqual([tv, bed]);
+      expect(await db.roomUnits.delete(tv.id)).toBe(true);
+      // deleting a default status stores the remaining defaults; its units go back to the first
+      expect(await db.roomStatuses.delete('fix')).toBe(true);
+      let snap = await db.snapshot();
+      expect(snap.roomUnits).toEqual([bed]);
+      expect(snap.roomStatuses.map((s) => s.id)).toEqual(['ok', 'attention']);
+      expect(snap.unitStatus).toEqual({});
+
+      expect(await db.roomTypes.delete(suite.id)).toBe(true);
+      expect((await db.snapshot()).rooms).toEqual([{ id: room.id, number: '1' }]);
+
+      expect(await db.roomStatuses.delete('nope')).toBe(false);
+      expect(await db.roomStatuses.delete('ok')).toBe(true);
+      expect(await db.roomStatuses.delete('attention')).toBe('last');
+      snap = await db.snapshot();
+      expect(snap.roomStatuses.map((s) => s.id)).toEqual(['attention']);
+    });
+
+    it('edits statuses, starting from the defaults', async () => {
+      const db = await open();
+      const blue = await db.roomStatuses.create({ name: 'Ordered', color: 'blue' });
+      expect(blue).toEqual({ id: expect.any(String), name: 'Ordered', color: 'blue' });
+      expect((await db.snapshot()).roomStatuses.map((s) => s.id)).toEqual([
+        'ok',
+        'attention',
+        'fix',
+        blue.id,
+      ]);
+      expect(await db.roomStatuses.update('ok', { name: 'Fine' })).toEqual({
+        id: 'ok',
+        name: 'Fine',
+        color: 'green',
+      });
+      expect(await db.roomStatuses.update('nope', { name: 'X' })).toBeNull();
+      const order = await db.roomStatuses.reorder([blue.id, 'fix']);
+      expect(order.map((s) => s.id)).toEqual([blue.id, 'fix', 'ok', 'attention']);
+      expect(await db.roomTypes.rename('nope', 'X')).toBeNull();
+    });
   });
 
   describe('import from db.json', () => {
@@ -330,6 +497,40 @@ describe('SQLite driver', () => {
       await opened.pop()!.close();
       clock = today;
       expect(minDate(await (await openAt()).snapshot())).toBe(K);
+    });
+
+    it("drops old cleanings but keeps each room's latest", async () => {
+      clock = today;
+      const db = await openAt();
+      const old = day(-HISTORY_DAYS - 1);
+      await db.replace({
+        ...emptyStockData(),
+        rooms: [
+          { id: 'a', number: '1' },
+          { id: 'b', number: '2' },
+          { id: 'c', number: '3' },
+        ],
+        cleanings: {
+          a: [
+            { date: day(-2), by: 'New' },
+            { date: day(-HISTORY_DAYS), by: 'Edge' },
+            { date: old, by: 'Old' },
+          ],
+          b: [
+            { date: old, by: 'Latest' },
+            { date: day(-HISTORY_DAYS - 9), by: 'Older' },
+          ],
+          c: [{ date: day(-200), by: 'Only' }],
+        },
+      });
+      expect((await db.snapshot()).cleanings).toEqual({
+        a: [
+          { date: day(-2), by: 'New' },
+          { date: day(-HISTORY_DAYS), by: 'Edge' },
+        ],
+        b: [{ date: old, by: 'Latest' }],
+        c: [{ date: day(-200), by: 'Only' }],
+      });
     });
 
     it('prunes a restored old backup', async () => {

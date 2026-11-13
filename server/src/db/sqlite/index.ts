@@ -18,6 +18,7 @@ import {
   HISTORY_DAYS,
   normalizeStockData,
   parseDateLocal,
+  pruneCleanings,
   pruneStock,
   pruneTasks,
   todayLocal,
@@ -30,7 +31,8 @@ import { createCounts } from './counts';
 import { createGroups, createItems, createLocations } from './items';
 import { migrations } from './migrations';
 import { createDepartures, createRecords } from './records';
-import { type Ctx, createRows, DATA_TABLES } from './rows';
+import { createRooms, createRoomStatuses, createRoomTypes, createRoomUnits } from './rooms';
+import { CLEANING_ORDER, type Ctx, createRows, DATA_TABLES } from './rows';
 import { createSettings, createStockCards } from './settings';
 import { createTaskGroups, createTasks } from './tasks';
 
@@ -40,7 +42,8 @@ import { createTaskGroups, createTasks } from './tasks';
  * Before the first change of each day the whole dataset is written as JSON to
  * backups/db-YYYY-MM-DD.json (= the data at the start of that day, in the Backup/Restore format);
  * copies older than `backupDays` are deleted. Checklist ticks, notes and task history older than
- * CHECKLIST_DAYS are dropped on start and with every change. Stock data (records, departures, room
+ * CHECKLIST_DAYS are dropped on start and with every change; room cleanings older than HISTORY_DAYS
+ * too, except each room's latest. Stock data (records, departures, room
  * counts) older than HISTORY_DAYS + 2 days is dropped the same way, with `pruneStock` carrying the
  * totals over as counts. `today` is the clock (tests move it).
  *
@@ -100,12 +103,37 @@ export function createSqliteDb(
     }
   };
 
+  /**
+   * Cleanings before today − HISTORY_DAYS go, except each room's latest. The cheap check: a room
+   * with more than one cleaning and an old one.
+   */
+  const pruneCleaningRows = () => {
+    const keepFrom = daysAgo(HISTORY_DAYS);
+    const hit = get(
+      'SELECT 1 FROM cleanings GROUP BY room_id HAVING MIN(date) < ? AND COUNT(*) > 1 LIMIT 1',
+      keepFrom,
+    );
+    if (!hit) return;
+    const cleanings: Record<string, { date: string; by: string; rowid: number }[]> = {};
+    for (const r of all<{ room_id: string; date: string; by: string; rowid: number }>(
+      `SELECT rowid, room_id, date, by FROM cleanings ${CLEANING_ORDER}`,
+    )) {
+      (cleanings[r.room_id] ??= []).push(r);
+    }
+    const before = Object.values(cleanings).flat();
+    if (!pruneCleanings(cleanings, keepFrom)) return;
+    const kept = new Set(Object.values(cleanings).flatMap((l) => l.map((c) => c.rowid)));
+    const del = prepare('DELETE FROM cleanings WHERE rowid = ?');
+    for (const c of before) if (!kept.has(c.rowid)) del.run(c.rowid);
+  };
+
   /** The same 30-day rule as pruneChecklist(), as SQL deletes plus pruneTasks(); then the stock. */
   const prune = () => {
     const minDate = daysAgo(CHECKLIST_DAYS);
     run('DELETE FROM checks WHERE date < ?', minDate);
     run('DELETE FROM notes WHERE date < ?', minDate);
     pruneStockRows();
+    pruneCleaningRows();
     const data = { ...emptyStockData(), tasks: readTasks() };
     if (!pruneTasks(data, minDate)) return;
     run('DELETE FROM tasks');
@@ -207,6 +235,10 @@ export function createSqliteDb(
     checklist: createChecklist(ctx),
     stockCards: createStockCards(ctx),
     settings: createSettings(ctx),
+    rooms: createRooms(ctx),
+    roomUnits: createRoomUnits(ctx),
+    roomTypes: createRoomTypes(ctx),
+    roomStatuses: createRoomStatuses(ctx),
     auth: createAuth(ctx),
   };
 }

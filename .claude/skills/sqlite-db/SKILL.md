@@ -9,29 +9,34 @@ Files: `server/src/db/types.ts` (the `Db` interface, the only thing routes see),
 `server/src/db/sqlite/migrations.ts` (schema), `server/src/db/sqlite/index.ts` (connection, `write()`,
 `init`, backups, pruning), `server/src/db/sqlite/rows.ts` (row types, `DATA_TABLES`, `snapshot`/`fill`
 and shared helpers in `createRows`, `namedRepo`), one repo file per area (`items.ts`, `records.ts`,
-`counts.ts`, `tasks.ts`, `checklist.ts`, `settings.ts`, `auth.ts`),
+`counts.ts`, `tasks.ts`, `checklist.ts`, `settings.ts`, `rooms.ts`, `auth.ts`),
 `server/tests/sqlite.test.ts` (driver tests; `api.test.ts` is the regression suite through the API).
 `api.test.ts` uses one DB for the whole file: a new test there creates its own records, since earlier
 tests' data is still present.
 
-## Schema (migrations 1–4)
+## Schema (migrations 1–5)
 
-| table                          | columns                                                              | notes                                                                                                                              |
-| ------------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `items`                        | `id, name, pos`                                                      | `pos` = display order                                                                                                              |
-| `multipliers`                  | `item_id, group_id, qty`                                             | PK (item, group); only qty > 0 stored                                                                                              |
-| `records`                      | `item_id, date, c, i, m, mc`                                         | NULL = not entered; no all-NULL rows                                                                                               |
-| `groups`                       | `id, name, pos`                                                      |                                                                                                                                    |
-| `departures`                   | `group_id, date, d`                                                  | no 0 rows                                                                                                                          |
-| `locations`                    | `id, name, pos`                                                      |                                                                                                                                    |
-| `counts`                       | `date, location_id, item_id, value`                                  | `location_id` may be a removed room                                                                                                |
-| `tasks`                        | `id, name, description, added, removed, earlier_json, group_id, pos` | `earlier` as JSON text; `group_id` (migration 4) = its `task_groups` row                                                           |
-| `task_groups`                  | `id, name, pos`                                                      | checklist group cards (migration 4); never empty (`writeTaskGroups` puts back `default`), so `isEmpty()` skips it                  |
-| `checks`                       | `date, task_id, at`                                                  | `at` = ISO time ticked                                                                                                             |
-| `notes`                        | `date, text`                                                         | no blank notes                                                                                                                     |
-| `stock_cards`                  | `id, pos`                                                            | the Stock page's card order (migration 2); empty = default                                                                         |
-| `settings`                     | `key, value`                                                         | `StockData.settings` (migration 3); a missing row = the default; a new setting needs no migration, only `writeSetting` in `fill()` |
-| `pins`, `sessions`, `qr_links` | auth (`db.auth`, see the `auth` skill)                               | not part of `StockData` / backups; written without `write()`; `sessions.link_id` = the QR link a counter session came from         |
+| table                          | columns                                                              | notes                                                                                                                                                                                |
+| ------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `items`                        | `id, name, pos`                                                      | `pos` = display order                                                                                                                                                                |
+| `multipliers`                  | `item_id, group_id, qty`                                             | PK (item, group); only qty > 0 stored                                                                                                                                                |
+| `records`                      | `item_id, date, c, i, m, mc`                                         | NULL = not entered; no all-NULL rows                                                                                                                                                 |
+| `groups`                       | `id, name, pos`                                                      |                                                                                                                                                                                      |
+| `departures`                   | `group_id, date, d`                                                  | no 0 rows                                                                                                                                                                            |
+| `locations`                    | `id, name, pos`                                                      |                                                                                                                                                                                      |
+| `counts`                       | `date, location_id, item_id, value`                                  | `location_id` may be a removed room                                                                                                                                                  |
+| `tasks`                        | `id, name, description, added, removed, earlier_json, group_id, pos` | `earlier` as JSON text; `group_id` (migration 4) = its `task_groups` row                                                                                                             |
+| `task_groups`                  | `id, name, pos`                                                      | checklist group cards (migration 4); never empty (`writeTaskGroups` puts back `default`), so `isEmpty()` skips it                                                                    |
+| `checks`                       | `date, task_id, at`                                                  | `at` = ISO time ticked                                                                                                                                                               |
+| `notes`                        | `date, text`                                                         | no blank notes                                                                                                                                                                       |
+| `stock_cards`                  | `id, pos`                                                            | the Stock page's card order (migration 2); empty = default                                                                                                                           |
+| `settings`                     | `key, value`                                                         | `StockData.settings` (migration 3); a missing row = the default; a new setting needs no migration, only `writeSetting` in `fill()` (a number setting also goes in `NUMBER_SETTINGS`) |
+| `rooms`                        | `id, number, type_id, note`                                          | room cards (migration 5); `number` UNIQUE (the repo returns `'duplicate'`); NULL type/note = none                                                                                    |
+| `room_types`, `room_units`     | `id, name, pos`                                                      | master lists (`orderedRepo` in `rooms.ts`: `namedRepo` + `reorder`)                                                                                                                  |
+| `room_statuses`                | `id, name, color, pos`                                               | empty = `DEFAULT_ROOM_STATUSES`; every change rewrites the whole list (`readRoomStatuses`), so the defaults get stored                                                               |
+| `unit_status`                  | `room_id, unit_id, status_id, by, at, note`                          | PK (room, unit); the current status only; no row = the first status                                                                                                                  |
+| `cleanings`                    | `room_id, date, by, at`                                              | newest first = `CLEANING_ORDER` (date, then rowid); `fill` inserts oldest first; `at` (ISO) isn't in `StockData` (`''` after fill)                                                   |
+| `pins`, `sessions`, `qr_links` | auth (`db.auth`, see the `auth` skill)                               | not part of `StockData` / backups; written without `write()`; `sessions.link_id` = the QR link a counter session came from                                                           |
 
 There are **no foreign keys**, on purpose: a restored backup may hold counts of removed rooms or
 ticks of old tasks. Deletes clean up dependent rows by hand (`items.delete`, the `groups` repo's
@@ -68,6 +73,9 @@ Every change goes through `write(fn)`:
 `today` option of `createSqliteDb` (default `formatDate(todayLocal())`); tests pass their own.
 
 - Checklist ticks, notes and task history older than `CHECKLIST_DAYS`: SQL deletes plus `pruneTasks`.
+- Room cleanings (`pruneCleaningRows`): before today − `HISTORY_DAYS`, except each room's latest.
+  Cheap check `GROUP BY room_id HAVING MIN(date) < ? AND COUNT(*) > 1`; on a hit `pruneCleanings`
+  runs on the rows (with their `rowid`) and the dropped rowids are deleted.
 - Stock (`pruneStockRows`): `keepFrom = today − HISTORY_DAYS − 2`, K = the day before. A cheap
   `SELECT 1 … WHERE date < K LIMIT 1` on `records`/`departures`/`counts` first; only on a hit it
   runs `pruneStock` on `snapshot()`, deletes `date ≤ K` from those tables and inserts the

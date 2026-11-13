@@ -22,6 +22,10 @@ export function createSettings(ctx: Ctx): SettingsRepo {
     async update(patch) {
       return ctx.write(() => {
         if (patch.saluteText !== undefined) writeSetting('saluteText', patch.saluteText.trim());
+        if (patch.cleanGreenDays !== undefined)
+          writeSetting('cleanGreenDays', patch.cleanGreenDays);
+        if (patch.cleanYellowDays !== undefined)
+          writeSetting('cleanYellowDays', patch.cleanYellowDays);
         return readSettings();
       });
     },

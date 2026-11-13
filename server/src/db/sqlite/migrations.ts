@@ -89,4 +89,30 @@ export const migrations: { id: number; name: string; sql: string }[] = [
       UPDATE tasks SET group_id = 'default';
     `,
   },
+  {
+    id: 5,
+    name: 'room cards',
+    sql: `
+      CREATE TABLE rooms (id TEXT PRIMARY KEY, number TEXT NOT NULL UNIQUE, type_id TEXT, note TEXT);
+      CREATE TABLE room_types (id TEXT PRIMARY KEY, name TEXT NOT NULL, pos INTEGER NOT NULL);
+      CREATE TABLE room_units (id TEXT PRIMARY KEY, name TEXT NOT NULL, pos INTEGER NOT NULL);
+      CREATE TABLE room_statuses (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL,
+        pos INTEGER NOT NULL
+      );
+      CREATE TABLE unit_status (
+        room_id TEXT NOT NULL,
+        unit_id TEXT NOT NULL,
+        status_id TEXT NOT NULL,
+        by TEXT NOT NULL,
+        at TEXT NOT NULL,
+        note TEXT,
+        PRIMARY KEY (room_id, unit_id)
+      );
+      CREATE TABLE cleanings (room_id TEXT NOT NULL, date TEXT NOT NULL, by TEXT NOT NULL, at TEXT NOT NULL);
+      CREATE INDEX cleanings_room ON cleanings (room_id, date);
+    `,
+  },
 ];

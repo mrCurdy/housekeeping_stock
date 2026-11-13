@@ -8,9 +8,14 @@ import {
   type Group,
   type Item,
   type Location,
+  type Room,
+  type RoomStatus,
+  roomStatusList,
   type StockCard,
   type StockData,
   type Task,
+  type RoomType,
+  type RoomUnit,
   type TaskGroup,
   taskGroupList,
 } from '@app/shared';
@@ -55,6 +60,34 @@ export interface TaskRow {
   group_id: string | null;
 }
 
+export interface RoomRow {
+  id: string;
+  number: string;
+  type_id: string | null;
+  note: string | null;
+}
+export interface UnitStatusRow {
+  room_id: string;
+  unit_id: string;
+  status_id: string;
+  by: string;
+  at: string;
+  note: string | null;
+}
+export interface CleaningRow {
+  room_id: string;
+  date: string;
+  by: string;
+}
+export const toRoom = (r: RoomRow): Room => ({
+  id: r.id,
+  number: r.number,
+  ...(r.type_id && { type: r.type_id }),
+  ...(r.note && { note: r.note }),
+});
+/** A room's cleanings come back newest first: by date, then the one recorded later. */
+export const CLEANING_ORDER = 'ORDER BY date DESC, rowid DESC';
+
 export const toTask = (r: TaskRow): Task => ({
   id: r.id,
   name: r.name,
@@ -89,8 +122,18 @@ export const DATA_TABLES = [
   'notes',
   'stock_cards',
   'settings',
+  'rooms',
+  'room_types',
+  'room_units',
+  'room_statuses',
+  'unit_status',
+  'cleanings',
 ] as const;
-export type NamedTable = 'items' | 'groups' | 'locations' | 'task_groups';
+export type NamedTable =
+  'items' | 'groups' | 'locations' | 'task_groups' | 'room_types' | 'room_units';
+
+/** Settings stored as numbers (the key/value table holds text). */
+const NUMBER_SETTINGS = new Set<keyof AppSettings>(['cleanGreenDays', 'cleanYellowDays']);
 
 /**
  * What every repo file gets from `index.ts`: the query helpers on the open connection, and
@@ -108,7 +151,7 @@ export interface Ctx {
 
 /** Shared row helpers: reading and writing the tables several repos (and the backups) touch. */
 export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
-  const nextPos = (table: NamedTable | 'tasks') =>
+  const nextPos = (table: NamedTable | 'tasks' | 'room_statuses') =>
     get<{ n: number }>(`SELECT COALESCE(MAX(pos) + 1, 0) AS n FROM ${table}`)!.n;
 
   const readStockCards = () =>
@@ -119,23 +162,59 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     order.forEach((id, pos) => stmt.run(id, pos));
   };
 
-  /** Settings are key/value rows; a missing row is the default. */
+  /** Settings are key/value rows (numbers as text); a missing row is the default. */
   const readSettings = (): AppSettings =>
     Object.fromEntries(
-      all<{ key: string; value: string }>('SELECT key, value FROM settings').map((r) => [
+      all<{ key: keyof AppSettings; value: string }>('SELECT key, value FROM settings').map((r) => [
         r.key,
-        r.value,
+        NUMBER_SETTINGS.has(r.key) ? Number(r.value) : r.value,
       ]),
     );
-  const writeSetting = (key: keyof AppSettings, value: string | undefined) => {
-    if (value) {
+  /** undefined or '' deletes the row (= the default); 0 is stored. */
+  const writeSetting = (key: keyof AppSettings, value: string | number | undefined) => {
+    if (value !== undefined && value !== '') {
       run(
         'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
         key,
-        value,
+        String(value),
       );
     } else run('DELETE FROM settings WHERE key = ?', key);
   };
+
+  /** A { id, name } list in display order. */
+  const readNamed = (table: NamedTable) =>
+    all<NamedRow>(`SELECT id, name FROM ${table} ORDER BY pos`);
+  /** Puts the listed ids first, in that order (unknown ids are ignored); returns the list. */
+  const reorderRows = <T extends { id: string }>(table: string, rows: T[], ids: string[]) => {
+    const rank = new Map(ids.map((id, n) => [id, n]));
+    const at = (id: string) => rank.get(id) ?? Infinity;
+    const sorted = [...rows].sort((a, b) => at(a.id) - at(b.id));
+    const stmt = prepare(`UPDATE ${table} SET pos = ? WHERE id = ?`);
+    sorted.forEach((r, pos) => stmt.run(pos, r.id));
+    return sorted;
+  };
+
+  const readRoom = (id: string) => {
+    const row = get<RoomRow>('SELECT * FROM rooms WHERE id = ?', id);
+    return row && toRoom(row);
+  };
+  const hasRow = (table: 'rooms' | 'room_types' | 'room_units', id: string) =>
+    !!get(`SELECT 1 FROM ${table} WHERE id = ?`, id);
+  /** The statuses in order; the defaults while none is stored. Never empty. */
+  const readRoomStatuses = () =>
+    roomStatusList({
+      roomStatuses: all<RoomStatus>('SELECT id, name, color FROM room_statuses ORDER BY pos'),
+    });
+  const writeRoomStatuses = (list: RoomStatus[]) => {
+    run('DELETE FROM room_statuses');
+    const stmt = prepare('INSERT INTO room_statuses (id, name, color, pos) VALUES (?, ?, ?, ?)');
+    list.forEach((s, pos) => stmt.run(s.id, s.name, s.color, pos));
+  };
+  const readCleanings = (roomId: string) =>
+    all<CleaningRow>(
+      `SELECT date, by FROM cleanings WHERE room_id = ? ${CLEANING_ORDER}`,
+      roomId,
+    ).map(({ date, by }) => ({ date, by }));
 
   const readTasks = () => all<TaskRow>('SELECT * FROM tasks ORDER BY pos').map(toTask);
   const readTask = (id: string) => {
@@ -220,6 +299,21 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     }
     data.stockCards = readStockCards();
     data.settings = readSettings();
+    data.rooms = all<RoomRow>('SELECT * FROM rooms ORDER BY rowid').map(toRoom);
+    data.roomTypes = readNamed('room_types');
+    data.roomUnits = readNamed('room_units');
+    data.roomStatuses = all<RoomStatus>('SELECT id, name, color FROM room_statuses ORDER BY pos');
+    for (const r of all<UnitStatusRow>('SELECT * FROM unit_status ORDER BY rowid')) {
+      (data.unitStatus[r.room_id] ??= {})[r.unit_id] = {
+        status: r.status_id,
+        by: r.by,
+        at: r.at,
+        ...(r.note && { note: r.note }),
+      };
+    }
+    for (const r of all<CleaningRow>(`SELECT room_id, date, by FROM cleanings ${CLEANING_ORDER}`)) {
+      (data.cleanings[r.room_id] ??= []).push({ date: r.date, by: r.by });
+    }
     return data;
   };
 
@@ -276,6 +370,26 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     for (const [date, text] of Object.entries(data.notes)) note.run(date, text);
     writeStockCards(data.stockCards);
     writeSetting('saluteText', data.settings.saluteText);
+    writeSetting('cleanGreenDays', data.settings.cleanGreenDays);
+    writeSetting('cleanYellowDays', data.settings.cleanYellowDays);
+
+    const room = prepare('INSERT INTO rooms (id, number, type_id, note) VALUES (?, ?, ?, ?)');
+    for (const r of data.rooms) room.run(r.id, r.number, r.type ?? null, r.note ?? null);
+    named('room_types', data.roomTypes);
+    named('room_units', data.roomUnits);
+    if (data.roomStatuses.length) writeRoomStatuses(data.roomStatuses);
+    const unit = prepare(
+      'INSERT INTO unit_status (room_id, unit_id, status_id, by, at, note) VALUES (?, ?, ?, ?, ?, ?)',
+    );
+    for (const [roomId, byUnit] of Object.entries(data.unitStatus)) {
+      for (const [unitId, u] of Object.entries(byUnit))
+        unit.run(roomId, unitId, u.status, u.by, u.at, u.note ?? null);
+    }
+    // oldest first, so a later rowid = newer (CLEANING_ORDER); `at` isn't in the backup
+    const clean = prepare('INSERT INTO cleanings (room_id, date, by, at) VALUES (?, ?, ?, ?)');
+    for (const [roomId, list] of Object.entries(data.cleanings)) {
+      for (const c of [...list].reverse()) clean.run(roomId, c.date, c.by, '');
+    }
   };
 
   return {
@@ -284,6 +398,13 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     writeStockCards,
     readSettings,
     writeSetting,
+    readNamed,
+    reorderRows,
+    readRoom,
+    hasRow,
+    readRoomStatuses,
+    writeRoomStatuses,
+    readCleanings,
     readTasks,
     readTask,
     insertTask,
@@ -299,7 +420,7 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
 }
 
 /** create / rename / delete for the { id, name } lists; `onDelete` drops dependent rows. */
-export const namedRepo = <T extends Group | Location | TaskGroup>(
+export const namedRepo = <T extends Group | Location | TaskGroup | RoomType | RoomUnit>(
   ctx: Ctx,
   table: NamedTable,
   onDelete: (id: string) => void,

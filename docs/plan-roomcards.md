@@ -86,7 +86,14 @@ teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { gree
   - Tests: every function, including threshold edges (15 → green, 16 → yellow, 29 → yellow,
     30 → red), never cleaned, pruning keeps the latest.
 
-- [ ] **2. SQLite storage** (skill `sqlite-db`)
+- [x] **2. SQLite storage** (skill `sqlite-db`)
+  - Done. Differences: repos `db.rooms` (`create`/`update` → `Room | null | 'duplicate'`, null =
+    unknown room or type; `delete`; `setUnitStatus` → `UnitStatus | null` for an unknown
+    room/unit/status; `addCleaning` → the room's list or null), `db.roomUnits`/`db.roomTypes`
+    (`OrderedRepo`: create/rename/delete/reorder), `db.roomStatuses` (create/update/reorder,
+    `delete` → `true | false | 'last'`). Any status change stores the whole list (defaults
+    included). `writeSetting` now stores 0 and numbers (read back as numbers); the pair check for a
+    single threshold is still step 3's. `cleanings` has an index on (room_id, date).
   - Migration 5: tables `rooms (id, number UNIQUE, type_id, note)`, `room_types (id, name, pos)`,
     `room_units (id, name, pos)`, `room_statuses (id, name, color, pos)`,
     `unit_status (room_id, unit_id, status_id, by, at, note, PK(room_id, unit_id))`,
