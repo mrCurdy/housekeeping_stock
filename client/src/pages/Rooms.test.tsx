@@ -355,10 +355,11 @@ describe('rooms search', () => {
     expect(titles()).toEqual(['301']);
   });
 
-  it('a room type name matches, any case', async () => {
+  it('a room type name does not match; phones get the number keypad', async () => {
     const user = await start();
+    expect(search()).toHaveAttribute('inputmode', 'numeric');
     await user.type(search(), 'DOU');
-    expect(titles()).toEqual(['205', '315']);
+    expect(screen.getByText('No rooms match')).toBeInTheDocument();
   });
 
   it('searches every level; the level applies again once cleared with ×', async () => {

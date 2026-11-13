@@ -147,26 +147,22 @@ describe('search', () => {
   const room = (number: string, type?: string) => ({ id: `r${number}`, number, type });
 
   it('matches a number by prefix, digits in order', () => {
-    expect(matchesSearch(room('301'), '3', types)).toBe(true);
-    expect(matchesSearch(room('315'), '3', types)).toBe(true);
-    expect(matchesSearch(room('103'), '3', types)).toBe(false);
-    expect(matchesSearch(room('305'), '30', types)).toBe(true);
-    expect(matchesSearch(room('315'), '30', types)).toBe(false);
-    expect(matchesSearch(room('001'), '001', types)).toBe(true);
-    expect(matchesSearch(room('B12'), ' b1 ', types)).toBe(true);
+    expect(matchesSearch(room('301'), '3')).toBe(true);
+    expect(matchesSearch(room('315'), '3')).toBe(true);
+    expect(matchesSearch(room('103'), '3')).toBe(false);
+    expect(matchesSearch(room('305'), '30')).toBe(true);
+    expect(matchesSearch(room('315'), '30')).toBe(false);
+    expect(matchesSearch(room('001'), '001')).toBe(true);
+    expect(matchesSearch(room('B12'), ' b1 ')).toBe(true);
   });
 
-  it("matches the start of the room type's name, any case", () => {
-    expect(matchesSearch(room('101', 'dbl'), 'dou', types)).toBe(true);
-    expect(matchesSearch(room('101', 'dbl'), 'DOU', types)).toBe(true);
-    expect(matchesSearch(room('101', 'dbl'), 'ouble', types)).toBe(false);
-    expect(matchesSearch(room('101', 'sgl'), 'dou', types)).toBe(false);
-    expect(matchesSearch(room('101'), 'dou', types)).toBe(false);
+  it("doesn't match the room type's name", () => {
+    expect(matchesSearch(room('101', 'dbl'), 'dou')).toBe(false);
   });
 
   it('an empty or space-only query matches every room', () => {
-    expect(matchesSearch(room('101'), '', types)).toBe(true);
-    expect(matchesSearch(room('101'), '   ', types)).toBe(true);
+    expect(matchesSearch(room('101'), '')).toBe(true);
+    expect(matchesSearch(room('101'), '   ')).toBe(true);
     const d = data();
     expect(viewRooms(d, { ...view({ level: '2' }), search: '  ' }).map((r) => r.number)).toEqual([
       '201',
@@ -181,7 +177,7 @@ describe('search', () => {
     const searched = (over: Partial<RoomView>, search: string) =>
       viewRooms(d, { ...view(over), search }).map((r) => r.number);
     expect(searched({ level: '2' }, '1')).toEqual(['101', '102', '115']);
-    expect(searched({ level: '1' }, 'dou')).toEqual(['115', '205']);
+    expect(searched({ level: '1' }, 'dou')).toEqual([]);
     d.unitStatus = { r115: { bed: { status: 'attention', ...by } } };
     expect(searched({ level: '2', sort: 'attention' }, '1')).toEqual(['115', '101', '102']);
     d.unitStatus = { r102: { bed: { status: 'fix', ...by } } };
@@ -227,12 +223,9 @@ describe('viewCleaning', () => {
 
   it('a search looks across levels (the level waits) and keeps dirty-first', () => {
     const d = data();
-    d.roomTypes = [{ id: 'dbl', name: 'Double' }];
-    d.rooms = d.rooms.map((r) => (r.number.endsWith('5') ? { ...r, type: 'dbl' } : r));
-    d.cleanings = { r115: cleaned('2026-11-10') };
+    d.cleanings = { r115: cleaned('2026-11-10'), r101: cleaned('2026-11-12') };
     expect(order(d, { level: '2', search: '1' })).toEqual(['101', '102', '115']);
-    expect(order(d, { level: '1', search: 'dou' })).toEqual(['115', '205']);
-    expect(order(d, { level: '2', search: 'dou', dirtyFirst: true })).toEqual(['205', '115']);
+    expect(order(d, { level: '2', search: '1', dirtyFirst: true })).toEqual(['102', '115', '101']);
     expect(order(d, { level: '2', search: '  ' })).toEqual(['201', '205']);
   });
 });

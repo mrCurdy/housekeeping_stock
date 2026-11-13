@@ -8,7 +8,6 @@ import {
   type Room,
   type RoomColor,
   type RoomStatus,
-  type RoomType,
   type StockData,
 } from '@app/shared';
 
@@ -80,19 +79,12 @@ export const allGreen = (
   data.roomUnits.every((u) => unitStatusOf(data, roomId, u.id).status.color === 'green');
 
 /**
- * The search, case-insensitive and trimmed (empty = every room): the number starts with it
- * (`3` → 301, 315, not 103) or the room type's name does (`dou` → Double).
+ * The search, by room number only, case-insensitive and trimmed (empty = every room): the number
+ * starts with it (`3` → 301, 315, not 103).
  */
-export function matchesSearch(
-  room: Pick<Room, 'number' | 'type'>,
-  query: string,
-  types: readonly RoomType[],
-): boolean {
+export function matchesSearch(room: Pick<Room, 'number'>, query: string): boolean {
   const q = query.trim().toLowerCase();
-  if (!q) return true;
-  if (room.number.trim().toLowerCase().startsWith(q)) return true;
-  const type = room.type && types.find((t) => t.id === room.type);
-  return !!type && type.name.trim().toLowerCase().startsWith(q);
+  return !q || room.number.trim().toLowerCase().startsWith(q);
 }
 
 /**
@@ -103,7 +95,7 @@ export function matchesSearch(
 export function viewRooms(data: ViewData, view: RoomQuery): Room[] {
   let rooms = sortByLevel(data.rooms);
   const search = view.search?.trim() ?? '';
-  if (search) rooms = rooms.filter((r) => matchesSearch(r, search, data.roomTypes));
+  if (search) rooms = rooms.filter((r) => matchesSearch(r, search));
   else if (view.level !== null) rooms = rooms.filter((r) => roomLevel(r.number) === view.level);
   if (view.hideGreen && data.roomUnits.length) rooms = rooms.filter((r) => !allGreen(data, r.id));
 
@@ -143,7 +135,7 @@ export function viewCleaning(
 ): Room[] {
   let rooms = sortByLevel(data.rooms);
   const search = view.search?.trim() ?? '';
-  if (search) rooms = rooms.filter((r) => matchesSearch(r, search, data.roomTypes));
+  if (search) rooms = rooms.filter((r) => matchesSearch(r, search));
   else if (view.level !== null) rooms = rooms.filter((r) => roomLevel(r.number) === view.level);
   if (!view.dirtyFirst) return rooms;
 

@@ -128,7 +128,7 @@ describe('cleaning page', () => {
     expect(order()).toEqual(['101', '102']);
     await user.clear(screen.getByRole('textbox', { name: 'Search rooms' }));
     await user.type(screen.getByRole('textbox', { name: 'Search rooms' }), 'dou');
-    expect(order()).toEqual(['101', '2']);
+    expect(screen.getByText('No rooms match')).toBeInTheDocument(); // types don't match
 
     await user.clear(screen.getByRole('textbox', { name: 'Search rooms' }));
     await user.type(screen.getByRole('textbox', { name: 'Search rooms' }), '9');

@@ -3,8 +3,8 @@ import { Input } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
 
 /**
- * The search above the filter bar: a room number prefix or the start of a room type's name
- * (`matchesSearch` in `roomView.ts`). Not remembered; × clears it.
+ * The search above the filter bar: a room number prefix (`matchesSearch` in `roomView.ts`). Phones
+ * open the number keypad (`inputMode`). Not remembered; × clears it.
  */
 export function RoomSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const tx = useI18n().t.rooms.filter;
@@ -19,6 +19,7 @@ export function RoomSearch({ value, onChange }: { value: string; onChange: (v: s
         leftIcon={<Search />}
         maxLength={100}
         autoComplete="off"
+        inputMode="numeric"
         className={value ? 'pr-9' : undefined}
       />
       {value && (
