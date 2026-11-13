@@ -1,5 +1,11 @@
 import {
   editTask,
+  formatDate,
+  removeRoomIn,
+  removeStatusIn,
+  removeTypeIn,
+  removeUnitIn,
+  roomStatusList,
   applyTaskMove,
   itemCheckKey,
   moveTaskTo,
@@ -14,10 +20,21 @@ import {
   type ItemPatchInput,
   type Location,
   type RecordPatchInput,
+  type Room,
+  type RoomColor,
+  type RoomCreateInput,
+  type RoomPatchInput,
+  type RoomStatus,
+  type RoomStatusPatchInput,
+  type RoomType,
+  type RoomUnit,
+  type UnitStatusInput,
   type SettingsPatchInput,
   type StockCard,
   type StockData,
   type Task,
+  type Cleaning,
+  type UnitStatus,
   type TaskGroup,
   type TaskPatchInput,
 } from '@app/shared';
@@ -90,6 +107,28 @@ export interface StockMutations {
   setStockCards(order: StockCard[]): void;
   /** Changes app-wide settings ('' resets one to its default). */
   updateSettings(patch: SettingsPatchInput): void;
+
+  /** Room cards. `type: ''` / `note: ''` clear them. */
+  addRoom(input: RoomCreateInput): Promise<Room | undefined>;
+  updateRoom(id: string, patch: RoomPatchInput): void;
+  removeRoom(id: string): void;
+  setUnitStatus(roomId: string, unitId: string, input: UnitStatusInput): void;
+  /** Records a general cleaning today (the real local today, not the selected day). */
+  markCleaned(roomId: string, by: string): void;
+  /** The rooms' master setup: units, types and statuses (each list reorders by `from` → `to`). */
+  addRoomUnit(name: string): Promise<RoomUnit | undefined>;
+  renameRoomUnit(id: string, name: string): void;
+  removeRoomUnit(id: string): void;
+  moveRoomUnit(from: number, to: number): void;
+  addRoomType(name: string): Promise<RoomType | undefined>;
+  renameRoomType(id: string, name: string): void;
+  removeRoomType(id: string): void;
+  moveRoomType(from: number, to: number): void;
+  addRoomStatus(name: string, color: RoomColor): Promise<RoomStatus | undefined>;
+  updateRoomStatus(id: string, patch: RoomStatusPatchInput): void;
+  /** Its units go back to the first status. The last status is never removed. */
+  removeRoomStatus(id: string): void;
+  moveRoomStatus(from: number, to: number): void;
 }
 
 interface Deps {
@@ -132,6 +171,15 @@ function named<T extends { id: string; name: string }>(
       void send(() => api.delete(`${path}/${id}`));
     },
   };
+}
+
+/** `list` with the row at `from` moved to `to`, or null when either is out of range. */
+function moved<T>(list: readonly T[], from: number, to: number): T[] | null {
+  const next = [...list];
+  const [row] = next.splice(from, 1);
+  if (row === undefined || to < 0 || to > next.length) return null;
+  next.splice(to, 0, row);
+  return next;
 }
 
 /** Items, departure groups and count locations. */
@@ -256,10 +304,8 @@ function checklistMutations(deps: Deps) {
       void send(() => api.delete(`/task-groups/${id}`));
     },
     moveTaskGroup: (from: number, to: number) => {
-      const list = taskGroupList(data.taskGroups);
-      const [moved] = list.splice(from, 1);
-      if (!moved || to < 0 || to > list.length) return;
-      list.splice(to, 0, moved);
+      const list = moved(taskGroupList(data.taskGroups), from, to);
+      if (!list) return;
       edit('taskGroups', (d) => void (d.taskGroups = list));
       void send(() => api.put('/task-groups/order', { ids: list.map((g) => g.id) }));
     },
@@ -298,9 +344,131 @@ function settingsMutations({ edit, send }: Deps) {
         const saluteText = patch.saluteText?.trim();
         if (saluteText) d.settings.saluteText = saluteText;
         else if (patch.saluteText !== undefined) delete d.settings.saluteText;
+        if (patch.cleanGreenDays !== undefined) d.settings.cleanGreenDays = patch.cleanGreenDays;
+        if (patch.cleanYellowDays !== undefined) d.settings.cleanYellowDays = patch.cleanYellowDays;
       });
       void send(() => api.patch('/settings', patch));
     },
+  };
+}
+
+/** Room cards: their number/type/note, unit statuses and general cleanings. */
+function roomMutations({ edit, send }: Deps) {
+  return {
+    addRoom: async (input: RoomCreateInput) => {
+      const room = await send(() => api.post<Room>('/rooms', input));
+      if (room) edit('rooms', (d) => void d.rooms.push(room));
+      return room;
+    },
+    updateRoom: (id: string, patch: RoomPatchInput) => {
+      edit('rooms', (d) => {
+        const room = d.rooms.find((r) => r.id === id);
+        if (!room) return;
+        if (patch.number !== undefined) room.number = patch.number.trim();
+        if (patch.type) room.type = patch.type;
+        else if (patch.type !== undefined) delete room.type;
+        const note = patch.note?.trim();
+        if (note) room.note = note;
+        else if (patch.note !== undefined) delete room.note;
+      });
+      void send(() => api.patch(`/rooms/${id}`, patch));
+    },
+    removeRoom: (id: string) => {
+      edit(['rooms', 'unitStatus', 'cleanings'], (d) => removeRoomIn(d, id));
+      void send(() => api.delete(`/rooms/${id}`));
+    },
+    setUnitStatus: (roomId: string, unitId: string, { status, by, note }: UnitStatusInput) => {
+      const text = note?.trim();
+      const entry = {
+        status,
+        by: by.trim(),
+        at: new Date().toISOString(),
+        ...(text && { note: text }),
+      };
+      edit('unitStatus', (d) => void ((d.unitStatus[roomId] ??= {})[unitId] = entry));
+      void send(async () => {
+        // The server's entry carries its own time
+        const saved = await api.put<UnitStatus>(`/rooms/${roomId}/units/${unitId}`, {
+          status,
+          by,
+          note,
+        });
+        edit('unitStatus', (d) => void ((d.unitStatus[roomId] ??= {})[unitId] = saved));
+      });
+    },
+    markCleaned: (roomId: string, by: string) => {
+      const cleaning = { date: formatDate(new Date()), by: by.trim() };
+      edit('cleanings', (d) => void (d.cleanings[roomId] ??= []).unshift(cleaning));
+      void send(async () => {
+        // The server answers with the room's whole list (others may have cleaned meanwhile)
+        const list = await api.post<Cleaning[]>(`/rooms/${roomId}/cleanings`, cleaning);
+        edit('cleanings', (d) => void (d.cleanings[roomId] = list));
+      });
+    },
+  };
+}
+
+/** The rooms' master setup (Settings): units, room types and statuses. */
+function roomSetupMutations(deps: Deps) {
+  const { edit, send, data } = deps;
+  const units = named<RoomUnit>(
+    deps,
+    '/room-units',
+    ['roomUnits', 'unitStatus'],
+    (d) => d.roomUnits,
+    (d, id) => removeUnitIn(d, id),
+  );
+  const types = named<RoomType>(
+    deps,
+    '/room-types',
+    ['roomTypes', 'rooms'],
+    (d) => d.roomTypes,
+    (d, id) => removeTypeIn(d, id),
+  );
+  /** Moves a row of a master list and sends the new order. */
+  const move =
+    <K extends 'roomUnits' | 'roomTypes' | 'roomStatuses'>(
+      key: K,
+      path: string,
+      list: () => StockData[K],
+    ) =>
+    (from: number, to: number) => {
+      const next = moved<StockData[K][number]>(list(), from, to);
+      if (!next) return;
+      edit(key, (d) => void (d[key] = next as StockData[K]));
+      void send(() => api.put(`${path}/order`, { ids: next.map((r) => r.id) }));
+    };
+  return {
+    addRoomUnit: units.add,
+    renameRoomUnit: units.rename,
+    removeRoomUnit: units.remove,
+    moveRoomUnit: move('roomUnits', '/room-units', () => data.roomUnits),
+    addRoomType: types.add,
+    renameRoomType: types.rename,
+    removeRoomType: types.remove,
+    moveRoomType: move('roomTypes', '/room-types', () => data.roomTypes),
+    // While none is stored the defaults show; any status change stores the whole list
+    addRoomStatus: async (name: string, color: RoomColor) => {
+      const status = await send(() => api.post<RoomStatus>('/room-statuses', { name, color }));
+      if (status) {
+        edit('roomStatuses', (d) => void (d.roomStatuses = [...roomStatusList(d), status]));
+      }
+      return status;
+    },
+    updateRoomStatus: (id: string, patch: RoomStatusPatchInput) => {
+      edit('roomStatuses', (d) => {
+        d.roomStatuses = roomStatusList(d).map((s) => (s.id === id ? { ...s, ...patch } : s));
+      });
+      void send(() => api.patch(`/room-statuses/${id}`, patch));
+    },
+    removeRoomStatus: (id: string) => {
+      // The last one stays (the server would answer 409)
+      const list = roomStatusList(data);
+      if (list.length <= 1 || !list.some((s) => s.id === id)) return;
+      edit(['roomStatuses', 'unitStatus'], (d) => void removeStatusIn(d, id));
+      void send(() => api.delete(`/room-statuses/${id}`));
+    },
+    moveRoomStatus: move('roomStatuses', '/room-statuses', () => roomStatusList(data)),
   };
 }
 
@@ -314,6 +482,8 @@ export function createMutations(deps: Deps): StockMutations {
     ...dailyMutations(deps),
     ...checklistMutations(deps),
     ...settingsMutations(deps),
+    ...roomMutations(deps),
+    ...roomSetupMutations(deps),
   };
 }
 

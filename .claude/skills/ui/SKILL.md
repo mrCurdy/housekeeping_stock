@@ -17,7 +17,7 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
    - a `Db` method (`sqlite-db` skill);
    - a route in `routes/<area>.ts` with `validateBody(schema)` and `allow(perm)` (`auth` skill);
    - a test in a new `server/tests/<feature>.test.ts` (setup: `tests/helpers.ts`).
-3. **`context/stock/mutations.ts`**: add the method to `StockMutations` and implement it in its area's group (`setupMutations`, `dailyMutations`, `checklistMutations`, `settingsMutations`) like its neighbours:
+3. **`context/stock/mutations.ts`**: add the method to `StockMutations` and implement it in its area's group (`setupMutations`, `dailyMutations`, `checklistMutations`, `settingsMutations`, `roomMutations`, `roomSetupMutations`) like its neighbours:
    ```ts
    setThing: (id: string, value: number) => {
      // optimistic; copies only d.things (pass ['things', 'other'] when fn changes several keys)
@@ -78,6 +78,7 @@ Outside the kit:
 
 ## Styling
 
+- Room status colours: take the classes from `ROOM_COLOR_CLASSES[color]` (`@/lib/roomColors`), never build `bg-status-${c}` strings (Tailwind can't find them).
 - Use semantic tokens only: `bg-surface`, `bg-surface-2`, `text-fg`, `text-fg-muted`, `border-border`, `text-primary`, `bg-primary-soft`, and `success|warning|danger|info` (+ `-soft`). Raw colours break dark mode. Merge classes with `cn()`.
 - **Stock figures:**
   - `val-calc`: calculated;

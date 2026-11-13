@@ -124,7 +124,15 @@ teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { gree
     `tests/auth.test.ts`: a worker 403 case for every master route; a `counter` session 403 on all
     room routes (`tests/qr.test.ts` pattern).
 
-- [ ] **4. Client data layer** (skill `ui`)
+- [x] **4. Client data layer** (skill `ui`)
+  - Done. Differences: groups `roomMutations` (`addRoom`, `updateRoom`, `removeRoom`,
+    `setUnitStatus`, `markCleaned(roomId, by)`: today's local date) and `roomSetupMutations`
+    (`add/rename/remove/moveRoomUnit`, same for `RoomType`, `addRoomStatus(name, color)`,
+    `updateRoomStatus(id, patch)` (rename and recolour), `removeRoomStatus` (does nothing for the
+    last one), `moveRoomStatus`; moves take `(from, to)` and send the full id list). Unit status and
+    cleaning write the server's answer back. `updateSettings` now also keeps the thresholds. Each
+    colour also has a `-soft` token; `ROOM_COLOR_CLASSES[c]` gives `dot`/`text`/`soft`/`border`.
+    A small `moved()` helper is shared with `moveTaskGroup`.
   - `context/stock/mutations.ts`: a `rooms` area (room CRUD, `setUnitStatus`, `markCleaned`) and
     the master setup mutations, each `edit(key, fn)` + one request, using the step 1 rules for the
     optimistic update. Cases in `mutations.test.ts`.

@@ -114,7 +114,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `context/`:
   - `AuthContext.tsx`: the session check, QR `?key=` exchange, Login screen until signed in. `useAuth()` → `{ role, can, logout }`.
   - `StockContext.tsx` (**159**): the dataset, polling (`POLL_MS`: all of `GET /api/data` every 15 s, kept on purpose since stock data is pruned to ~30 days), `send()` and `edit(key, fn)` (`useStock()`). See the `ui` skill. `StockContext.test.tsx`: optimistic edit, failure → toast + reload, a stale poll can't overwrite an edit (`version`), no poll while typing, `setCount` rethrows.
-  - `stock/mutations.ts`: every mutation, grouped by area (setup, daily figures, checklist, settings), built by `createMutations({ edit, send, data })` (`useMutations` memoizes it; a hook, so the React lint allows passing it `send`, which touches refs). `editData(prev, key, fn)` copies only the top-level key(s) an edit names; the rest is shared with the old dataset. `mutations.test.ts`.
+  - `stock/mutations.ts`: every mutation, grouped by area (setup, daily figures, checklist, settings, room cards, the rooms' master setup), built by `createMutations({ edit, send, data })` (`useMutations` memoizes it; a hook, so the React lint allows passing it `send`, which touches refs). `editData(prev, key, fn)` copies only the top-level key(s) an edit names; the rest is shared with the old dataset. `mutations.test.ts`.
   - `DateContext.tsx`: the selected day (−30…+7, locked in counter mode).
   - `I18nContext.tsx`: `useI18n()` → `{ t, locale, lang, setLang }`.
   - `ConfirmContext.tsx`: `useConfirm()`. `ToastContext.tsx`: `useToast()`. `ThemeContext.tsx`: light/dark and palettes.
@@ -143,10 +143,11 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `numbers.ts`: `parseQty` (≥ 0) and `parseNumber`, both accepting `2,5`.
   - `useDragSort.ts`: drag-a-grip (or ↑/↓) reordering; a vertical list (the checklist group cards), or with `free` rows that may sit side by side, dropped on the row under the pointer (the Stock page cards).
   - `useListsDragSort.ts`: the same over several lists (the tasks of the checklist group cards): a row dragged onto another list's area lands there (`target` shows the drop line); ↑/↓ past a list's edge goes to the neighbouring list.
+  - `roomColors.ts`: `ROOM_COLOR_CLASSES`, room status colour id → `dot`/`text`/`soft`/`border` classes (`bg-status-green`…). `roomColors.test.ts` checks every colour has its tokens.
   - `cn.ts`, `download.ts`.
   - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
 - `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
-- `styles/index.css`: tokens, iOS 16px fields, and the `val-*` / `no-spin` utilities.
+- `styles/index.css`: tokens (incl. the 10 room status colours `--status-<colour>` and `-soft`, light and dark), iOS 16px fields, and the `val-*` / `no-spin` utilities.
 - `test/`: `setup.ts` (cleanup), `fetch.ts` (`mockApi`, `unauthorized`) and `fixtures.ts` (`stockFixture(extra)`: a small `StockData` with two items, three tasks and yesterday's note; `mockApp(role, data, route)`: `/auth/me` + `/data` + your routes; `today`, `yesterday`). Other tests sit next to their code: `src/CounterMode.test.tsx`, `context/AuthContext.test.tsx`, `context/StockContext.test.tsx`, `pages/*.test.tsx`.
 
 ### Root
