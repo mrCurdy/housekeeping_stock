@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
   cleaningSchema,
+  formatDate,
+  todayLocal,
   idOrderSchema,
   roomCreateSchema,
   roomNameSchema,
@@ -78,7 +80,12 @@ export function roomsRouter({ db }: AppContext) {
     res.json(found(set, 'Room, unit or status'));
   });
   r.post('/rooms/:id/cleanings', cleaning, validateBody(cleaningSchema), async (req, res) => {
-    const list = await db.rooms.addCleaning(param(req, 'id'), req.body as CleaningInput);
+    const input = req.body as CleaningInput;
+    // A cleaning can be registered for an earlier day (it sorts behind later ones), never ahead
+    if (input.date > formatDate(todayLocal())) {
+      throw HttpError.badRequest('A cleaning cannot be in the future');
+    }
+    const list = await db.rooms.addCleaning(param(req, 'id'), input);
     res.status(201).json(found(list, 'Room'));
   });
 

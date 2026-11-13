@@ -143,6 +143,23 @@ describe('room mutations', () => {
     expect(state.data.cleanings.r1).toEqual([{ date: '2026-11-13', by: 'Server' }]);
   });
 
+  it('marks a room cleaned on an earlier day behind a later cleaning', async () => {
+    const { state, calls, m, flush } = setup(withRoom);
+    m().markCleaned('r1', 'Cid', '2026-10-01');
+    expect(state.data.cleanings.r1).toEqual([
+      { date: '2026-11-01', by: 'Ann' },
+      { date: '2026-10-01', by: 'Cid' },
+    ]);
+    m().markCleaned('r1', 'Dan', '2026-11-01');
+    expect(state.data.cleanings.r1?.map((c) => c.by)).toEqual(['Dan', 'Ann', 'Cid']);
+    await flush();
+    expect(calls[0]).toMatchObject({
+      method: 'POST',
+      path: '/rooms/r1/cleanings',
+      body: { date: '2026-10-01', by: 'Cid' },
+    });
+  });
+
   it('master units: add, rename, move, remove (drops their statuses)', async () => {
     const { state, calls, m, flush } = setup(withRoom);
     await m().addRoomUnit('Desk');

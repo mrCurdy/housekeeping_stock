@@ -213,7 +213,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     `useAuth().can`; `useAuth().ready` keeps `AppShell`/`HomeRedirect` from redirecting with the
     defaults before the first `/data` load. Role names are `settings.roles.role[role]`.
 
-- [ ] **8. Mark a room cleaned on a chosen date** (skills `ui`, `i18n`)
+- [x] **8. Mark a room cleaned on a chosen date** (skills `ui`, `i18n`)
   - Request (from the user): the date a room was cleaned can be chosen, not only today. Where a
     room is marked cleaned (the Cleaning page tile/dialog), show two buttons side by side: on the
     left **Choose date** (`variant` secondary) opens a date picker (local `YYYY-MM-DD`, not in
@@ -226,6 +226,12 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Tests: client: Choose date marks the room cleaned on the picked date, Cleaned today on today;
     server (if changed): a past date is stored, a future date is refused (400).
   - Docs: `docs/structure.md` (Cleaning page).
+
+  - Done: the server already took a date; only the future check (in the route, against the real
+    local today) was added. "Choose date" swaps the dialog to a picker (yesterday preset, Back /
+    Mark cleaned) via a new `WhoDialog` `extraAction`; the name is asked first as for today. The
+    fireworks play only when the chosen day is today. On phones Cancel hides (the × closes) so the
+    two buttons share one row. `markCleaned(id, by, date?)` inserts in date order.
 
 - [ ] **9. Names entered in several languages** (skills `sqlite-db`, `ui`, `i18n`)
   - Request (from the user): user-entered names can have a version per UI language (et/en/ru).

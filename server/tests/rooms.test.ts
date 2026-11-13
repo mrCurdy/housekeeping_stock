@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { addDays, formatDate, todayLocal } from '@app/shared';
 import { setup, HOUSEKEEPER_PIN, type TestEnv } from './helpers';
 
 describe('room cards API', () => {
@@ -107,6 +108,19 @@ describe('room cards API', () => {
       .post(`/api/rooms/${room.id}/cleanings`)
       .send({ date: '1.1.2026', by: 'Mari' })
       .expect(400);
+  });
+
+  it('stores a cleaning on a past date behind a later one and refuses a future date', async () => {
+    const room = (await env.api().post('/api/rooms').send({ number: '101' }).expect(201)).body;
+    const day = (n: number) => formatDate(addDays(todayLocal(), n));
+    const post = (date: string) =>
+      env.api().post(`/api/rooms/${room.id}/cleanings`).send({ date, by: 'Mari' });
+    await post(day(-1)).expect(201);
+    const list = (await post(day(-10)).expect(201)).body;
+    expect(list.map((c: { date: string }) => c.date)).toEqual([day(-1), day(-10)]);
+    await post(day(0)).expect(201);
+    await post(day(1)).expect(400);
+    expect((await data()).cleanings[room.id]).toHaveLength(3);
   });
 
   it('manages units and types: create, rename, reorder, delete', async () => {

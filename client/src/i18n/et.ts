@@ -350,6 +350,11 @@ export const et: Messages = {
     description: 'Puuduta tuba, et koristus kirja panna.',
     dirtyFirst: 'Mustemad ees',
     cleanedToday: 'Koristatud täna',
+    chooseDate: 'Vali kuupäev',
+    pickTitle: (number) => `Millal tuba ${number} koristati?`,
+    pickDate: 'Koristuse kuupäev',
+    markCleaned: 'Märgi koristatuks',
+    back: 'Tagasi',
     tile: (number, state) => `Tuba ${number}: ${state}`,
   },
 

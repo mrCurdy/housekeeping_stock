@@ -366,6 +366,11 @@ export const ru: Messages = {
     description: 'Нажмите на номер, чтобы отметить уборку.',
     dirtyFirst: 'Сначала грязные',
     cleanedToday: 'Убрано сегодня',
+    chooseDate: 'Выбрать дату',
+    pickTitle: (number) => `Когда убирали номер ${number}?`,
+    pickDate: 'Дата уборки',
+    markCleaned: 'Отметить уборку',
+    back: 'Назад',
     tile: (number, state) => `Номер ${number}: ${state}`,
   },
 

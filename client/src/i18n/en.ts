@@ -355,6 +355,12 @@ export const en = {
     description: 'Tap a room to register a cleaning.',
     dirtyFirst: 'Dirty first',
     cleanedToday: 'Cleaned today',
+    /** Opens the date picker for a cleaning on an earlier day */
+    chooseDate: 'Choose date',
+    pickTitle: (number: string) => `When was room ${number} cleaned?`,
+    pickDate: 'Cleaning date',
+    markCleaned: 'Mark cleaned',
+    back: 'Back',
     /** A tile's accessible name: the room and its cleaning in words (`cleaningText`) */
     tile: (number: string, state: string) => `Room ${number}: ${state}`,
   },

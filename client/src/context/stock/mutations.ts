@@ -114,8 +114,11 @@ export interface StockMutations {
   updateRoom(id: string, patch: RoomPatchInput): void;
   removeRoom(id: string): void;
   setUnitStatus(roomId: string, unitId: string, input: UnitStatusInput): void;
-  /** Records a general cleaning today (the real local today, not the selected day). */
-  markCleaned(roomId: string, by: string): void;
+  /**
+   * Records a general cleaning on `date` (default: the real local today, not the selected day).
+   * An earlier day goes behind later cleanings, so it never replaces the latest one.
+   */
+  markCleaned(roomId: string, by: string, date?: string): void;
   /** The rooms' master setup: units, types and statuses (each list reorders by `from` → `to`). */
   addRoomUnit(name: string): Promise<RoomUnit | undefined>;
   renameRoomUnit(id: string, name: string): void;
@@ -400,9 +403,14 @@ function roomMutations({ edit, send }: Deps) {
         edit('unitStatus', (d) => void ((d.unitStatus[roomId] ??= {})[unitId] = saved));
       });
     },
-    markCleaned: (roomId: string, by: string) => {
-      const cleaning = { date: formatDate(new Date()), by: by.trim() };
-      edit('cleanings', (d) => void (d.cleanings[roomId] ??= []).unshift(cleaning));
+    markCleaned: (roomId: string, by: string, date = formatDate(new Date())) => {
+      const cleaning = { date, by: by.trim() };
+      edit('cleanings', (d) => {
+        // Newest first, as the server keeps them (a same-day one goes first)
+        const list = (d.cleanings[roomId] ??= []);
+        const at = list.findIndex((c) => c.date <= date);
+        list.splice(at < 0 ? list.length : at, 0, cleaning);
+      });
       void send(async () => {
         // The server answers with the room's whole list (others may have cleaned meanwhile)
         const list = await api.post<Cleaning[]>(`/rooms/${roomId}/cleanings`, cleaning);
