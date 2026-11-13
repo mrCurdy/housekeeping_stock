@@ -34,7 +34,7 @@ figure** (totals, the counter page, the Overview).
   - Move `PinForm` and `QrCard` from `pages/Settings.tsx` into `pages/settings/PinForm.tsx` and `pages/settings/QrCard.tsx`. `Settings.tsx` keeps only the page and the admin redirect.
   - Tests: `pages/Settings.test.tsx` must pass unchanged. That's the proof it's a pure move.
 
-- [ ] **3. Tests for StockContext** (skill `ui`; tests only, no behaviour change)
+- [x] **3. Tests for StockContext** (skill `ui`; tests only, no behaviour change)
   - New `client/src/context/StockContext.test.tsx`. Use `mockApi` and a small consumer component that calls `useStock()`. Use the providers I18n → Toast → Date → Stock, and the setup from `Settings.test.tsx`.
   - Cases:
     - (a) An optimistic edit shows before the request finishes.
@@ -43,6 +43,7 @@ figure** (totals, the counter page, the Overview).
     - (d) No poll runs while an input has focus.
     - (e) `setCount` rethrows on failure.
   - This step is the safety net for step 7.
+  - Done differently: the providers include Auth (`DateProvider` calls `useAuth`). A local `fakeApi` with deferred replies replaces `mockApi`, so (a) and (c) can hold a request open. `POLL_MS` is now exported. Each case was checked to fail when its rule is removed.
 
 - [ ] **4. Stock math starts at the latest count** (`shared/src/stock.ts`)
   - In `createStockMath`, build once per item a sorted list of its counted days: days with `m`, plus days where `roomSum` isn't null.

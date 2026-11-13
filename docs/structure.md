@@ -107,7 +107,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `main.tsx`, `App.tsx`: the provider stack (I18n → Theme → Toast → Confirm → Auth → Date → Stock → Router) and the lazy route table.
 - `context/`:
   - `AuthContext.tsx`: the session check, QR `?key=` exchange, Login screen until signed in. `useAuth()` → `{ role, can, logout }`.
-  - `StockContext.tsx` (**338**): the dataset plus every mutation (`useStock()`), with optimistic updates, `send()` and polling. See the `ui` skill.
+  - `StockContext.tsx` (**338**): the dataset plus every mutation (`useStock()`), with optimistic updates, `send()` and polling (`POLL_MS`). See the `ui` skill. `StockContext.test.tsx`: optimistic edit, failure → toast + reload, a stale poll can't overwrite an edit (`version`), no poll while typing, `setCount` rethrows.
   - `DateContext.tsx`: the selected day (−30…+7, locked in counter mode), plus `formatLongDate`.
   - `I18nContext.tsx`: `useI18n()` → `{ t, locale, lang, setLang }`.
   - `ConfirmContext.tsx`: `useConfirm()`. `ToastContext.tsx`: `useToast()`. `ThemeContext.tsx`: light/dark and palettes.
@@ -141,7 +141,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
 - `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
 - `styles/index.css`: tokens, iOS 16px fields, and the `val-*` / `no-spin` utilities.
-- `test/`: `setup.ts` (cleanup) and `fetch.ts` (`mockApi`, `unauthorized`). Other tests sit next to their code: `src/CounterMode.test.tsx`, `context/AuthContext.test.tsx`, `pages/*.test.tsx`.
+- `test/`: `setup.ts` (cleanup) and `fetch.ts` (`mockApi`, `unauthorized`). Other tests sit next to their code: `src/CounterMode.test.tsx`, `context/AuthContext.test.tsx`, `context/StockContext.test.tsx`, `pages/*.test.tsx`.
 
 ### Root
 
@@ -258,4 +258,4 @@ These are known and don't need to be copied. Fix one only when a task touches it
   - `formatLongDate` lives in `DateContext`, not in a `lib/format.ts`.
   - `Settings.tsx` holds three features (`PinForm`, `QrCard`, `SaluteCard`).
 - **`client/src/lib/errors.ts`** (`fieldErrors`, `errorMessage`) is not imported anywhere: it's dead code.
-- **Client tests** cover login, settings, counter mode (incl. the room-done fireworks), the checklist (reorder, line ticks, list editing), i18n and the UI kit. There are none for the `StockContext` optimistic update and rollback. `Stock.test.tsx` covers the card order and the Overview's per-room rows.
+- **Client tests** cover login, settings, counter mode (incl. the room-done fireworks), the checklist (reorder, line ticks, list editing), i18n and the UI kit. `StockContext.test.tsx` covers the optimistic update, rollback and polling. `Stock.test.tsx` covers the card order and the Overview's per-room rows.

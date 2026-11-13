@@ -101,7 +101,8 @@ interface StockApi {
 
 const StockContext = createContext<StockApi | null>(null);
 
-const POLL_MS = 15_000;
+/** How often the data is refreshed from the server */
+export const POLL_MS = 15_000;
 
 const isTyping = () => {
   const el = document.activeElement;

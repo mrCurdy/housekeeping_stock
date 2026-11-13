@@ -107,6 +107,7 @@ plurals). Never read the et/ru files whole.
 - Client tests live next to the code (`*.test.tsx`).
   - Fake the server with `mockApi((method, path, body) => reply)` from `@/test/fetch`.
   - Wrap the component in only the providers it uses. `Settings.test.tsx` is the pattern: Toast → Confirm → Auth.
+  - A context's own behaviour (`StockContext`): `context/StockContext.test.tsx` renders a small consumer of `useStock()` under I18n → Toast → Auth → Date → Stock. Its `fakeApi` can hold a request open (a `deferred` reply), and it drives the poll with `vi.useFakeTimers({ shouldAdvanceTime: true })` + `POLL_MS`. A change to `StockContext` must keep this file green.
   - A whole page with real data (`StockContext`, routes, roles): set the URL with `window.history.replaceState`, answer `/auth/me` and `/data` in `mockApi`, then `await import('../App')` and render it. `pages/Checklist.test.tsx` is the pattern (it also shows faking row positions for a pointer drag).
   - Call `vi.unstubAllGlobals()` in `afterEach`.
 - Query by role and label (`screen.getByRole('button', { name: … })`) using the English text.
