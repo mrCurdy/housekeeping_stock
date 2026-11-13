@@ -18,7 +18,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import type { Messages } from '@/i18n/en';
 import { cn } from '@/lib/cn';
-import { DataMenu } from './DataMenu';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { PaletteToggle } from './PaletteToggle';
 import { ThemeToggle } from './ThemeToggle';
@@ -45,9 +44,7 @@ export function AppShell() {
   const { t } = useI18n();
   const { role, can, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Counting and the checklist happen on phones: keep their header free of the admin tools
   const { pathname } = useLocation();
-  const counting = pathname.startsWith('/counter') || pathname.startsWith('/checklist');
   // Counter mode (QR session): only the Counter, with no menu or toolbar
   const counterOnly = todayOnly(role);
   if (counterOnly && !pathname.startsWith('/counter')) return <Navigate to="/counter" replace />;
@@ -124,11 +121,6 @@ export function AppShell() {
           )}
           <span className={cn('font-semibold', !counterOnly && 'md:hidden')}>{t.appName}</span>
           <div className="flex-1" />
-          {!counterOnly && (
-            <div className={cn(counting && 'hidden md:block')}>
-              <DataMenu />
-            </div>
-          )}
           <LanguageSwitcher />
           <PaletteToggle />
           <ThemeToggle />

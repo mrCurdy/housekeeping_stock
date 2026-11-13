@@ -84,12 +84,12 @@ export const en = {
   },
 
   data: {
+    title: 'Data and backups',
+    description:
+      'Excel: the whole day-by-day history as a spreadsheet. Backup: download all data as one file (.json). Restore: replace all data with a backup file. The server also keeps a copy of each day for 30 days (by default).',
     excel: 'Excel',
-    excelHint: 'Full day-by-day history as Excel',
     backup: 'Backup',
-    backupHint: 'Download a backup file (.json)',
     restore: 'Restore',
-    restoreHint: 'Restore all data from a backup file',
     noData: 'No data to export yet',
     noHistory: 'No history to export yet',
     noBackupData: 'No data to back up yet',
@@ -350,7 +350,7 @@ export const en = {
   settings: {
     title: 'Settings',
     description:
-      'PINs, the QR code for counting, the fireworks and the room cards setup. Only the admin sees this page.',
+      'PINs, the QR code for counting, data and backups, the fireworks and the room cards setup. Only the admin sees this page.',
     pins: {
       title: 'PINs',
       description: 'Each role logs in with its own 4-digit PIN. The two PINs must be different.',

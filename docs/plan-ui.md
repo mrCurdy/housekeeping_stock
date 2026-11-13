@@ -38,7 +38,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
 
 ## Steps
 
-- [ ] **1. A "Data and backups" card in Settings; the header loses the buttons** (skills `ui`,
+- [x] **1. A "Data and backups" card in Settings; the header loses the buttons** (skills `ui`,
       `i18n`)
   - New `pages/settings/DataCard.tsx`: the Excel, Backup and Restore logic from `DataMenu.tsx`
     moved as is (lazy `@/lib/excel`, `downloadBlob`, `backupSchema` check, confirm, `restore`).
@@ -60,6 +60,8 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Docs: `docs/structure.md` (file map: `DataMenu` gone, `DataCard` in `settings/`; the
     "Header toolbar" section → the Settings section), README "Data and backups" (Backup/Restore/
     Excel are in Settings, admin only).
+
+  - Done: texts stay under `data.*` (+ `data.title`, `data.description`; the three `*Hint` keys removed). The description says "30 days (by default)": the client doesn't know `BACKUP_DAYS`. Buttons are `outline`. The header check is in `Stock.test.tsx` ("header").
 
 - [ ] **2. Backup and Restore know about rooms** (skills `ui`, `i18n`)
   - New pure `hasData(data)` (in `client/src/lib/` or `shared/src/`, + test): true when any of

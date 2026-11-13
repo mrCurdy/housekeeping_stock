@@ -52,12 +52,12 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
   only convenience; the server guard is what enforces it. Where a worker can't edit, show the value
   as plain text (item/group names) and use `t.common.askAdmin` in empty states.
   Hidden now: item add/rename/remove (`ItemsCard`), group controls and ⚙ (`DeparturesCard`),
-  Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`DataMenu`),
+  Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`pages/settings/DataCard`),
   the `/rooms` page itself and its NAV entry (`setup`; a worker is redirected) with its "Open Settings" links (`Rooms`; the master
   setup and "Add room" (`AddRoomDialog`) are in `RoomSetupCard` on the admin-only Settings page),
   and the Settings NAV entry (`perm: 'pins'` on a `NAV` item in `AppShell`; `/settings` itself
   redirects without `pins`).
-- Counter mode (`todayOnly(role)`): `AppShell` renders no sidebar, menu or toolbar and redirects
+- Counter mode (`todayOnly(role)`): `AppShell` renders no sidebar or menu and redirects
   every path outside `/counter` there; `DateProvider` sets `locked` (min = max = today) and
   `DateSwitcher` renders nothing. Test: `client/src/CounterMode.test.tsx` (whole `App`).
 - `pages/Settings.tsx`: PIN forms (`PUT /auth/pins`; a 400 means "same as the other PIN") and the

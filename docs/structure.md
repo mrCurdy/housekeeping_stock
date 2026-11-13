@@ -130,7 +130,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `Salute.tsx`: the fireworks (a canvas over the page): a rocket rises from the bottom centre, bursts in the middle and its sparks spell a word. Skipped with reduced motion.
 - `components/layout/`:
   - `AppShell.tsx`: sidebar, `NAV`, header, counter-mode redirect.
-  - `PageHeader`, `DateSwitcher`, `DataMenu` (Excel / Backup / Restore), `LanguageSwitcher`, `ThemeToggle`, `PaletteToggle`.
+  - `PageHeader`, `DateSwitcher`, `LanguageSwitcher`, `ThemeToggle`, `PaletteToggle`.
 - `pages/`:
   - `Stock.tsx` + `stock/`:
     - `DeparturesCard`, `ItemsCard` (192), `OverviewCard`, each titled by `StockCardHeader` (title, description, drag grip);
@@ -150,7 +150,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `RoomSearch` (the search field with ×, not remembered), `LevelFilter` (the "Level" group of buttons, and `toggleProps` for an on/off `Button`; also used by `CleaningFilters`), `RoomFilters` (the bar: `LevelFilter`, the Needs attention first toggle, hide-green, and the "View" group: Full cards / Compact tiles icon buttons; on/off = `Button` primary/outline with `aria-pressed`), `useRoomView(levels)` (+ test; the view and `mode: 'full' | 'compact'` in `localStorage['rooms.view']`, try/catch; a stored level that no longer exists shows as All; no stored mode = compact below `sm` (`matchMedia('(max-width: 639px)')`), full otherwise).
     - `RoomTile` (the compact tile, a square `button` "Open room N": number, type and a wrench coloured by `worstStatus` (no wrench without units), a `role="img"` with the translated meaning). `RoomCard` takes an optional `onClose` (an × "Close room N") and `className` for the open tile.
   - `Cleaning.tsx` (+ test) + `cleaning/`: `CleaningTile` (a square `button` "Room N: Cleaned 3 days ago · Mari": number, broom and the days coloured by `cleaningDays`, "—" never), `CleaningFilters` (`LevelFilter` + the Dirty first toggle), `useCleaningView(levels)` (`{ level, dirtyFirst }` in `localStorage['cleaning.view']`, try/catch), `CleaningDialog` (`WhoDialog` with the latest cleaning, `CleaningHistory` and "Cleaned today" → `markCleaned`).
-  - `Settings.tsx` (+ test): the page and the admin redirect; `settings/`: `PinForm`, `QrCard`, `SaluteCard`, `RoomSetupCard` (the room cards' master setup, `setup` only: an "Add room" button opening `AddRoomDialog` (number, type, note; a taken number shows the error before sending), units, statuses with a colour `Select`, room types, each a `MasterList` (rename in place, ↑/↓, remove confirmed, `AddForm`), plus `CleaningThresholds` (both days checked together, 0 ≤ green < yellow, before `updateSettings`)). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
+  - `Settings.tsx` (+ test): the page and the admin redirect; `settings/`: `PinForm`, `QrCard`, `DataCard` (Excel / Backup / Restore), `SaluteCard`, `RoomSetupCard` (the room cards' master setup, `setup` only: an "Add room" button opening `AddRoomDialog` (number, type, note; a taken number shows the error before sending), units, statuses with a colour `Select`, room types, each a `MasterList` (rename in place, ↑/↓, remove confirmed, `AddForm`), plus `CleaningThresholds` (both days checked together, 0 ≤ green < yellow, before `updateSettings`)). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
   - `format.ts`: `formatLongDate(date, locale)` ("Sat, 17 Oct 2026").
@@ -279,13 +279,13 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
 - **`/settings`** (admin only; others are redirected to `/stock`):
   - The admin and worker PINs (each new PIN typed twice).
   - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.
+  - **Data and backups** (`DataCard`; Settings is admin-only, so workers have no Excel or Backup):
+    - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
+    - **Backup:** a JSON download.
+    - **Restore** (`restore` permission): validates with `backupSchema`, asks for confirmation, then replaces everything, counts included.
   - The fireworks text (up to 12 characters, blank = "Tubli!"), with a Preview button. Saved for everyone (`PATCH /settings`, `setup` permission).
   - Room cards (`RoomSetupCard`, `setup` permission): "Add room" (a dialog: number, type, note; Cancel sends nothing), and the master layout every room shares. Units (rename in place, ↑/↓, remove confirmed: drops their statuses on every card), statuses (name + a colour from the 10, green/yellow/red first; remove confirmed: its units go back to the first; the last one can't be removed), room types (remove confirmed: cleared on its cards), and the cleaning thresholds (green up to N days, yellow up to M, red above; 0 ≤ green < yellow, checked before saving).
-- **Counter mode** (a QR session): `AppShell` drops the sidebar, menu and toolbar and redirects every other path to `/counter`. The date is locked to today.
-- **Header toolbar** (`DataMenu`), hidden on phones on `/counter` and `/checklist`:
-  - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
-  - **Backup:** a JSON download.
-  - **Restore:** validates with `backupSchema`, asks for confirmation, then replaces everything, counts included.
+- **Counter mode** (a QR session): `AppShell` drops the sidebar and menu and redirects every other path to `/counter`. The date is locked to today.
 
 ## Known weak spots
 

@@ -4,12 +4,13 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
+import { DataCard } from './settings/DataCard';
 import { PinForm } from './settings/PinForm';
 import { QrCard } from './settings/QrCard';
 import { RoomSetupCard } from './settings/RoomSetupCard';
 import { SaluteCard } from './settings/SaluteCard';
 
-/** /settings (admin only): the admin and worker PINs, the QR code for counting, the fireworks text, the room cards' master setup. */
+/** /settings (admin only): the admin and worker PINs, the QR code for counting, Excel/Backup/Restore, the fireworks text, the room cards' master setup. */
 export default function Settings() {
   const { can } = useAuth();
   const { t } = useI18n();
@@ -34,6 +35,7 @@ export default function Settings() {
           </CardBody>
         </Card>
         {can('qr') && <QrCard />}
+        <DataCard />
         {can('setup') && <SaluteCard />}
         {can('setup') && <RoomSetupCard />}
       </div>

@@ -81,12 +81,12 @@ export const et: Messages = {
   },
 
   data: {
+    title: 'Andmed ja varukoopiad',
+    description:
+      'Excel: kogu ajalugu päevade kaupa tabelina. Varukoopia: laadi kõik andmed alla ühe failina (.json). Taasta: asenda kõik andmed varukoopia failist. Server hoiab ka iga päeva koopiat 30 päeva (vaikimisi).',
     excel: 'Excel',
-    excelHint: 'Kogu ajalugu päevade kaupa Exceli failina',
     backup: 'Varukoopia',
-    backupHint: 'Laadi alla varukoopia (.json)',
     restore: 'Taasta',
-    restoreHint: 'Taasta kõik andmed varukoopiast',
     noData: 'Eksportimiseks pole veel andmeid',
     noHistory: 'Eksportimiseks pole veel ajalugu',
     noBackupData: 'Varundamiseks pole veel andmeid',
@@ -346,7 +346,7 @@ export const et: Messages = {
   settings: {
     title: 'Seaded',
     description:
-      'PIN-koodid, inventuuri QR-kood, ilutulestik ja toakaartide seadistus. Seda lehte näeb ainult administraator.',
+      'PIN-koodid, inventuuri QR-kood, andmed ja varukoopiad, ilutulestik ja toakaartide seadistus. Seda lehte näeb ainult administraator.',
     pins: {
       title: 'PIN-koodid',
       description:

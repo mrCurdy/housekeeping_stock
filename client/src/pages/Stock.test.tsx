@@ -198,3 +198,18 @@ describe('stock items', () => {
     expect(screen.getAllByRole('textbox', { name: 'Stock name' })).toHaveLength(2);
   });
 });
+
+describe('header', () => {
+  it.each(['admin', 'worker'])('has no Excel, Backup or Restore for the %s', async (role) => {
+    mockApp(role);
+    const { default: App } = await import('../App');
+    render(<App />);
+    expect(
+      await screen.findByRole('spinbutton', { name: 'Total stock Towels' }),
+    ).toBeInTheDocument();
+    const header = screen.getByRole('banner');
+    for (const name of [/Excel/, /Backup/, /Restore/]) {
+      expect(within(header).queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+  });
+});

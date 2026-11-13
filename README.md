@@ -23,7 +23,7 @@ npm run dev        # client http://localhost:5173 · API http://localhost:3000
 
 On the first start the PINs are admin **1234** and worker **0000** (or `ADMIN_PIN`/`WORKER_PIN` from `.env`); change them under **Settings**. A browser stays logged in until **Logout**.
 
-Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` ("Room statuses", admin: one card per hotel room with each unit's status and a note; search, level filter and an attention sort), `/cleaning` (admin and worker: every room as a tile with the days since its last general cleaning; tap to register one, a "Dirty first" sort), `/settings` (admin: PINs, the counting QR code, adding rooms and the room cards' units, statuses, types and cleaning thresholds).
+Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` ("Room statuses", admin: one card per hotel room with each unit's status and a note; search, level filter and an attention sort), `/cleaning` (admin and worker: every room as a tile with the days since its last general cleaning; tap to register one, a "Dirty first" sort), `/settings` (admin: PINs, the counting QR code, Excel/Backup/Restore, adding rooms and the room cards' units, statuses, types and cleaning thresholds).
 
 | Command             | What it does                                                                                                                     |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -62,7 +62,7 @@ cp .env.example .env   # set ADMIN_PIN, WORKER_PIN (first start only), APP_PORT;
 - `data/stock.db` (SQLite, `SQLITE_PATH`) holds everything. PINs and sessions are stored there too, but never in backups.
 - An old `data/db.json` from before the switch is imported automatically on the first start and renamed `db.json.imported`.
 - Before the first change of each day the server writes a JSON snapshot (backup format) to `data/backups/db-YYYY-MM-DD.json` (kept for `BACKUP_DAYS`, default 30).
-- **Backup** in the header downloads the data as JSON. **Restore** (admin) replaces all data with a backup file (old-format backups work too). **Excel** downloads the day-by-day history of the selectable days.
+- In **Settings** (admin only) → "Data and backups": **Backup** downloads the data as JSON. **Restore** replaces all data with a backup file (old-format backups work too). **Excel** downloads the day-by-day history of the selectable days.
 - Stock data older than 30 days is removed; counts carry the totals over, so no figure changes. Older history remains only in the daily backups (`BACKUP_DAYS`): keep a monthly Excel/Backup download if you need longer history.
 
 ## Adding a feature

@@ -91,7 +91,7 @@ Outside the kit:
 - **Phones:**
   - Wrap grids as `grid grid-cols-1 …` with `minmax(0,…)` columns, so a wide table scrolls inside its card and not the page.
   - Fields get 16px text on touch screens automatically (no iOS zoom), so don't override `font-size` on inputs.
-  - The header hides the toolbar on `/counter` and `/checklist` (the `counting` check in `AppShell`). Add new phone-first pages there too.
+  - The header holds only the language, palette, theme and log-out buttons on every page; admin tools go in Settings cards, not the header.
 - Icons come from `lucide-react` at `h-4 w-4`. Icon-only buttons need `aria-label` and `title`.
 
 ## Roles and modes

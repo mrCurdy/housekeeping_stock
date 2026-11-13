@@ -1,7 +1,7 @@
 import { backupSchema, formatDate } from '@app/shared';
-import { Download, FileSpreadsheet, Upload } from 'lucide-react';
+import { Database, Download, FileSpreadsheet, Upload } from 'lucide-react';
 import { useRef, useState, type ChangeEvent } from 'react';
-import { Button, Tooltip } from '@/components/ui';
+import { Button, Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useSelectedDate } from '@/context/DateContext';
@@ -11,8 +11,8 @@ import { useToast } from '@/context/ToastContext';
 import { apiErrorMessage } from '@/lib/api';
 import { downloadBlob } from '@/lib/download';
 
-/** Header toolbar: Excel history, Backup (JSON download) and Restore (JSON upload). */
-export function DataMenu() {
+/** Settings card: Excel history, Backup (JSON download) and Restore (JSON upload, `can('restore')`). */
+export function DataCard() {
   const { data, math } = useStock();
   const { today, minDate } = useSelectedDate();
   const toast = useToast();
@@ -81,49 +81,46 @@ export function DataMenu() {
   };
 
   return (
-    <div className="flex items-center gap-1">
-      <Tooltip content={t.data.excelHint} side="bottom">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Database className="h-4 w-4 text-fg-muted" />
+          {t.data.title}
+        </CardTitle>
+        <CardDescription>{t.data.description}</CardDescription>
+      </CardHeader>
+      <CardBody className="flex flex-wrap gap-2">
         <Button
-          variant="ghost"
-          size="sm"
+          variant="outline"
           onClick={exportExcel}
           loading={exporting}
           leftIcon={<FileSpreadsheet className="h-4 w-4" />}
         >
-          <span className="hidden lg:inline">{t.data.excel}</span>
+          {t.data.excel}
         </Button>
-      </Tooltip>
-      <Tooltip content={t.data.backupHint} side="bottom">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={backup}
-          leftIcon={<Download className="h-4 w-4" />}
-        >
-          <span className="hidden lg:inline">{t.data.backup}</span>
+        <Button variant="outline" onClick={backup} leftIcon={<Download className="h-4 w-4" />}>
+          {t.data.backup}
         </Button>
-      </Tooltip>
-      {canRestore && (
-        <Tooltip content={t.data.restoreHint} side="bottom" align="end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fileInput.current?.click()}
-            leftIcon={<Upload className="h-4 w-4" />}
-          >
-            <span className="hidden lg:inline">{t.data.restore}</span>
-          </Button>
-        </Tooltip>
-      )}
-      {canRestore && (
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={onFile}
-        />
-      )}
-    </div>
+        {canRestore && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => fileInput.current?.click()}
+              leftIcon={<Upload className="h-4 w-4" />}
+            >
+              {t.data.restore}
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              data-testid="restore-file"
+              onChange={onFile}
+            />
+          </>
+        )}
+      </CardBody>
+    </Card>
   );
 }

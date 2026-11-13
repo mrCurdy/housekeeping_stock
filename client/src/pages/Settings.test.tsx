@@ -8,7 +8,11 @@ import { DateProvider } from '@/context/DateContext';
 import { StockProvider } from '@/context/StockContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { mockApi } from '@/test/fetch';
+import { stockFixture } from '@/test/fixtures';
 import Settings from './Settings';
+
+const download = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/download', () => ({ downloadBlob: download }));
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -259,5 +263,74 @@ describe('Settings: add a room', () => {
     await userEvent.click(dialog.getByRole('button', { name: 'Add' }));
     expect(dialog.getByText('Room 10 already exists')).toBeInTheDocument();
     expect(posts(fetch)).toEqual([]);
+  });
+});
+
+describe('Settings: data and backups', () => {
+  beforeEach(() => {
+    download.mockReset();
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+      this.open = false;
+    };
+  });
+
+  function dataApi() {
+    return mockApi((method, path) => {
+      if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
+      if (path === '/data') return { status: 200, body: stockFixture() };
+      if (path === '/auth/qr') return { status: 200, body: { active: false } };
+      if (path === '/restore' && method === 'POST') return { status: 200, body: stockFixture() };
+    });
+  }
+  const restores = (fetch: ReturnType<typeof mockApi>) =>
+    fetch.mock.calls.filter(([u, init]) => u === '/api/restore' && init?.method === 'POST');
+  const pick = async (content: string, name: string) => {
+    await userEvent.click(await screen.findByRole('button', { name: 'Restore' }));
+    const input = screen.getByTestId('restore-file');
+    await userEvent.upload(input, new File([content], name, { type: 'application/json' }));
+  };
+
+  it('shows Excel, Backup and Restore', async () => {
+    dataApi();
+    settings();
+    expect(await screen.findByRole('heading', { name: 'Data and backups' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Excel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Backup' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Restore' })).toBeInTheDocument();
+  });
+
+  it('Backup downloads a JSON file', async () => {
+    dataApi();
+    settings();
+    await waitFor(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Backup' }));
+      expect(download).toHaveBeenCalled();
+    });
+    const [blob, name] = download.mock.calls[0] as [Blob, string];
+    expect(name).toMatch(/^stock_backup_\d{4}-\d{2}-\d{2}\.json$/);
+    expect(JSON.parse(await blob.text()).items).toHaveLength(2);
+  });
+
+  it('Restore with a backup file asks, then sends it', async () => {
+    const fetch = dataApi();
+    settings();
+    await pick(JSON.stringify(stockFixture()), 'old.json');
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(dialog.getByText(/old\.json/)).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(restores(fetch)).toHaveLength(1));
+    expect(await screen.findByText('Backup restored')).toBeInTheDocument();
+  });
+
+  it('a file that is not a backup shows an error and sends nothing', async () => {
+    const fetch = dataApi();
+    settings();
+    await pick('{"hello": 1}', 'notes.json');
+    expect(await screen.findByText('Not a backup')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(restores(fetch)).toHaveLength(0);
   });
 });
