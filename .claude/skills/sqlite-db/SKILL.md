@@ -6,7 +6,10 @@ description: Change Fomka's SQLite storage (server/src/db/sqlite/) — add a tab
 # SQLite storage
 
 Files: `server/src/db/types.ts` (the `Db` interface, the only thing routes see),
-`server/src/db/sqlite/migrations.ts` (schema), `server/src/db/sqlite/index.ts` (the driver),
+`server/src/db/sqlite/migrations.ts` (schema), `server/src/db/sqlite/index.ts` (connection, `write()`,
+`init`, backups, pruning), `server/src/db/sqlite/rows.ts` (row types, `DATA_TABLES`, `snapshot`/`fill`
+and shared helpers in `createRows`, `namedRepo`), one repo file per area (`items.ts`, `records.ts`,
+`counts.ts`, `tasks.ts`, `checklist.ts`, `settings.ts`, `auth.ts`),
 `server/tests/sqlite.test.ts` (driver tests; `api.test.ts` is the regression suite through the API).
 `api.test.ts` uses one DB for the whole file: a new test there creates its own records, since earlier
 tests' data is still present.
@@ -43,7 +46,7 @@ with a default, then update the row interface, `snapshot()` and `fill()`.
 
 ## Row mapping
 
-- Row interfaces (`RecordRow`, `TaskRow`…) are snake_case as stored; map them to the shared types
+- Row interfaces (`RecordRow`, `TaskRow`…, in `rows.ts`) are snake_case as stored; map them to the shared types
   in the driver (`toTask`, `taskParams`). Missing optional fields are `NULL` in SQL and absent
   (never `null`) in `StockData`: use `cleanRecord` for records, `...(x && { x })` for tasks.
 - `snapshot()` builds the whole `StockData` (ordered by `pos`; maps in insertion order).
@@ -74,7 +77,10 @@ better-sqlite3 is synchronous; repo methods are `async` only to fit the `Db` int
 
 1. Add it to the interface in `db/types.ts` (return `null`/`false` for a missing row; the route
    turns that into a 404 with `found()`).
-2. Implement it in `sqlite/index.ts` inside `write(() => …)` for changes, plain `get`/`all` for reads.
+2. Implement it in the area's file (`sqlite/items.ts`, `tasks.ts`…; a new area = a new
+   `createX(ctx: Ctx)` file, wired into the object `createSqliteDb` returns in `index.ts`) inside
+   `write(() => …)` for changes, plain `get`/`all` from `ctx` for reads. Helpers shared by several
+   areas or by `snapshot`/`fill` go in `createRows` (`rows.ts`).
    Reuse the pure rules from `@app/shared` (`editTask`, `removeTaskFrom`, `cleanRecord`…) instead of
    re-implementing them in SQL.
 3. Test it through the API in a new `server/tests/<feature>.test.ts` (setup: `tests/helpers.ts`),

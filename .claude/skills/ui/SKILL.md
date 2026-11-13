@@ -116,7 +116,7 @@ plurals). Never read the et/ru files whole.
 ## Saving tokens
 
 - Start from `docs/structure.md` and this skill. Don't list or read folders to "get a feel".
-- Read big files in parts: `StockContext.tsx` (grep the method name), `en.ts` (grep the section), `db/sqlite/index.ts`.
+- Read big files in parts: `StockContext.tsx` (grep the method name), `en.ts` (grep the section).
 - Copy the nearest existing component and change it. Don't design from scratch.
 - Don't re-read files after editing them. Pipe test and build output through `| tail`.
 - If a change shifts the structure (a new file, page or rule), update `docs/structure.md` in the same commit.

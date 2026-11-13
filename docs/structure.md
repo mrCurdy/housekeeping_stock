@@ -18,7 +18,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 | Checklist rule (task history, ticks)    | `shared/src/checklist.ts` + `checklist.test.ts`                                                                                                                                 | —            |
 | UI component used on more than one page | `client/src/components/ui/<Name>.tsx` + export in `components/ui/index.ts` + a case in `ui.test.tsx`                                                                            | `ui`         |
 | Colour / utility class                  | `client/src/styles/index.css` (tokens on `:root` and `[data-theme='dark']`, `@utility` classes)                                                                                 | `ui`         |
-| Backup / restore format                 | `shared/src/schemas.ts` (`backupSchema`, must still read old files) → `db/sqlite/index.ts` (`snapshot`, `fill`)                                                                 | `sqlite-db`  |
+| Backup / restore format                 | `shared/src/schemas.ts` (`backupSchema`, must still read old files) → `db/sqlite/rows.ts` (`snapshot`, `fill`)                                                                  | `sqlite-db`  |
 | Excel export                            | `client/src/lib/excel.ts` (uses `math.series`)                                                                                                                                  | —            |
 | Env setting                             | `server/src/config.ts` → `.env.example` → `docker-compose.yml` → README                                                                                                         | —            |
 | A multi-session change                  | write `docs/plan-<topic>.md` with numbered steps                                                                                                                                | `plan-step`  |
@@ -45,11 +45,10 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `sessions.ts`: the `sm_session` cookie (a SHA-256 of the token is stored).
   - `middleware.ts`: `session`, `requireAuth`, `allow(perm)`.
 - `db/types.ts`: the `Db` interface (routes use only this). `db/index.ts`: creates the driver.
-- `db/sqlite/index.ts` (**800**): the whole driver in one closure. Sections, found with `grep -n`:
-  - helpers;
-  - `snapshot` (rows → `StockData`) and `fill` (the reverse);
-  - `pruneStockRows` + `prune` (old ticks/notes/task history and stock data), `dailyBackup` (a JSON snapshot each day), `importJson`. `createSqliteDb`'s `today` option is the clock both use (tests move it);
-  - then the repo objects `items`, `records`, `departures`, `counts`, `tasks`, `checklist`, `auth`.
+- `db/sqlite/`: the driver, split per area. Each repo file exports `createX(ctx)`, where `ctx = { all, get, run, prepare, transaction, write }` (`Ctx` in `rows.ts`).
+  - `index.ts`: the connection, `write()`, `init`, `pruneStockRows` + `prune` (old ticks/notes/task history and stock data), `dailyBackup` (a JSON snapshot each day), `importJson`. `createSqliteDb`'s `today` option is the clock both use (tests move it);
+  - `rows.ts`: the row types, `DATA_TABLES`, `Ctx`, `createRows` (`snapshot` rows → `StockData`, `fill` the reverse, and the shared read/write helpers) and `namedRepo`;
+  - `items.ts` (items, groups, locations), `records.ts` (records, departures), `counts.ts`, `tasks.ts` (tasks, task groups), `checklist.ts` (ticks, notes), `settings.ts` (stock-card order, app settings), `auth.ts`.
 - `db/sqlite/migrations.ts`: numbered schema migrations.
 - `routes/`:
   - `auth.ts`: login, me, logout, pins, QR create/revoke, link.
@@ -248,7 +247,6 @@ settings:     { saluteText? }                                   // app-wide pref
 
 These are known and don't need to be copied. Fix one only when a task touches it.
 
-- **`db/sqlite/index.ts`** is 800 lines in one closure. A split per area (`items.ts`, `tasks.ts`, `auth.ts`…) would make edits cheaper.
 - **`StockContext`:**
   - Every mutation lives in one `useMemo`, and every edit runs `structuredClone` on the whole dataset.
   - Every 15 s it polls all of `GET /api/data`.

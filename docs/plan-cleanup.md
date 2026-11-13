@@ -91,7 +91,7 @@ figure** (totals, the counter page, the Overview).
   - README and `docs/structure.md`: "stock data older than 30 days is removed; counts carry the totals over". Update the `sqlite-db` skill (pruning section).
   - Done differently: the tables are `records`, `departures`, `counts` (there is no `group_records`). Start-up and restore needed no extra call: `init()` already runs `prune` after the import and `replace()` goes through `write()`. `exportExcel` takes `{ from: minDate, today }` from `useSelectedDate()`. The daily backup's keep-list also uses the `today` clock. `server/tests/api.test.ts` used fixed October dates that now fall out of the window, so its stock dates are now relative to today.
 
-- [ ] **7. Split the SQLite driver** (skill `sqlite-db`; a pure refactor)
+- [x] **7. Split the SQLite driver** (skill `sqlite-db`; a pure refactor)
   - `db/sqlite/index.ts` becomes:
     - `index.ts`: the connection, `write()`, `init`, backups, prune;
     - `rows.ts`: `snapshot`, `fill`, the row types and helpers;
@@ -99,6 +99,7 @@ figure** (totals, the counter page, the Overview).
   - Read the old file in parts (`grep -n` the section, then `sed -n`). Move code without rewriting it.
   - Tests: all of `server/tests/` passes unchanged.
   - Update the `sqlite-db` skill ("add a repo method" now names the file) and `docs/structure.md`.
+  - Done differently: `ctx` also has `prepare` and `transaction` (the code used `sql.prepare`/`sql.transaction`, and `sql` only opens in `init`). A seventh file `settings.ts` holds the `stockCards` and `settings` repos. Groups/locations live in `items.ts`, departures in `records.ts`, task groups in `tasks.ts`; `namedRepo` and the shared read/write helpers (`createRows`) are in `rows.ts`, and each repo file calls `createRows(ctx)` for the ones it needs.
 
 - [ ] **8. Lighter StockContext** (skill `ui`)
   - Step 3's tests must pass unchanged.

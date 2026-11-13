@@ -62,7 +62,7 @@ npm workspaces, structured like the full-stack TypeScript template in `../boiler
   - `DateContext` holds the selected day. `I18nContext` serves en/et/ru.
   - Pages are lazy routes in `App.tsx`, listed in `NAV` in `AppShell.tsx`. The UI kit is `components/ui/`.
 
-A new feature goes through the layers in this order: types/zod in `shared/src/` → a method on `Db` (`db/types.ts`) and in `db/sqlite/index.ts` → a route in `server/src/routes/`, mounted in `app.ts`, with `allow(perm)` → page, route in `App.tsx`, `NAV` entry → text in en/et/ru, tests in `server/tests/`.
+A new feature goes through the layers in this order: types/zod in `shared/src/` → a method on `Db` (`db/types.ts`) and in its area file in `db/sqlite/` (`items.ts`, `tasks.ts`…) → a route in `server/src/routes/`, mounted in `app.ts`, with `allow(perm)` → page, route in `App.tsx`, `NAV` entry → text in en/et/ru, tests in `server/tests/`.
 
 ## Rules
 
