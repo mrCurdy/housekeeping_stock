@@ -9,7 +9,8 @@ and makes one commit. Steps run in order.
 With many rooms the `/rooms` page (`docs/plan-roomcards.md`) gets long. Room numbers have 3 digits
 and the first one is the hotel level (101 → level 1). Staff want to see one level at a time, find
 the rooms that need attention, and see which rooms are due a general cleaning. It is all a view
-of data already loaded: no server, storage or API change.
+of data already loaded: no server, storage or API change (except step 3, which makes adding a
+room admin-only).
 
 ## Decisions (confirmed with the user)
 
@@ -83,6 +84,50 @@ of data already loaded: no server, storage or API change.
     - "Show all" resets the filters.
   - Docs: `docs/structure.md` (file map under `pages/rooms/`, the `/rooms` page section) and the
     `ui` skill if it lists page examples. Tick the plan.
+
+- [ ] **3. Search instead of "add room"; Add room moves to Settings** (skills `ui`, `i18n`, `auth`)
+  - Added by the user after step 2. Decisions (confirmed):
+    - **Search field** on the Rooms page, where `NewRoomForm` is now (above the filter bar, always
+      shown when there are rooms). Case-insensitive, trimmed; empty = no search.
+      - **Number:** prefix match, digits in order: `3` → 301, 315 (not 103); `30` → 301–309;
+        `001` → 001.
+      - **Type:** the room type's name starts with the query (`dou` → Double rooms). A room matches
+        when its number **or** its type name matches.
+      - **While a search is typed the level buttons are ignored** (search across all levels; the
+        active level stays selected and applies again when the search is cleared). Sort and
+        hide-green still apply.
+      - Not remembered: the search starts empty on each visit (level/sort/hide-green stay in
+        `localStorage` as before). An × clears it (`ClearableInput` or the `Input` with a clear
+        button).
+      - "No rooms match" → **Show all** also clears the search.
+    - **Adding a room is admin-only and lives in Settings.** The room-card setup card gets an
+      **Add room** button that opens a `Modal` with room number, type (`typeOptions`) and note,
+      Cancel / Add. A taken number shows the error in the dialog before sending (`roomExists`). The
+      Rooms page no longer has `NewRoomForm`; workers keep editing a card's note, statuses,
+      cleanings and ✎ number/type/delete as now.
+  - `roomView.ts`: `matchesSearch(room, query, types)` and a `search` field in `viewRooms`'s input
+    (not in the stored `RoomView`). Tests in `roomView.test.ts`: `3` matches 301 and not 103; `30`;
+    type prefix (`dou`, case-insensitive); a search ignores the level filter but keeps sort and
+    hide-green; empty/space-only query = no search.
+  - Rooms page: a `RoomSearch` field (or inside `RoomFilters`), placeholder "Room number or type".
+    Remove `NewRoomForm` from `Rooms.tsx`. The empty state for no rooms points the admin to
+    Settings (`openSettings` link, as the no-units one does) and tells a worker to ask the admin.
+  - Settings: turn `pages/rooms/NewRoomForm.tsx` into `pages/settings/AddRoomDialog.tsx` (number,
+    type, note) opened from an "Add room" button in `RoomSetupCard`. `addRoom` in `mutations.ts`
+    sends the note too (the create schema already takes `note`; check).
+  - **Server:** `POST /rooms` now needs `allow('setup')` instead of `rooms`. `PATCH`/`DELETE` and
+    the unit-status/cleaning routes stay `rooms`. Tests: move the worker "may create a room" case
+    to a 403 case in `tests/auth.test.ts`; worker room cases in `rooms.test.ts` create their room
+    as admin first.
+  - `shared/src/auth.ts` comment and the `auth` skill matrix: `rooms` = edit cards (note, number,
+    type, delete), statuses, cleanings; adding rooms is `setup`.
+  - Text in en/et/ru (`rooms.filter.search*`, the dialog under `settings.rooms.addRoom*`); remove
+    keys that become unused.
+  - Client tests: `Rooms.test.tsx`: typing `3` shows only 3xx; a type name; search ignores the level;
+    × clears; no add-room form on the page. `Settings.test.tsx`: Add room → dialog → Add sends
+    `POST /rooms` with number/type/note, Cancel sends nothing, a taken number shows the error.
+  - Docs: `docs/structure.md` (file map: the moved file, `/rooms` and `/settings` sections, the
+    API line for `POST /rooms`), README's `/rooms` line if it mentions adding.
 
 ## Token rules for these sessions
 
