@@ -141,7 +141,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
 
   - Done: the row aria-labels reuse `rooms.edit(n)` / `rooms.remove(n)` ("Edit room N" / "Delete room N"), so only `settings.rooms.roomList`, `noRooms` and `editRoomTitle` are new. Edit closes at once (optimistic `updateRoom`); Save with nothing changed sends nothing.
 
-- [ ] **6. Split the worker role into Housekeeper and Reception** (skills `auth`, `sqlite-db`,
+- [x] **6. Split the worker role into Housekeeper and Reception** (skills `auth`, `sqlite-db`,
       `ui`, `i18n`)
   - Decisions (confirmed with the user): `worker` is replaced by two PIN roles, **housekeeper**
     (ru "горничная") and **reception** (ru "консьерж"; en "Reception", et "Vastuvõtt" — check the
@@ -172,6 +172,15 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     Settings shows three PIN forms; NAV per role. Update every test that logs in as `worker`.
   - Docs: `docs/structure.md` (role matrix, auth section), `.claude/skills/auth`, CLAUDE.md's
     first-start PINs line and the README.
+
+  - Done: the home page is the first NAV entry a role may land on; `/stock` lands only with `daily`
+    (`home: 'daily'`), so admin → /stock, housekeeper → /counter, reception → /checklist. `AppShell`
+    does every role redirect (also for `/rooms`, `/cleaning`, `/settings`; their own `Navigate`s
+    are gone, so a housekeeper on /rooms now lands on /counter, not /cleaning). Without `daily` the
+    Stock figures and departures are disabled fields. PIN texts are keyed by role
+    (`settings.pins.label/hint/changed[role]`); no separate role-name texts yet (step 7's
+    RolesCard can add them). A PIN change error says "Another role already has this PIN".
+    `seedPins`' spare-PIN fallback applies to any role whose env/default PIN is taken.
 
 - [ ] **7. Role permissions editable in Settings** (skills `auth`, `sqlite-db`, `ui`, `i18n`)
   - Decision (confirmed with the user): the admin can change what housekeeper and reception may

@@ -35,7 +35,10 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
   const { t, locale } = useI18n();
   const tx = t.stock.items;
   const roomStatus = useRoomStatus();
-  const setup = useAuth().can('setup');
+  const { can } = useAuth();
+  const setup = can('setup');
+  /** Without `daily` the figures are shown but can't be typed (the server would refuse). */
+  const daily = can('daily');
 
   /** Saves one typed figure; `parse` decides what is a valid number. */
   const save =
@@ -100,9 +103,12 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
                         rec?.mc != null ? 'val-manual' : 'val-calc',
                       )}
                       value={rec?.mc ?? math.autoConsumption(item, date) + (rec?.c ?? 0)}
+                      disabled={!daily}
                       onCommit={save(item.id, 'mc', parseNumber)}
                       onClear={
-                        rec?.mc != null ? () => patchRecord(item.id, date, { mc: null }) : undefined
+                        daily && rec?.mc != null
+                          ? () => patchRecord(item.id, date, { mc: null })
+                          : undefined
                       }
                     />
                   </Td>
@@ -115,6 +121,7 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
                       aria-label={tx.incomeOf(item.name)}
                       className="no-spin h-9 text-right"
                       value={rec?.i}
+                      disabled={!daily}
                       onCommit={save(item.id, 'i', parseQty)}
                     />
                   </Td>
@@ -129,9 +136,12 @@ export function ItemsCard({ grip }: { grip?: ReactNode }) {
                         rec?.m != null ? 'val-manual' : rooms ? 'val-rooms' : 'val-calc',
                       )}
                       value={math.calculateTotal(item.id, date)}
+                      disabled={!daily}
                       onCommit={save(item.id, 'm', parseNumber)}
                       onClear={
-                        rec?.m != null ? () => patchRecord(item.id, date, { m: null }) : undefined
+                        daily && rec?.m != null
+                          ? () => patchRecord(item.id, date, { m: null })
+                          : undefined
                       }
                     />
                     {rooms && (

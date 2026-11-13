@@ -1,11 +1,14 @@
 import { z } from 'zod';
 
-/** `counter` is a session opened from the admin's QR code: it may only count rooms today. */
-export const ROLES = ['admin', 'worker', 'counter'] as const;
+/**
+ * `housekeeper` cleans and counts rooms, `reception` keeps the checklist (both log in with a PIN).
+ * `counter` is a session opened from the admin's QR code: it may only count rooms today.
+ */
+export const ROLES = ['admin', 'housekeeper', 'reception', 'counter'] as const;
 export type Role = (typeof ROLES)[number];
 
 /** The roles that log in with a PIN (one PIN each). */
-export const PIN_ROLES = ['admin', 'worker'] as const;
+export const PIN_ROLES = ['admin', 'housekeeper', 'reception'] as const;
 export type PinRole = (typeof PIN_ROLES)[number];
 
 /**
@@ -29,13 +32,14 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 const MATRIX: Record<Role, readonly Permission[]> = {
   admin: PERMISSIONS,
-  worker: ['daily', 'checklist', 'count', 'cleaning'],
+  housekeeper: ['cleaning', 'count'],
+  reception: ['checklist'],
   counter: ['count'], // and only for today: see `todayOnly`
 };
 
 /** The single permission check, used by the server guards and to hide UI. */
 export const can = (role: Role | null | undefined, perm: Permission): boolean =>
-  !!role && MATRIX[role].includes(perm);
+  !!role && (MATRIX[role]?.includes(perm) ?? false);
 
 /** Roles that may only change today's data (the counts route checks it; the UI locks the date). */
 export const todayOnly = (role: Role | null | undefined): boolean => role === 'counter';

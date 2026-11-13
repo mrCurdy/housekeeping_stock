@@ -14,7 +14,7 @@ and shared helpers in `createRows`, `namedRepo`), one repo file per area (`items
 `api.test.ts` uses one DB for the whole file: a new test there creates its own records, since earlier
 tests' data is still present.
 
-## Schema (migrations 1–5)
+## Schema (migrations 1–6; 6 renamed the `worker` PIN and sessions to `housekeeper`)
 
 | table                          | columns                                                              | notes                                                                                                                                                                                |
 | ------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

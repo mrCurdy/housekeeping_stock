@@ -8,9 +8,10 @@ import { loadConfig } from '../src/config';
 import { createContext } from '../src/context';
 import { createDb } from '../src/db';
 
-/** The PINs a test database starts with (the defaults when ADMIN_PIN/WORKER_PIN are unset). */
+/** The PINs a test database starts with (the defaults when the *_PIN variables are unset). */
 export const ADMIN_PIN = '1234';
-export const WORKER_PIN = '0000';
+export const HOUSEKEEPER_PIN = '1111';
+export const RECEPTION_PIN = '0000';
 
 /**
  * A fresh app on an empty SQLite database in a temp dir. `before` runs first with the dir

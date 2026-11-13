@@ -1,9 +1,8 @@
 import { DoorOpen, LayoutList, SearchX } from 'lucide-react';
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router';
+import { Link } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, Button, buttonVariants, Card, EmptyState, Spinner } from '@/components/ui';
-import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { RoomCard } from './rooms/RoomCard';
@@ -14,7 +13,7 @@ import { roomLevels, viewRooms } from './rooms/roomView';
 import { useRoomView } from './rooms/useRoomView';
 
 /**
- * /rooms ("Room statuses", admin only; anyone else is redirected): one card per hotel room (level
+ * /rooms ("Room statuses", admin only; `AppShell` redirects anyone else): one card per hotel room (level
  * by level) with its note and unit statuses, under a search and a filter bar (level, the attention
  * sort, hide-green, full cards or compact tiles; `rooms/roomView.ts`). In compact mode one tile at
  * a time opens as its full card. Rooms are added, and units, statuses, types and thresholds set
@@ -22,7 +21,6 @@ import { useRoomView } from './rooms/useRoomView';
  */
 export default function Rooms() {
   const { data, loading, loadError, reload } = useStock();
-  const { can } = useAuth();
   const { t } = useI18n();
   const tx = t.rooms;
   const settingsLink = (
@@ -35,7 +33,6 @@ export default function Rooms() {
   const [search, setSearch] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
 
-  if (!can('setup')) return <Navigate to="/cleaning" replace />;
   const rooms = viewRooms(data, { ...view, search });
   // the open tile closes when the filters or search hide it (it stays closed if it comes back)
   if (openId !== null && !rooms.some((r) => r.id === openId)) setOpenId(null);

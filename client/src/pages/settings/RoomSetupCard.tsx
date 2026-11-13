@@ -25,7 +25,7 @@ import { MasterList, type MasterRow } from './MasterList';
  * The master layout every room card shares (admin, `setup`): units, statuses (name + colour),
  * room types and the general-cleaning thresholds. "Add room" opens `RoomDialog`; the "Rooms" list
  * under it (level order) edits a card's number/type/note in the same dialog or removes the card
- * (confirmed). New cards are admin-only; workers edit them on /rooms.
+ * (confirmed). New cards are admin-only; the admin also edits them on /rooms.
  */
 export function RoomSetupCard() {
   const { t } = useI18n();

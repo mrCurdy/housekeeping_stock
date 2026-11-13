@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 "Fomka" (formerly "Stock Monitor") is a standalone tool for tracking a hotel's daily housekeeping stock (linens, amenities, etc.) per item. Part of the consumption comes from guest-group departures.
 
 - It isn't connected to any hotel system.
-- Login is a light 4-digit PIN: one PIN for the admin, one for the worker, plus a QR link that opens today's Counter.
+- Login is a light 4-digit PIN: one PIN each for the admin, the housekeeper and reception, plus a QR link that opens today's Counter.
 - Everything is stored in one SQLite file.
 
 The user wants it simple and lightweight but easy to extend.
@@ -27,7 +27,7 @@ docker compose up --build -d # http://localhost:3000, data in the app-data volum
 
 Before committing: `npm run lint && npm run typecheck && npm test` (`npm run format` for Prettier).
 
-First-start PINs: admin `1234`, worker `0000` (or `ADMIN_PIN`/`WORKER_PIN` from `.env`, see `.env.example`). The DB is `data/stock.db`.
+First-start PINs: admin `1234`, housekeeper `1111`, reception `0000` (or `ADMIN_PIN`/`HOUSEKEEPER_PIN`/`RECEPTION_PIN` from `.env`, see `.env.example`). The DB is `data/stock.db`.
 
 Deploying: the `production` branch is the deployable one; `./deploy.sh` on the server pulls it, copies the DB to `backups/stock-<time>.db`, rebuilds the Docker image and rolls back if the health check fails.
 

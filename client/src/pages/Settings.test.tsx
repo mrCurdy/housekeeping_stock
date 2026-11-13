@@ -55,10 +55,21 @@ const pinPuts = (fetch: ReturnType<typeof mockApi>) =>
   fetch.mock.calls.filter(([url, init]) => url === '/api/auth/pins' && init?.method === 'PUT');
 
 describe('Settings: PINs', () => {
+  it('has a PIN form for each role', async () => {
+    adminApi();
+    settings();
+    for (const name of ['Admin PIN', 'Housekeeper PIN', 'Reception PIN']) {
+      expect(await screen.findByRole('form', { name })).toBeInTheDocument();
+    }
+    expect(
+      screen.getByText('Every reception device will be logged out and needs the new PIN.'),
+    ).toBeInTheDocument();
+  });
+
   it('needs exactly 4 digits', async () => {
     const fetch = adminApi();
     settings();
-    await fill(await screen.findByRole('form', { name: 'Worker PIN' }), '123', '123');
+    await fill(await screen.findByRole('form', { name: 'Housekeeper PIN' }), '123', '123');
     expect(await screen.findByText('Use 4 digits')).toBeInTheDocument();
     expect(pinPuts(fetch)).toHaveLength(0);
   });
@@ -66,31 +77,29 @@ describe('Settings: PINs', () => {
   it('needs the PIN typed twice the same', async () => {
     const fetch = adminApi();
     settings();
-    await fill(await screen.findByRole('form', { name: 'Worker PIN' }), '1111', '2222');
+    await fill(await screen.findByRole('form', { name: 'Housekeeper PIN' }), '1111', '2222');
     expect(await screen.findByText('The PINs do not match')).toBeInTheDocument();
     expect(pinPuts(fetch)).toHaveLength(0);
   });
 
-  it('saves a new worker PIN and clears the form', async () => {
+  it('saves a new reception PIN and clears the form', async () => {
     const fetch = adminApi();
     settings();
-    const form = await screen.findByRole('form', { name: 'Worker PIN' });
+    const form = await screen.findByRole('form', { name: 'Reception PIN' });
     await fill(form, '5678', '5678');
-    expect(await screen.findByText('Worker PIN changed')).toBeInTheDocument();
+    expect(await screen.findByText('Reception PIN changed')).toBeInTheDocument();
     expect(JSON.parse(pinPuts(fetch)[0]?.[1]?.body as string)).toEqual({
-      role: 'worker',
+      role: 'reception',
       pin: '5678',
     });
     expect(within(form).getByLabelText('New PIN')).toHaveValue('');
   });
 
-  it('explains when the PIN is the same as the other role', async () => {
+  it('explains when another role has the PIN', async () => {
     adminApi(() => ({ status: 400, body: { error: { code: 'BAD_REQUEST', message: 'x' } } }));
     settings();
     await fill(await screen.findByRole('form', { name: 'Admin PIN' }), '0000', '0000');
-    expect(
-      await screen.findByText('The admin and worker PINs must be different'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Another role already has this PIN')).toBeInTheDocument();
   });
 });
 

@@ -131,7 +131,7 @@ describe('checklist', () => {
   });
 
   it('salutes when the last task of the (only) group is ticked', async () => {
-    start('worker');
+    start('reception');
     const user = userEvent.setup();
     const { default: App } = await import('../App');
     const { container } = render(<App />);
@@ -246,7 +246,7 @@ describe('checklist', () => {
     });
 
     it('salutes when a group is finished', async () => {
-      start('worker', groups, grouped);
+      start('reception', groups, grouped);
       const user = userEvent.setup();
       const { default: App } = await import('../App');
       const { container } = render(<App />);
@@ -259,8 +259,8 @@ describe('checklist', () => {
     });
   });
 
-  it('workers see no grips', async () => {
-    start('worker');
+  it('reception sees no grips', async () => {
+    start('reception');
     const { default: App } = await import('../App');
     render(<App />);
     expect(await screen.findByRole('checkbox', { name: 'Beds' })).toBeInTheDocument();
@@ -282,7 +282,7 @@ describe('checklist with the shared fixture', () => {
   };
 
   it('a tick sends PUT /checks/<day>/<task>', async () => {
-    const fetch = mockApp('worker', undefined, ticking());
+    const fetch = mockApp('reception', undefined, ticking());
     const user = userEvent.setup();
     const { default: App } = await import('../App');
     render(<App />);
@@ -324,7 +324,7 @@ describe('checklist with the shared fixture', () => {
   });
 
   it("shows the previous day's note read-only and edits only today's", async () => {
-    const fetch = mockApp('worker');
+    const fetch = mockApp('reception');
     const user = userEvent.setup();
     const { default: App } = await import('../App');
     render(<App />);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addDays, formatDate, todayLocal } from '@app/shared';
-import { setup, WORKER_PIN, type TestEnv } from './helpers';
+import { setup, HOUSEKEEPER_PIN, type TestEnv } from './helpers';
 
 describe('QR counter access', () => {
   let env: TestEnv;
@@ -79,7 +79,7 @@ describe('QR counter access', () => {
       () => c.post('/api/locations').send({ name: 'F2' }),
       () => c.post('/api/tasks').send({ name: 'Bins', from: today }),
       () => c.post('/api/restore').send({}),
-      () => c.put('/api/auth/pins').send({ role: 'worker', pin: '5555' }),
+      () => c.put('/api/auth/pins').send({ role: 'housekeeper', pin: '5555' }),
       () => c.get('/api/auth/qr'),
       () => c.post('/api/auth/qr'),
       () => c.delete('/api/auth/qr'),
@@ -105,7 +105,7 @@ describe('QR counter access', () => {
   });
 
   it('only the admin manages QR codes', async () => {
-    const w = await env.login(WORKER_PIN);
+    const w = await env.login(HOUSEKEEPER_PIN);
     await w.get('/api/auth/qr').expect(403);
     await w.post('/api/auth/qr').expect(403);
     await w.delete('/api/auth/qr').expect(403);
@@ -126,7 +126,7 @@ describe('QR counter access', () => {
   it('revoking ends the link and its sessions, but not the PIN logins', async () => {
     const { token } = (await env.api().post('/api/auth/qr').expect(201)).body;
     const c = await link(token);
-    const w = await env.login(WORKER_PIN);
+    const w = await env.login(HOUSEKEEPER_PIN);
     await env.api().delete('/api/auth/qr').expect(204);
 
     await c.get('/api/data').expect(401);

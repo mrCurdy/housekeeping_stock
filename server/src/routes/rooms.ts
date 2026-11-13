@@ -53,7 +53,7 @@ function orderedRoutes<T>(r: Router, path: string, repo: OrderedRepo<T>, what: s
 
 /**
  * Room cards and their master setup (`setup`: admin); general cleanings (`cleaning`: admin and
- * worker). Mounted at '/',
+ * housekeeper). Mounted at '/',
  * so every route carries its own guard.
  */
 export function roomsRouter({ db }: AppContext) {

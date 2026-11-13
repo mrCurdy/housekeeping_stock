@@ -210,9 +210,9 @@ describe('cleaning page', () => {
   });
 });
 
-describe('cleaning page for a worker', () => {
-  it('a worker sees the page and its NAV entry, but no Room statuses', async () => {
-    mockApp('worker', hotel());
+describe('cleaning page for a housekeeper', () => {
+  it('a housekeeper sees the page and its NAV entry, but no Room statuses', async () => {
+    mockApp('housekeeper', hotel());
     await renderApp();
     await loaded();
     expect(window.location.pathname).toBe('/cleaning');
@@ -220,8 +220,8 @@ describe('cleaning page for a worker', () => {
     expect(screen.queryByRole('link', { name: 'Room statuses' })).toBeNull();
   });
 
-  it('no rooms: a worker is told to ask the admin', async () => {
-    mockApp('worker', hotel({ rooms: [], cleanings: {} }));
+  it('no rooms: a housekeeper is told to ask the admin', async () => {
+    mockApp('housekeeper', hotel({ rooms: [], cleanings: {} }));
     await renderApp();
     expect(await screen.findByText('No rooms yet')).toBeInTheDocument();
     expect(screen.getByText('Ask the admin to set this up.')).toBeInTheDocument();

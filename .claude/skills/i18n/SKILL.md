@@ -59,7 +59,9 @@ The server stays English. `apiErrorMessage(err, t)` in `lib/api.ts` maps error c
 | Instructions                           | Juhend                                 | Инструкция                        |
 | Note for the next shift                | Kommentaar järgmisele vahetusele       | Комментарий для следующей смены   |
 | Settings                               | Seaded                                 | Настройки                         |
-| Admin / Worker (role)                  | administraator / töötaja               | администратор / сотрудник         |
+| Admin (role)                           | administraator                         | администратор                     |
+| Housekeeper (role)                     | toateenija                             | горничная                         |
+| Reception (role)                       | vastuvõtt                              | консьерж                          |
 | PIN / QR code                          | PIN / QR-kood                          | PIN / QR-код                      |
 | Revoke                                 | Tühista                                | Отозвать                          |
 

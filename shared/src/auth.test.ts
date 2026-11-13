@@ -15,9 +15,21 @@ describe('can', () => {
     for (const p of PERMISSIONS) expect(can('admin', p)).toBe(true);
   });
 
-  it('worker may do the daily work and register cleanings only', () => {
-    const allowed = PERMISSIONS.filter((p) => can('worker', p));
-    expect(allowed.sort()).toEqual(['checklist', 'cleaning', 'count', 'daily']);
+  it('a housekeeper may register cleanings and count rooms only', () => {
+    const allowed = PERMISSIONS.filter((p) => can('housekeeper', p));
+    expect(allowed.sort()).toEqual(['cleaning', 'count']);
+  });
+
+  it('reception may keep the checklist only', () => {
+    expect(PERMISSIONS.filter((p) => can('reception', p))).toEqual(['checklist']);
+  });
+
+  it('nobody but the admin does the daily stock work', () => {
+    expect(ROLES.filter((r) => can(r, 'daily'))).toEqual(['admin']);
+  });
+
+  it('an unknown role (an old session) may do nothing', () => {
+    for (const p of PERMISSIONS) expect(can('worker' as never, p)).toBe(false);
   });
 
   it('a QR counter session may only count', () => {
@@ -28,8 +40,8 @@ describe('can', () => {
     for (const p of PERMISSIONS) expect(can(null, p)).toBe(false);
   });
 
-  it('knows the three roles', () => {
-    expect(ROLES).toEqual(['admin', 'worker', 'counter']);
+  it('knows the four roles', () => {
+    expect(ROLES).toEqual(['admin', 'housekeeper', 'reception', 'counter']);
   });
 });
 
@@ -37,7 +49,8 @@ describe('todayOnly', () => {
   it('only the QR counter session is limited to today', () => {
     expect(todayOnly('counter')).toBe(true);
     expect(todayOnly('admin')).toBe(false);
-    expect(todayOnly('worker')).toBe(false);
+    expect(todayOnly('housekeeper')).toBe(false);
+    expect(todayOnly('reception')).toBe(false);
     expect(todayOnly(null)).toBe(false);
   });
 });
@@ -62,7 +75,9 @@ describe('pinSchema', () => {
   it('request schemas', () => {
     expect(loginSchema.safeParse({ pin: '1234' }).success).toBe(true);
     expect(loginSchema.safeParse({ pin: 1234 }).success).toBe(false);
-    expect(pinChangeSchema.safeParse({ role: 'worker', pin: '1111' }).success).toBe(true);
+    expect(pinChangeSchema.safeParse({ role: 'housekeeper', pin: '1111' }).success).toBe(true);
+    expect(pinChangeSchema.safeParse({ role: 'reception', pin: '1111' }).success).toBe(true);
+    expect(pinChangeSchema.safeParse({ role: 'worker', pin: '1111' }).success).toBe(false);
     expect(pinChangeSchema.safeParse({ role: 'counter', pin: '1111' }).success).toBe(false);
   });
 });

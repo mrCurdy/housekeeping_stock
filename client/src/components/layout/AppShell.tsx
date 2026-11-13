@@ -26,19 +26,37 @@ interface NavItem {
   to: string;
   label: (t: Messages) => string;
   icon: ComponentType<{ className?: string }>;
-  /** Shown only to roles with this permission */
+  /** Shown only to roles with this permission; the others are redirected to their home page. */
   perm?: Permission;
+  /** A role lands here (on `/`, or from a page it can't open) only with this permission (default: `perm`). */
+  home?: Permission;
 }
 
 /** Add pages to the sidebar here (and their route in App.tsx). */
 const NAV: NavItem[] = [
-  { to: '/stock', label: (t) => t.nav.stock, icon: Package },
-  { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList },
-  { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks },
+  // open to every role, but read-only without `daily`, so only the admin lands here
+  { to: '/stock', label: (t) => t.nav.stock, icon: Package, home: 'daily' },
+  { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList, perm: 'count' },
+  { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks, perm: 'checklist' },
   { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'setup' },
   { to: '/cleaning', label: (t) => t.nav.cleaning, icon: Broom, perm: 'cleaning' },
   { to: '/settings', label: (t) => t.nav.settings, icon: Settings, perm: 'pins' },
 ];
+
+type Can = (perm: Permission) => boolean;
+
+/** The page a role starts on: the first NAV entry it may land on (admin /stock, housekeeper /counter, reception /checklist). */
+const homePath = (can: Can) =>
+  NAV.find((n) => {
+    const perm = n.home ?? n.perm;
+    return !perm || can(perm);
+  })?.to ?? '/stock';
+
+/** The index route: sends `/` to the role's home page. */
+export function HomeRedirect() {
+  const { can } = useAuth();
+  return <Navigate to={homePath(can)} replace />;
+}
 
 export function AppShell() {
   const { t } = useI18n();
@@ -48,6 +66,9 @@ export function AppShell() {
   // Counter mode (QR session): only the Counter, with no menu or toolbar
   const counterOnly = todayOnly(role);
   if (counterOnly && !pathname.startsWith('/counter')) return <Navigate to="/counter" replace />;
+  // A page this role can't use → its home page
+  const page = NAV.find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`));
+  if (page?.perm && !can(page.perm)) return <Navigate to={homePath(can)} replace />;
 
   const sidebar = (
     <nav className="flex flex-col gap-1 p-3">

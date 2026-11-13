@@ -31,7 +31,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 
 - `types.ts`: `StockData` and its parts (see the data model below). `HISTORY_DAYS` (30) is the one history window: the date switcher (`DAYS_BACK`), `CHECKLIST_DAYS` and stock pruning use it.
 - `schemas.ts` (211): the zod request schemas. `backupSchema` reads old-format backups with `''` blanks. `normalizeStockData`/`cleanRecord` make sure only real values get stored. `pruneChecklist` drops ticks and notes older than `CHECKLIST_DAYS`.
-- `auth.ts`: roles, `PERMISSIONS`, `can(role, perm)`, `todayOnly(role)`, `pinSchema`, login/link schemas.
+- `auth.ts`: roles (`admin`, `housekeeper`, `reception`, `counter`; `PIN_ROLES` = the first three), `PERMISSIONS`, the fixed role matrix (housekeeper `cleaning` + `count`, reception `checklist`, only the admin `daily`), `can(role, perm)` (an unknown role, e.g. an old `worker` session, may do nothing), `todayOnly(role)`, `pinSchema`, login/link schemas.
 - `stock.ts` (+ test): `createStockMath(state, { minDateStr })` → `dayFigures`, `calculateTotal`, `autoConsumption`, `roomSum`, `series`.
 - `prune.ts` (+ test): `pruneStock(data, keepFrom)` drops stock data before `keepFrom` and turns the day before it into a carried-over count (`m` = that day's total), so no later figure changes. The SQLite driver calls it (`prune`).
 - `checklist.ts` (+ test): `newTask`, `tasksOn`, `isTaskOn`, `editTask`, `removeTaskIn`, `pruneTasks`, `itemCheckKey`/`checkTaskId` (ticks of checklist lines). Groups: `taskGroupList` (never empty), `groupOf`, `tasksByGroup`, `moveTaskTo` + `applyTaskMove` (drag/arrow reorder, also into another group), `removeTaskGroupIn`.
@@ -44,7 +44,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `config.ts`: env validated with zod. `context.ts`: `{ config, db }` for the routes.
 - `build.ts`: `{ builtAt, commit }` stamped by `tsup.config.ts` at build time (`commit: 'source'` when run from source), shown by `GET /health`.
 - `auth/`:
-  - `pins.ts`: scrypt hashes, `roleForPin`, `seedPins`.
+  - `pins.ts`: scrypt hashes, `roleForPin`, `pinTakenBy` (the other role with this PIN), `seedPins` (a role without a PIN gets its env/default one; if another role already has it, the first free of `0000`/`1111`/`2222`… and a warning).
   - `sessions.ts`: the `sm_session` cookie (a SHA-256 of the token is stored).
   - `middleware.ts`: `session`, `requireAuth`, `allow(perm)`.
 - `db/types.ts`: the `Db` interface (routes use only this). `db/index.ts`: creates the driver.
@@ -74,7 +74,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `tests/`:
   - `helpers.ts`: app + temp DB per `setup()` call.
   - `api.test.ts` (310): the data routes. **One DB for the whole file** (`beforeAll`): each test sees what earlier tests left. A new test creates its own records (and removes them if later tests count rows) instead of changing the shared ones.
-  - `auth.test.ts`, `qr.test.ts`.
+  - `auth.test.ts` (each role's allowed and refused routes, PIN changes, seeding), `qr.test.ts`, `roles.test.ts` (upgrading a DB with a `worker` PIN and session; the reception PIN collision).
   - `sqlite.test.ts`: the driver, migrations, import and backups.
   - `seed.test.ts`: the demo data's shape, valid ids, positive totals, and the refuse/force rule.
 
@@ -84,7 +84,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - Login and sessions:
     - `POST /auth/login` `{ pin }` is rate-limited to 10 wrong PINs per 15 min.
     - `GET /me` → `{ role }`. `POST /logout`.
-    - `PUT /pins` `{ role, pin }` is admin-only. The PINs must differ, and it logs out that role's other sessions.
+    - `PUT /pins` `{ role, pin }` is admin-only. The PIN must differ from every other role's (400), and it logs out that role's other sessions.
   - QR (admin-only):
     - `GET`, `POST` and `DELETE /qr`.
     - `POST` answers `{ token }` once, and revokes the old link and its sessions.
@@ -98,7 +98,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - **`rooms`:**
   - `POST /rooms` `{ number, type?, note? }` needs `setup` (admin only). A duplicate number → 409.
   - `setup` (admin only) also: `PATCH /rooms/:id` (`type: ''`/`note: ''` clear), `DELETE /rooms/:id`, `PUT /rooms/:id/units/:unitId` `{ status, by, note? }`. A number another room has → 409.
-  - `cleaning` permission (admin, worker): `POST /rooms/:id/cleanings` `{ date, by }` (returns the room's cleanings, newest first).
+  - `cleaning` permission (admin, housekeeper): `POST /rooms/:id/cleanings` `{ date, by }` (returns the room's cleanings, newest first).
   - `setup` permission: `/room-units`, `/room-types` (`{ name }`) and `/room-statuses` (`{ name, color }`), each `POST`, `PATCH /:id`, `DELETE /:id`, `PUT /order` `{ ids }`. Deleting the last status → 409.
 - **`daily`:**
   - `PATCH /records/:itemId/:date`.
@@ -109,7 +109,8 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 #### Server details
 
 - **Env:**
-  - `ADMIN_PIN`/`WORKER_PIN` are the PINs on first start (default 1234/0000).
+  - `ADMIN_PIN`/`HOUSEKEEPER_PIN`/`RECEPTION_PIN` are the PINs on first start (default 1234/1111/0000; all set ones must differ). `WORKER_PIN` is the old name of `HOUSEKEEPER_PIN`.
+  - Migration 6 renamed the old `worker` PIN and sessions to `housekeeper`.
   - `SQLITE_PATH` defaults to `data/stock.db`.
   - `BACKUP_DAYS` sets how long the daily `data/backups/db-YYYY-MM-DD.json` snapshots are kept. A snapshot is written before the first change of each day.
 - **Old JSON data:** on the first start with an empty database, `JSON_DB_PATH` (the old `data/db.json`) is imported and renamed `db.json.imported`.
@@ -129,7 +130,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `components/`:
   - `Salute.tsx`: the fireworks (a canvas over the page): a rocket rises from the bottom centre, bursts in the middle and its sparks spell a word. Skipped with reduced motion.
 - `components/layout/`:
-  - `AppShell.tsx`: sidebar, `NAV`, header, counter-mode redirect.
+  - `AppShell.tsx`: sidebar, `NAV` (each entry's `perm`; `home` = where a role lands), header, counter-mode redirect, and the role redirect: a NAV page the role can't open (and `/`, via `HomeRedirect`) goes to its home page (admin `/stock`, housekeeper `/counter`, reception `/checklist`). Pages don't redirect themselves.
   - `PageHeader`, `DateSwitcher`, `LanguageSwitcher`, `ThemeToggle`, `PaletteToggle`.
 - `pages/`:
   - `Stock.tsx` + `stock/`:
@@ -150,7 +151,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `RoomSearch` (the search field with ×, not remembered), `LevelFilter` (the "Level" group of buttons, and `toggleProps` for an on/off `Button`; also used by `CleaningFilters`), `RoomFilters` (the bar: `LevelFilter`, the Needs attention first toggle, hide-green, and the "View" group: Full cards / Compact tiles icon buttons; on/off = `Button` primary/outline with `aria-pressed`), `useRoomView(levels)` (+ test; the view and `mode: 'full' | 'compact'` in `localStorage['rooms.view']`, try/catch; a stored level that no longer exists shows as All; no stored mode = compact below `sm` (`matchMedia('(max-width: 639px)')`), full otherwise).
     - `RoomTile` (the compact tile, a square `button` "Open room N": number, type and a wrench coloured by `worstStatus` (no wrench without units), a `role="img"` with the translated meaning). `RoomCard` takes an optional `onClose` (an × "Close room N") and `className` for the open tile.
   - `Cleaning.tsx` (+ test) + `cleaning/`: `CleaningTile` (a square `button` "Room N: Cleaned 3 days ago · Mari": number, broom (`Broom`) and the days, both the days and the border coloured by `cleaningDays`, "—" never), `CleaningFilters` (`LevelFilter` + the Dirty first toggle), `useCleaningView(levels)` (`{ level, dirtyFirst }` in `localStorage['cleaning.view']`, try/catch), `CleaningDialog` (`WhoDialog` with the latest cleaning, `CleaningHistory` and "Cleaned today" → `markCleaned`).
-  - `Settings.tsx` (+ test): the page and the admin redirect; `settings/`: `PinForm`, `QrCard`, `DataCard` (Excel / Backup / Restore), `SaluteCard`, `RoomSetupCard` (the room cards' master setup, `setup` only: an "Add room" button opening `RoomDialog` (number, type, note; a taken number shows the error before sending), then a "Rooms" list in `sortByLevel` order (a wrapped grid of small rows in a scroll box: number, type, ✎ opens the same `RoomDialog` in edit mode sending only the changed fields, 🗑 removes the card confirmed), units, statuses with a colour `Select`, room types, each a `MasterList` (rename in place, ↑/↓, remove confirmed, `AddForm`), plus `CleaningThresholds` (both days checked together, 0 ≤ green < yellow, before `updateSettings`)). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in"; on a touch screen (`pointer: coarse`) the field isn't focused (on open or after a wrong PIN), so only the keypad shows, not the OS keyboard. `NotFound.tsx`.
+  - `Settings.tsx` (+ test): the page (the admin-only redirect is `AppShell`'s); `settings/`: `PinForm`, `QrCard`, `DataCard` (Excel / Backup / Restore), `SaluteCard`, `RoomSetupCard` (the room cards' master setup, `setup` only: an "Add room" button opening `RoomDialog` (number, type, note; a taken number shows the error before sending), then a "Rooms" list in `sortByLevel` order (a wrapped grid of small rows in a scroll box: number, type, ✎ opens the same `RoomDialog` in edit mode sending only the changed fields, 🗑 removes the card confirmed), units, statuses with a colour `Select`, room types, each a `MasterList` (rename in place, ↑/↓, remove confirmed, `AddForm`), plus `CleaningThresholds` (both days checked together, 0 ≤ green < yellow, before `updateSettings`)). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in"; on a touch screen (`pointer: coarse`) the field isn't focused (on open or after a wrong PIN), so only the keypad shows, not the OS keyboard. `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
   - `format.ts`: `formatLongDate(date, locale)` ("Sat, 17 Oct 2026").
@@ -164,7 +165,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
 - `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
 - `styles/index.css`: tokens (incl. the 10 room status colours `--status-<colour>` and `-soft`, light and dark), iOS 16px fields, and the `val-*` / `no-spin` utilities.
-- `test/`: `setup.ts` (cleanup), `fetch.ts` (`mockApi`, `unauthorized`) and `fixtures.ts` (`stockFixture(extra)`: a small `StockData` with two items, three tasks and yesterday's note; `mockApp(role, data, route)`: `/auth/me` + `/data` + your routes; `today`, `yesterday`). Other tests sit next to their code: `src/CounterMode.test.tsx`, `context/AuthContext.test.tsx`, `context/StockContext.test.tsx`, `pages/*.test.tsx`.
+- `test/`: `setup.ts` (cleanup), `fetch.ts` (`mockApi`, `unauthorized`) and `fixtures.ts` (`stockFixture(extra)`: a small `StockData` with two items, three tasks and yesterday's note; `mockApp(role, data, route)`: `/auth/me` + `/data` + your routes; `today`, `yesterday`). Other tests sit next to their code: `src/CounterMode.test.tsx`, `src/Roles.test.tsx` (NAV, home page and redirects per role, the read-only Stock page; `vi.resetModules()` gives each test a fresh router), `context/AuthContext.test.tsx`, `context/StockContext.test.tsx`, `pages/*.test.tsx`.
 
 ### Root
 
@@ -243,7 +244,7 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
 - **`/stock`:** three cards in the order in `stockCards`, then the legend. While Departures and Stock are next to each other they share a row on wide screens (1fr / 2fr, in their order); the Overview always takes a full row.
   - With `setup` permission (admin) each card header has a grip: drag it onto the card whose place it should take (the card follows the pointer and the target is outlined), or press ↑/↓ on it. The order is the same for everyone (`PUT /stock-cards/order`). Hidden cards (Departures without groups, Overview without items) keep their place in the saved order.
   - Departures per group (⚙ opens items-per-departure).
-  - Items with Consumption / Income / Total stock for the selected day. × clears a manual value. Totals from room counts are blue, with a "2/3 rooms" caption.
+  - Items with Consumption / Income / Total stock for the selected day. × clears a manual value. Without `daily` (housekeeper, reception) the departures and figures are shown in disabled fields, with no ×. Totals from room counts are blue, with a "2/3 rooms" caption.
   - The Overview (`OverviewCard`):
     - has one column per navigable day up to tomorrow (further only to the selected day or the last future day with an entry) and scrolls sideways with item names pinned, on a full-size scrollbar (`scrollbar-thick`);
     - centres the selected day;
@@ -259,7 +260,7 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
 - **`/checklist`:**
   - The same tasks every day, ticked per day (so each day starts empty), with the tick time shown. Tasks with a description open accordion-style.
   - Below them, "Notes for the next shift" shows the previous day's note read-only above this day's `CommitTextarea`.
-  - Tasks are split into group cards ("Before 11", "Service"…), one `default` group to start with. Each card shows its own progress. With `tasks` permission: "Add group" below the cards; ✎ in a card's header renames it or deletes it (confirmed; its tasks move to the group above; the only group can't be deleted); the header grip drags the card (or ↑/↓). Workers don't see empty groups.
+  - Tasks are split into group cards ("Before 11", "Service"…), one `default` group to start with. Each card shows its own progress. With `tasks` permission: "Add group" below the cards; ✎ in a card's header renames it or deletes it (confirmed; its tasks move to the group above; the only group can't be deleted); the header grip drags the card (or ↑/↓). Roles without `tasks` don't see empty groups.
   - "New task" in each card adds to that group. While the whole checklist is empty the one card shows the empty state.
   - ✎ opens a task in place (`TaskEditor`: name, instructions, ↑/↓, remove, all from that day on). It saves only on Save, never on blur, because always-editable name fields led to accidental renames.
   - The instructions editor (`NoteEditor`) has buttons for bulleted / numbered lists, checklists, indent and outdent. Enter continues a list, Enter on an empty item ends it, Tab/Shift+Tab indent list lines.
@@ -273,15 +274,15 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
   - Changing a status opens `WhoDialog` (name required, optional note). Cancel sends nothing.
   - ✎ edits the number and type, or deletes the card (confirmed). A number another card has shows an error.
   - Rooms are added only by the admin, in Settings. Without units: a notice (the admin gets an "Open Settings" link). Without rooms: an empty state pointing to Settings.
-- **`/cleaning`** "Cleaning" (`cleaning` permission: admin and worker; the counter role doesn't get it): general cleanings in a dense grid of small square tiles (4 columns on a phone up to 12), the same on every screen (no Full / Compact).
+- **`/cleaning`** "Cleaning" (`cleaning` permission: admin and housekeeper; reception and the counter role don't get it): general cleanings in a dense grid of small square tiles (4 columns on a phone up to 12), the same on every screen (no Full / Compact).
   - A tile: the room number, and under it a broom with the days since the latest general cleaning (`0` today, counted from the real today, not the date switcher), coloured green / yellow / red by the thresholds; never cleaned = "—" in red. Its accessible name says it in words (`cleaningText`).
   - The room search as on `/rooms` (not remembered); the level buttons and "Dirty first" (most days first, never cleaned on top, ties in level order; pressed again = level order), both remembered per device. No match: "No rooms match" with Show all (clears the search and the level, keeps Dirty first).
   - Tapping a tile opens `CleaningDialog`: room number and type, the latest cleaning ("Cleaned 12 days ago · Anna" / "No general cleaning yet"), the last 10 cleanings, a required "Your name" (prefilled from `localStorage['rooms.who']`) and Cancel / Cleaned today (`POST /rooms/:id/cleanings` with today's date), then the fireworks play (`Salute`, the Settings text). Cancel sends nothing.
-  - No rooms: the admin gets an "Open Settings" link, a worker "Ask the admin to set this up."
+  - No rooms: the admin gets an "Open Settings" link, the housekeeper "Ask the admin to set this up."
 - **`/settings`** (admin only; others are redirected to `/stock`):
-  - The admin and worker PINs (each new PIN typed twice).
+  - The admin, housekeeper and reception PINs (each new PIN typed twice; another role's PIN → "Another role already has this PIN").
   - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.
-  - **Data and backups** (`DataCard`; Settings is admin-only, so workers have no Excel or Backup):
+  - **Data and backups** (`DataCard`; Settings is admin-only, so housekeeper and reception have no Excel or Backup):
     - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist (both only with items and days with data), and a "Cleanings" sheet when room cards exist: one row per room, level by level (`sortByLevel`), with number, type, last general cleaning, days ago, who and the earlier kept dates (newest first); never cleaned → "never", days and who empty. It says "No data" only with neither items nor room cards.
     - **Backup:** a JSON download of everything, room cards, unit statuses and cleanings included. Refused ("No data to back up yet") only when `hasData` is false.
     - **Restore** (`restore` permission): validates with `backupSchema`, asks for confirmation (the file's items, departure groups, count locations and room cards with how many have cleanings, counts of 0 left out), then replaces everything: counts, room statuses and cleanings included.

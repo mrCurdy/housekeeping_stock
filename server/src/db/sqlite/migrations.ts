@@ -115,4 +115,12 @@ export const migrations: { id: number; name: string; sql: string }[] = [
       CREATE INDEX cleanings_room ON cleanings (room_id, date);
     `,
   },
+  {
+    id: 6,
+    name: 'worker becomes housekeeper',
+    sql: `
+      UPDATE pins SET role = 'housekeeper' WHERE role = 'worker';
+      UPDATE sessions SET role = 'housekeeper' WHERE role = 'worker';
+    `,
+  },
 ];

@@ -360,18 +360,27 @@ export const et: Messages = {
     pins: {
       title: 'PIN-koodid',
       description:
-        'Kumbki roll logib sisse oma 4-kohalise PIN-koodiga. Need peavad olema erinevad.',
-      admin: 'Administraatori PIN',
-      worker: 'Töötaja PIN',
-      adminHint: 'Teised administraatori seadmed logitakse välja.',
-      workerHint: 'Kõik töötajate seadmed logitakse välja ja vajavad uut PIN-i.',
+        'Iga roll logib sisse oma 4-kohalise PIN-koodiga. Kõik PIN-koodid peavad olema erinevad.',
+      label: {
+        admin: 'Administraatori PIN',
+        housekeeper: 'Toateenija PIN',
+        reception: 'Vastuvõtu PIN',
+      },
+      hint: {
+        admin: 'Teised administraatori seadmed logitakse välja.',
+        housekeeper: 'Kõik toateenijate seadmed logitakse välja ja vajavad uut PIN-i.',
+        reception: 'Kõik vastuvõtu seadmed logitakse välja ja vajavad uut PIN-i.',
+      },
       newPin: 'Uus PIN',
       repeat: 'Korda uut PIN-i',
       useDigits: 'Sisesta 4 numbrit',
       mismatch: 'PIN-koodid ei kattu',
-      mustDiffer: 'Administraatori ja töötaja PIN peavad olema erinevad',
-      adminChanged: 'Administraatori PIN muudetud',
-      workerChanged: 'Töötaja PIN muudetud',
+      mustDiffer: 'See PIN on juba teisel rollil',
+      changed: {
+        admin: 'Administraatori PIN muudetud',
+        housekeeper: 'Toateenija PIN muudetud',
+        reception: 'Vastuvõtu PIN muudetud',
+      },
     },
     rooms: {
       title: 'Toakaardid',

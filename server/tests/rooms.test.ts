@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { setup, WORKER_PIN, type TestEnv } from './helpers';
+import { setup, HOUSEKEEPER_PIN, type TestEnv } from './helpers';
 
 describe('room cards API', () => {
   let env: TestEnv;
@@ -205,7 +205,7 @@ describe('room cards API', () => {
     expect(res.body).toMatchObject({ cleanGreenDays: 4, cleanYellowDays: 5 });
   });
 
-  it('the admin edits the card and statuses; a worker cleans a room the admin added', async () => {
+  it('the admin edits the card and statuses; a housekeeper cleans a room the admin added', async () => {
     const unit = (await env.api().post('/api/room-units').send({ name: 'Bed' }).expect(201)).body;
     const room = (await env.api().post('/api/rooms').send({ number: '7' }).expect(201)).body;
     await env.api().patch(`/api/rooms/${room.id}`).send({ note: 'Sea view' }).expect(200);
@@ -214,7 +214,7 @@ describe('room cards API', () => {
       .put(`/api/rooms/${room.id}/units/${unit.id}`)
       .send({ status: 'attention', by: 'Mari' })
       .expect(200);
-    const w = await env.login(WORKER_PIN);
+    const w = await env.login(HOUSEKEEPER_PIN);
     await w
       .post(`/api/rooms/${room.id}/cleanings`)
       .send({ date: '2026-01-01', by: 'Mari' })
