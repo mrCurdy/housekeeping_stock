@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { CommitInput, type CommitInputProps } from '@/components/ui';
+import { CommitInput, type CommitInputProps } from './CommitInput';
 import { useI18n } from '@/context/I18nContext';
 import { cn } from '@/lib/cn';
 

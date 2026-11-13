@@ -108,13 +108,11 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `context/`:
   - `AuthContext.tsx`: the session check, QR `?key=` exchange, Login screen until signed in. `useAuth()` → `{ role, can, logout }`.
   - `StockContext.tsx` (**338**): the dataset plus every mutation (`useStock()`), with optimistic updates, `send()` and polling (`POLL_MS`). See the `ui` skill. `StockContext.test.tsx`: optimistic edit, failure → toast + reload, a stale poll can't overwrite an edit (`version`), no poll while typing, `setCount` rethrows.
-  - `DateContext.tsx`: the selected day (−30…+7, locked in counter mode), plus `formatLongDate`.
+  - `DateContext.tsx`: the selected day (−30…+7, locked in counter mode).
   - `I18nContext.tsx`: `useI18n()` → `{ t, locale, lang, setLang }`.
   - `ConfirmContext.tsx`: `useConfirm()`. `ToastContext.tsx`: `useToast()`. `ThemeContext.tsx`: light/dark and palettes.
-- `components/ui/`: the UI kit (barrel `index.ts`; props are listed in the `ui` skill). `ui.test.tsx`.
+- `components/ui/`: the UI kit (barrel `index.ts`; props are listed in the `ui` skill), including `AddForm` (a "new name" field + Add button) and `ClearableInput` (a `CommitInput` with × to clear a manual value). `ui.test.tsx`.
 - `components/`:
-  - `AddForm.tsx`: a "new name" field + Add button.
-  - `ClearableInput.tsx`: a `CommitInput` with × to clear a manual value.
   - `Salute.tsx`: the fireworks (a canvas over the page): a rocket rises from the bottom centre, bursts in the middle and its sparks spell a word. Skipped with reduced motion.
 - `components/layout/`:
   - `AppShell.tsx`: sidebar, `NAV`, header, counter-mode redirect.
@@ -134,6 +132,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `Settings.tsx`: `PinForm`, `QrCard` and `SaluteCard` (+ test). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
+  - `format.ts`: `formatLongDate(date, locale)` ("Sat, 17 Oct 2026").
   - `numbers.ts`: `parseQty` (≥ 0) and `parseNumber`, both accepting `2,5`.
   - `useDragSort.ts`: drag-a-grip (or ↑/↓) reordering; a vertical list (the checklist group cards), or with `free` rows that may sit side by side, dropped on the row under the pointer (the Stock page cards).
   - `useListsDragSort.ts`: the same over several lists (the tasks of the checklist group cards): a row dragged onto another list's area lands there (`target` shows the drop line); ↑/↓ past a list's edge goes to the neighbouring list.
@@ -253,9 +252,5 @@ These are known and don't need to be copied. Fix one only when a task touches it
   - Every 15 s it polls all of `GET /api/data`.
   - This is fine for one hotel's data but grows with history, since stock data is never pruned.
   - Any change re-renders every page that uses `useStock()`.
-- **Placement:**
-  - `AddForm` and `ClearableInput` sit in `components/`, not in `components/ui/`.
-  - `formatLongDate` lives in `DateContext`, not in a `lib/format.ts`.
-  - `Settings.tsx` holds three features (`PinForm`, `QrCard`, `SaluteCard`).
-- **`client/src/lib/errors.ts`** (`fieldErrors`, `errorMessage`) is not imported anywhere: it's dead code.
+- **Placement:** `Settings.tsx` holds three features (`PinForm`, `QrCard`, `SaluteCard`).
 - **Client tests** cover login, settings, counter mode (incl. the room-done fireworks), the checklist (reorder, line ticks, list editing), i18n and the UI kit. `StockContext.test.tsx` covers the optimistic update, rollback and polling. `Stock.test.tsx` covers the card order and the Overview's per-room rows.

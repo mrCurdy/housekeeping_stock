@@ -2,7 +2,7 @@ import { formatDate, todayLocal } from '@app/shared';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatLongDate } from '@/context/DateContext';
+import { formatLongDate } from '@/lib/format';
 import { mockApi } from '@/test/fetch';
 
 const data = {

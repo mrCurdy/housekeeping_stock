@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { formatLongDate, useSelectedDate } from '@/context/DateContext';
+import { useSelectedDate } from '@/context/DateContext';
+import { formatLongDate } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 
 /** ‹ date › Today: picks the day every page works on. Just the date when it is locked to today. */

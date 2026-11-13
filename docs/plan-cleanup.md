@@ -23,12 +23,13 @@ figure** (totals, the counter page, the Overview).
 
 ## Steps
 
-- [ ] **1. Small tidy-ups** (skill `ui`)
+- [x] **1. Small tidy-ups** (skill `ui`)
   - Delete `client/src/lib/errors.ts`. It's unused: `grep -rn "lib/errors" client/src` must return nothing.
   - Move `components/AddForm.tsx` and `components/ClearableInput.tsx` into `components/ui/`, export them from `components/ui/index.ts`, and change the imports to `@/components/ui`. Find them with `grep -rln "AddForm\|ClearableInput" client/src`.
   - Move `formatLongDate` from `context/DateContext.tsx` to a new `lib/format.ts` and update its importers.
   - Tests: add an `AddForm` case and a `ClearableInput` case (× calls `onClear`) to `components/ui/ui.test.tsx`.
   - Docs: update the file map in `docs/structure.md` and the "Outside the kit" part of the `ui` skill (now in the kit). Delete the matching weak-spot lines.
+  - Done differently: inside `components/ui/` the two files import their neighbours by relative path (`./Button`, `./CommitInput`), not via the barrel, to avoid a cycle.
 
 - [ ] **2. Split Settings** (skill `ui`)
   - Move `PinForm` and `QrCard` from `pages/Settings.tsx` into `pages/settings/PinForm.tsx` and `pages/settings/QrCard.tsx`. `Settings.tsx` keeps only the page and the admin redirect.

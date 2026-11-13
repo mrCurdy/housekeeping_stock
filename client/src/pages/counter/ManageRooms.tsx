@@ -1,7 +1,6 @@
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { AddForm } from '@/components/AddForm';
-import { Button, CommitInput } from '@/components/ui';
+import { AddForm, Button, CommitInput } from '@/components/ui';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
