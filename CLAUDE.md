@@ -41,6 +41,7 @@ If the app behaves unlike the code (e.g. the server ignores a new field), check 
   - **`sqlite-db`**: storage, migrations, repo methods.
   - **`auth`**: routes, guards, roles, PINs, QR.
   - **`plan-step`**: doing one step of a `docs/plan-*.md`.
+  - **`run-stage`**: finishing all unchecked steps of a `docs/plan-*.md`, each by a fresh `step-runner` agent (`.claude/agents/`), stopping on any failure.
 
 ## Architecture
 

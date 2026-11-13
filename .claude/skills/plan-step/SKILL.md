@@ -28,7 +28,8 @@ One session = one step. Its context starts cold, so only load what that step nee
    - update or create the skill the step names;
    - commit with a message that names the step (`Step 2: PIN auth on the server`).
 7. **Stop.** Report in 3–5 lines what was done, and anything left over for the next step. Don't
-   start the next step.
+   start the next step. When run as a `step-runner` agent (the `run-stage` skill), end with the
+   report format from `.claude/agents/step-runner.md`.
 
 ## Ways to save tokens
 
@@ -40,4 +41,4 @@ One session = one step. Its context starts cold, so only load what that step nee
   new tests in a new file.
 - Don't re-read a file after editing it. Run commands with `| tail -30`.
 - If the plan turns out wrong or unclear, ask the user (one short question) instead of exploring
-  to guess.
+  to guess. As a `step-runner` agent you can't ask: stop and report `BLOCKED` with the question.
