@@ -74,12 +74,13 @@ Outside the kit:
 
 - Numbers and names inside tables → `CommitInput`.
 - Text where an accidental change would hurt (task names) → plain `Input`s with an explicit Save button (`TaskEditor.tsx`).
-- Several fields that are checked together (PINs) → a `<form>` with `FormField`s (`pages/settings/PinForm.tsx`).
+- Several fields that are checked together (PINs, the cleaning thresholds) → a `<form>` with `FormField`s (`pages/settings/PinForm.tsx`, `CleaningThresholds.tsx`).
+- An ordered list of names (rename / ↑↓ / remove / add) → `pages/settings/MasterList.tsx`.
 
 ## Styling
 
 - A "who did it" step before a change: `pages/rooms/WhoDialog.tsx` (a `Modal` with a `<form id>` and the submit button in `footer` via `form={id}`). A per-device remembered value goes in `localStorage` inside try/catch.
-- Room status colours: take the classes from `ROOM_COLOR_CLASSES[color]` (`@/lib/roomColors`), never build `bg-status-${c}` strings (Tailwind can't find them).
+- Room status colours: take the classes from `ROOM_COLOR_CLASSES[color]` (`@/lib/roomColors`), never build `bg-status-${c}` strings (Tailwind can't find them). Show a status's name with `statusName(s, t.rooms.defaultStatus)` (`pages/rooms/roomText.ts`), so the defaults are translated.
 - Use semantic tokens only: `bg-surface`, `bg-surface-2`, `text-fg`, `text-fg-muted`, `border-border`, `text-primary`, `bg-primary-soft`, and `success|warning|danger|info` (+ `-soft`). Raw colours break dark mode. Merge classes with `cn()`.
 - **Stock figures:**
   - `val-calc`: calculated;

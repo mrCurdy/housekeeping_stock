@@ -138,8 +138,8 @@ change needs. Line counts are approximate and flag the files worth reading in pa
     - `NoteEditor` (the instructions textarea with list buttons), `TaskNote` (instructions shown with tickable checklist lines).
   - `Rooms.tsx` (+ test) + `rooms/`:
     - `RoomCard` (number, type, the note (`CommitTextarea`), every master unit with a status `Select`, the general-cleaning line with Cleaned and the history expander (last 10), ✎ number/type/delete), `NewRoomForm` (number + type; a taken number shows an error before sending), `WhoDialog` (name prefilled from `localStorage['rooms.who']`, optional note);
-    - `roomText.ts`: `roomExists`, `typeOptions`, `cleaningText` (today / yesterday / N days ago).
-  - `Settings.tsx` (+ test): the page and the admin redirect; `settings/`: `PinForm`, `QrCard`, `SaluteCard`. `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
+    - `roomText.ts` (+ test): `roomExists`, `typeOptions`, `cleaningText` (today / yesterday / N days ago), `statusName` (a default status still named as in `DEFAULT_ROOM_STATUSES` shows translated, `t.rooms.defaultStatus`).
+  - `Settings.tsx` (+ test): the page and the admin redirect; `settings/`: `PinForm`, `QrCard`, `SaluteCard`, `RoomSetupCard` (the room cards' master setup, `setup` only: units, statuses with a colour `Select`, room types, each a `MasterList` (rename in place, ↑/↓, remove confirmed, `AddForm`), plus `CleaningThresholds` (both days checked together, 0 ≤ green < yellow, before `updateSettings`)). `Login.tsx`: the PIN keypad (+ test); it auto-submits only a typed 4th digit, an autofilled/pasted PIN waits for "Log in". `NotFound.tsx`.
 - `lib/`:
   - `api.ts`: `api.get/post/put/patch/delete`, `ApiError`, `apiErrorMessage(err, t)`; it fires `auth:expired` on 401.
   - `format.ts`: `formatLongDate(date, locale)` ("Sat, 17 Oct 2026").

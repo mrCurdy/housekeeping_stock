@@ -1,4 +1,4 @@
-import type { Room, RoomType } from '@app/shared';
+import { DEFAULT_ROOM_STATUSES, type Room, type RoomStatus, type RoomType } from '@app/shared';
 import type { SelectOption } from '@/components/ui/Select';
 import type { Messages } from '@/i18n/en';
 
@@ -18,4 +18,15 @@ export function cleaningText(days: number | null, by: string, tx: Messages['room
   if (days <= 0) return tx.cleanedToday(by);
   if (days === 1) return tx.cleanedYesterday(by);
   return tx.cleanedDaysAgo(days, by);
+}
+
+/**
+ * A status's name on screen. A default status (OK / Needs attention / Needs fixing) that still has
+ * its English default name is shown translated; a renamed or own status is shown as typed.
+ */
+export function statusName(status: RoomStatus, names: Messages['rooms']['defaultStatus']): string {
+  const fallback = DEFAULT_ROOM_STATUSES.find((d) => d.id === status.id);
+  return fallback && fallback.name === status.name
+    ? names[fallback.id as keyof typeof names]
+    : status.name;
 }

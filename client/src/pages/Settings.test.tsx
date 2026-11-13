@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { emptyStockData } from '@app/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -112,5 +112,75 @@ describe('Settings: fireworks', () => {
       '/api/settings',
       expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ saluteText: 'Hurraa!' }) }),
     );
+  });
+});
+
+describe('Settings: room cards setup', () => {
+  /** Admin API that also answers the room setup routes; `data` overrides the dataset. */
+  function roomsApi(data: Partial<ReturnType<typeof emptyStockData>> = {}) {
+    return mockApi((method, path, body) => {
+      if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
+      if (path === '/data') {
+        return { status: 200, body: { ...emptyStockData(), settings: {}, ...data } };
+      }
+      if (path === '/auth/qr') return { status: 200, body: { active: false } };
+      if (path === '/room-units' && method === 'POST') {
+        return { status: 201, body: { id: 'u1', ...(body as object) } };
+      }
+      if (method === 'PATCH') return { status: 204 };
+    });
+  }
+  const sent = (fetch: ReturnType<typeof mockApi>, url: string, method: string) =>
+    fetch.mock.calls
+      .filter(([u, init]) => u === url && init?.method === method)
+      .map(([, init]) => JSON.parse(init?.body as string));
+
+  it('adds a unit', async () => {
+    const fetch = roomsApi();
+    settings();
+    await userEvent.type(await screen.findByPlaceholderText('New unit (bed, shower…)'), 'Bed');
+    await userEvent.click(screen.getByRole('button', { name: 'Add unit' }));
+    expect(await screen.findByLabelText('Unit name Bed')).toHaveValue('Bed');
+    expect(sent(fetch, '/api/room-units', 'POST')).toEqual([{ name: 'Bed' }]);
+  });
+
+  it('renames a status and changes its colour', async () => {
+    const fetch = roomsApi();
+    settings();
+    const name = await screen.findByLabelText('Status name OK');
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Fine{Enter}');
+    expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([{ name: 'Fine' }]);
+    await userEvent.selectOptions(screen.getByLabelText('Colour of Fine'), 'Blue');
+    expect(sent(fetch, '/api/room-statuses/ok', 'PATCH')).toEqual([
+      { name: 'Fine' },
+      { color: 'blue' },
+    ]);
+  });
+
+  it('saves the cleaning thresholds', async () => {
+    const fetch = roomsApi();
+    settings();
+    const green = await screen.findByLabelText('Green up to (days)');
+    expect(green).toHaveValue(15);
+    await userEvent.clear(green);
+    await userEvent.type(green, '10');
+    await userEvent.click(screen.getByRole('button', { name: 'Save thresholds' }));
+    expect(sent(fetch, '/api/settings', 'PATCH')).toEqual([
+      { cleanGreenDays: 10, cleanYellowDays: 29 },
+    ]);
+  });
+
+  it('does not save green ≥ yellow', async () => {
+    const fetch = roomsApi({ settings: { cleanGreenDays: 5, cleanYellowDays: 9 } });
+    settings();
+    // The form remounts once the stored pair loads
+    await waitFor(() => expect(screen.getByLabelText('Green up to (days)')).toHaveValue(5));
+    const green = screen.getByLabelText('Green up to (days)');
+    await userEvent.clear(green);
+    await userEvent.type(green, '9');
+    await userEvent.click(screen.getByRole('button', { name: 'Save thresholds' }));
+    expect(await screen.findByText('Green must be less than yellow')).toBeInTheDocument();
+    expect(sent(fetch, '/api/settings', 'PATCH')).toEqual([]);
   });
 });

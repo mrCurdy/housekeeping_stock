@@ -17,7 +17,7 @@ import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';
 import { formatLongDate } from '@/lib/format';
 import { ROOM_COLOR_CLASSES } from '@/lib/roomColors';
-import { cleaningText, roomExists, typeOptions } from './roomText';
+import { cleaningText, roomExists, statusName, typeOptions } from './roomText';
 import { WhoDialog } from './WhoDialog';
 
 /** Shown in the history expander. */
@@ -40,7 +40,10 @@ export function RoomCard({ room }: { room: Room }) {
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const statuses = roomStatusList(data);
-  const statusOptions = statuses.map((s) => ({ value: s.id, label: s.name }));
+  const statusOptions = statuses.map((s) => ({
+    value: s.id,
+    label: statusName(s, tx.defaultStatus),
+  }));
   const type = data.roomTypes.find((rt) => rt.id === room.type);
   const cleanings = data.cleanings[room.id] ?? [];
   const last = latestCleaning(data, room.id);
@@ -216,7 +219,7 @@ export function RoomCard({ room }: { room: Room }) {
       )}
       {pending && pending !== 'clean' && pendingUnit && pendingStatus && (
         <WhoDialog
-          title={tx.who.statusTitle(pendingUnit.name, pendingStatus.name)}
+          title={tx.who.statusTitle(pendingUnit.name, statusName(pendingStatus, tx.defaultStatus))}
           withNote
           onCancel={() => setPending(null)}
           onConfirm={(by, note) => {

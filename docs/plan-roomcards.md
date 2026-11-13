@@ -162,7 +162,14 @@ teal, pink, brown, grey`), `DEFAULT_ROOM_STATUSES`, `DEFAULT_CLEAN_DAYS = { gree
     Confirm sends `PUT`, Cancel sends nothing; Cleaned → "Cleaned today · Name"; colours follow
     thresholds; a worker sees the page but no Settings link.
 
-- [ ] **6. Master setup in Settings** (skills `ui`, `i18n`)
+- [x] **6. Master setup in Settings** (skills `ui`, `i18n`)
+  - Done. Differences: split into `RoomSetupCard` + `MasterList` (generic ordered name list, ↑/↓
+    buttons, not drag) + `CleaningThresholds` (a form with Save, like `PinForm`). The colour picker
+    is a native `Select` of the 10 (translated colour names) with a swatch; a new status gets the
+    first unused colour. Room type removal is confirmed too; the last status's remove is disabled.
+    Default statuses are translated via `statusName` (`roomText.ts`) whenever a default id still
+    has its English default name (so also after another status change stored the list), on the
+    Rooms page and in Settings.
   - `pages/settings/RoomSetupCard.tsx` (or split per list if it grows past ~200 lines):
     units (add / rename / remove confirmed / ↑↓ order), statuses (name + colour picker of the 10,
     main 3 first; remove confirmed), room types (add / rename / remove), the two thresholds
