@@ -57,7 +57,7 @@ describe('localized names', () => {
       roomUnits: [{ id: 'u', name: 'Voodi', names: 'broken' }],
     });
     expect(parsed.items[0]!.names).toEqual({ en: 'Towel' });
-    expect(parsed.roomUnits[0]).toEqual({ id: 'u', name: 'Voodi' });
+    expect(parsed.roomUnits[0]).toEqual({ id: 'u', name: 'Voodi', group: 'units' });
   });
 
   it('rename bodies take an optional language', () => {

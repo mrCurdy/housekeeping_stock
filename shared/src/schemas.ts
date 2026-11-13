@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { isDefaultRolePermissions, rolePermissionsSchema, STAFF_ROLES } from './auth';
 import { pruneTasks, taskGroupList } from './checklist';
 import { cleanNames, NAME_LANGS, type LocalizedNames, type NameLang } from './names';
-import { roomStatusList } from './rooms';
+import { roomStatusList, unitGroupList, unitGroupOf } from './rooms';
 import {
   emptyStockData,
   ROOM_COLORS,
@@ -168,6 +168,20 @@ export type RoomStatusCreateInput = z.infer<typeof roomStatusCreateSchema>;
 export const roomStatusPatchSchema = roomStatusCreateSchema.partial().extend({ lang });
 export type RoomStatusPatchInput = z.infer<typeof roomStatusPatchSchema>;
 
+/** A new room unit, in `group` (missing or unknown: the first group, see `roomUnits.create`). */
+export const roomUnitCreateSchema = roomNameSchema.extend({ group: z.string().min(1).optional() });
+export type RoomUnitCreateInput = z.infer<typeof roomUnitCreateSchema>;
+
+/**
+ * The unit ids in their new order (ids not listed keep their place at the end); `move` also puts
+ * that unit into another group (`moveUnitTo`).
+ */
+export const unitOrderSchema = z.object({
+  ids: z.array(z.string()),
+  move: z.object({ id: z.string(), group: z.string() }).optional(),
+});
+export type UnitOrderInput = z.infer<typeof unitOrderSchema>;
+
 /** Units, statuses or room types in their new order (ids not listed keep their place at the end). */
 export const idOrderSchema = z.object({ ids: z.array(z.string()) });
 export type IdOrderInput = z.infer<typeof idOrderSchema>;
@@ -270,7 +284,11 @@ export const backupSchema = z
       .catch([])
       .default([]),
     roomTypes: z.array(localized).catch([]).default([]),
-    roomUnits: z.array(localized).catch([]).default([]),
+    roomUnits: z
+      .array(localized.extend({ group: z.string().optional().catch(undefined) }))
+      .catch([])
+      .default([]),
+    roomUnitGroups: z.array(localized).catch([]).default([]),
     roomStatuses: z
       .array(localized.extend({ color: z.enum(ROOM_COLORS).catch('grey') }))
       .catch([])
@@ -322,7 +340,8 @@ export function normalizeStockData(raw: {
   settings?: AppSettings;
   rooms?: Room[];
   roomTypes?: { id: string; name: string; names?: LocalizedNames }[];
-  roomUnits?: { id: string; name: string; names?: LocalizedNames }[];
+  roomUnits?: { id: string; name: string; names?: LocalizedNames; group?: string }[];
+  roomUnitGroups?: { id: string; name: string; names?: LocalizedNames }[];
   roomStatuses?: RoomStatus[];
   unitStatus?: Record<string, Record<string, UnitStatus>>;
   cleanings?: Record<string, Cleaning[]>;
@@ -408,7 +427,19 @@ const withNames = (e: { name: string; names?: LocalizedNames }) => {
 /** Rooms: blank notes dropped, references to unknown types/rooms/units/statuses dropped, no empty maps. */
 function normalizeRooms(raw: Parameters<typeof normalizeStockData>[0], out: StockData) {
   out.roomTypes = (raw.roomTypes ?? []).map((t) => ({ id: t.id, name: t.name, ...withNames(t) }));
-  out.roomUnits = (raw.roomUnits ?? []).map((u) => ({ id: u.id, name: u.name, ...withNames(u) }));
+  // Every unit gets a known group: without one (old backups) the default group, created for them
+  const groups = (raw.roomUnitGroups ?? []).map((g) => ({
+    id: g.id,
+    name: g.name,
+    ...withNames(g),
+  }));
+  out.roomUnitGroups = unitGroupList({ roomUnits: raw.roomUnits ?? [], roomUnitGroups: groups });
+  out.roomUnits = (raw.roomUnits ?? []).map((u) => ({
+    id: u.id,
+    name: u.name,
+    ...withNames(u),
+    group: unitGroupOf(u, out.roomUnitGroups),
+  }));
   out.roomStatuses = (raw.roomStatuses ?? []).map((s) => ({
     id: s.id,
     name: s.name,

@@ -64,7 +64,7 @@ describe('names in several languages', () => {
     expect(
       (await api.patch(`/api/room-units/${unit.id}`).send({ name: 'Bed', lang: 'en' }).expect(200))
         .body,
-    ).toEqual({ id: unit.id, name: 'Voodi', names: { en: 'Bed' } });
+    ).toEqual({ id: unit.id, name: 'Voodi', names: { en: 'Bed' }, group: 'units' });
     const type = (await api.post('/api/room-types').send({ name: 'Kahene' }).expect(201)).body;
     await api.patch(`/api/room-types/${type.id}`).send({ name: 'Double', lang: 'en' }).expect(200);
     await api.patch(`/api/room-types/${type.id}`).send({ name: 'Kahekohaline' }).expect(200);
@@ -78,7 +78,12 @@ describe('names in several languages', () => {
 
     const d = await data();
     expect(d.items[0]).toMatchObject({ name: 'Rätik', names: { en: 'Towel', ru: 'Полотенце' } });
-    expect(d.roomUnits[0]).toEqual({ id: unit.id, name: 'Voodi', names: { en: 'Bed' } });
+    expect(d.roomUnits[0]).toEqual({
+      id: unit.id,
+      name: 'Voodi',
+      names: { en: 'Bed' },
+      group: 'units',
+    });
     expect(d.roomTypes[0]).toEqual({ id: type.id, name: 'Kahekohaline', names: { en: 'Double' } });
     const s = d.roomStatuses.find((x) => x.id === status.id)!;
     expect(s).toEqual({ id: status.id, name: 'Katki', color: 'red', names: { en: 'Broken' } });
@@ -94,7 +99,8 @@ describe('names in several languages', () => {
         { id: 'i1', name: 'Rätik', names: { en: 'Towel', ru: 'Полотенце' }, multipliers: {} },
       ],
       roomTypes: [{ id: 't1', name: 'Kahene', names: { en: 'Double' } }],
-      roomUnits: [{ id: 'u1', name: 'Voodi', names: { ru: 'Кровать' } }],
+      roomUnits: [{ id: 'u1', name: 'Voodi', names: { ru: 'Кровать' }, group: 'g1' }],
+      roomUnitGroups: [{ id: 'g1', name: 'Mööbel', names: { en: 'Furniture' } }],
       roomStatuses: [{ id: 's1', name: 'Korras', color: 'green', names: { en: 'OK' } }],
     };
     await api.post('/api/restore').send(backup).expect(200);
@@ -102,6 +108,7 @@ describe('names in several languages', () => {
     expect(d.items).toEqual(backup.items);
     expect(d.roomTypes).toEqual(backup.roomTypes);
     expect(d.roomUnits).toEqual(backup.roomUnits);
+    expect(d.roomUnitGroups).toEqual(backup.roomUnitGroups);
     expect(d.roomStatuses).toEqual(backup.roomStatuses);
     // and the downloaded data restores to the same
     await api.post('/api/restore').send(d).expect(200);

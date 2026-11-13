@@ -270,7 +270,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     `names` JSON column. Client: `useStock().data` is already localized (`localizeNames`), so pages
     keep reading `.name`; `rawData` (all versions) is what Backup downloads.
 
-- [ ] **10. Room unit groups: editable, drag to reorder and regroup** (skills `sqlite-db`, `ui`,
+- [x] **10. Room unit groups: editable, drag to reorder and regroup** (skills `sqlite-db`, `ui`,
   `i18n`)
   - Request (from the user): room units (the things in a room) belong to groups such as
     "Bathroom", "Electronics", "Furniture". The groups are adjustable, and units can be dragged
@@ -292,6 +292,15 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Tests: server: create/rename(lang)/reorder/delete-blocked, move unit across groups, migration
     of an old DB, backup/restore round trip; client: drag reorders and regroups, groups editable.
   - Docs: `docs/structure.md` (data model, Rooms/Settings), `sqlite-db` and `ui` skills.
+
+  - Done: units had no group field, so migration 8 adds `room_unit_groups` (with `names`) and
+    `room_units.group_id`, and puts every existing unit, in its order, into one group `units`
+    (base name '', shown as the translated "Units") created only when units exist; old backups go
+    the same way (`normalizeStockData`, `unitGroupList`). Order: one `pos` over all units (so also
+    within each group) plus `pos` per group. A drop sends `PUT /room-units/order { ids, move: { id,
+    group } }`, the same body as the checklist's tasks, instead of a separate move route. A unit
+    is created in a group (`POST /room-units { name, group }`). Room cards list the units group by
+    group, with a heading per group once there are several.
 
 - [ ] **11. Admin sees which names lack the current language** (skills `ui`, `i18n`)
   - Request (from the user): for the admin only, a name with no version in the current UI

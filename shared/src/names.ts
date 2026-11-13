@@ -1,5 +1,5 @@
 /**
- * Names typed by the user (stock items, room types, room units, room statuses) can have a version
+ * Names typed by the user (stock items, room types, room units and their groups, room statuses) can have a version
  * per UI language. `name` is the base name (what was first entered; old data has only it), `names`
  * the per-language overrides. A language without an override shows the base name.
  */
@@ -48,6 +48,7 @@ interface WithLocalizedLists {
   items: Localized[];
   roomTypes: Localized[];
   roomUnits: Localized[];
+  roomUnitGroups: Localized[];
   roomStatuses: Localized[];
 }
 
@@ -64,13 +65,15 @@ export function localizeNames<D extends WithLocalizedLists>(data: D, lang: strin
   const items = list(data.items);
   const roomTypes = list(data.roomTypes);
   const roomUnits = list(data.roomUnits);
+  const roomUnitGroups = list(data.roomUnitGroups);
   const roomStatuses = list(data.roomStatuses);
   if (
     items === data.items &&
     roomTypes === data.roomTypes &&
     roomUnits === data.roomUnits &&
+    roomUnitGroups === data.roomUnitGroups &&
     roomStatuses === data.roomStatuses
   )
     return data;
-  return { ...data, items, roomTypes, roomUnits, roomStatuses };
+  return { ...data, items, roomTypes, roomUnits, roomUnitGroups, roomStatuses };
 }

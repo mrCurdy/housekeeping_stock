@@ -64,7 +64,7 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
 Outside the kit:
 
 - `useDragSort(count, onMove)` (`@/lib/useDragSort`): reorder a vertical list by a grip or ↑/↓. Put `rowRef(i)`/`rowStyle(i)` on rows and `handleProps(i)` on a `touch-none` grip button (the checklist group cards in `Checklist.tsx`). Pass `{ free: true }` when rows can sit side by side, and highlight `over` (`Stock.tsx`).
-- `useListsDragSort(counts, onMove)` (`@/lib/useListsDragSort`): the same over several lists, rows can move between them (`TaskList` inside `TaskGroupCard`); `listRef(l)` on each list's whole area, `target` for the drop line.
+- `useListsDragSort(counts, onMove)` (`@/lib/useListsDragSort`): the same over several lists, rows can move between them (`TaskList` inside `TaskGroupCard`, the units in `pages/settings/UnitGroups.tsx`); `listRef(l)` on each list's whole area, `target` for the drop line. `UnitGroups.test.tsx` fakes the boxes for a drag between lists.
 - `useConfirm()`: `if (await confirm({ title, description, confirmLabel })) …`. It is red by default; pass `danger: false` for a neutral one.
 - `useToast()`: `toast.success|error|info(title, description?)`.
 - `apiErrorMessage(err, t)` turns any request error into text.

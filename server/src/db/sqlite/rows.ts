@@ -19,6 +19,7 @@ import {
   type Task,
   type RoomType,
   type RoomUnit,
+  type RoomUnitGroup,
   type TaskGroup,
   taskGroupList,
 } from '@app/shared';
@@ -38,6 +39,7 @@ export const LOCALIZED_TABLES = new Set<string>([
   'items',
   'room_types',
   'room_units',
+  'room_unit_groups',
   'room_statuses',
 ]);
 export const toLocalized = <R extends LocalizedRow>({ names, ...rest }: R) => ({
@@ -146,12 +148,19 @@ export const DATA_TABLES = [
   'rooms',
   'room_types',
   'room_units',
+  'room_unit_groups',
   'room_statuses',
   'unit_status',
   'cleanings',
 ] as const;
 export type NamedTable =
-  'items' | 'groups' | 'locations' | 'task_groups' | 'room_types' | 'room_units';
+  | 'items'
+  | 'groups'
+  | 'locations'
+  | 'task_groups'
+  | 'room_types'
+  | 'room_units'
+  | 'room_unit_groups';
 
 /** Settings stored as numbers (the key/value table holds text). */
 const NUMBER_SETTINGS = new Set<keyof AppSettings>(['cleanGreenDays', 'cleanYellowDays']);
@@ -225,11 +234,20 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     return sorted;
   };
 
+  /** The units in order, each with its group (`group_id`, set for every unit since migration 8). */
+  const readUnits = (): RoomUnit[] =>
+    all<LocalizedRow & { group_id: string | null }>(
+      'SELECT id, name, names, group_id FROM room_units ORDER BY pos',
+    ).map(({ group_id, ...row }) => ({
+      ...toLocalized(row),
+      ...(group_id && { group: group_id }),
+    }));
+
   const readRoom = (id: string) => {
     const row = get<RoomRow>('SELECT * FROM rooms WHERE id = ?', id);
     return row && toRoom(row);
   };
-  const hasRow = (table: 'rooms' | 'room_types' | 'room_units', id: string) =>
+  const hasRow = (table: 'rooms' | 'room_types' | 'room_units' | 'room_unit_groups', id: string) =>
     !!get(`SELECT 1 FROM ${table} WHERE id = ?`, id);
   /** The statuses in order; the defaults while none is stored. Never empty. */
   const readRoomStatuses = () =>
@@ -337,7 +355,8 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     data.settings = readSettings();
     data.rooms = all<RoomRow>('SELECT * FROM rooms ORDER BY rowid').map(toRoom);
     data.roomTypes = readNamed('room_types');
-    data.roomUnits = readNamed('room_units');
+    data.roomUnits = readUnits();
+    data.roomUnitGroups = readNamed('room_unit_groups');
     data.roomStatuses = all<LocalizedRow & { color: RoomStatus['color'] }>(
       'SELECT id, name, color, names FROM room_statuses ORDER BY pos',
     ).map(toLocalized);
@@ -420,7 +439,13 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     const room = prepare('INSERT INTO rooms (id, number, type_id, note) VALUES (?, ?, ?, ?)');
     for (const r of data.rooms) room.run(r.id, r.number, r.type ?? null, r.note ?? null);
     named('room_types', data.roomTypes);
-    named('room_units', data.roomUnits);
+    named('room_unit_groups', data.roomUnitGroups);
+    const unitRow = prepare(
+      'INSERT INTO room_units (id, name, names, group_id, pos) VALUES (?, ?, ?, ?, ?)',
+    );
+    data.roomUnits.forEach((u, pos) =>
+      unitRow.run(u.id, u.name, namesJson(u.names), u.group ?? null, pos),
+    );
     if (data.roomStatuses.length) writeRoomStatuses(data.roomStatuses);
     const unit = prepare(
       'INSERT INTO unit_status (room_id, unit_id, status_id, by, at, note) VALUES (?, ?, ?, ?, ?, ?)',
@@ -444,6 +469,7 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     writeSetting,
     readNamed,
     reorderRows,
+    readUnits,
     readRoom,
     hasRow,
     readRoomStatuses,
@@ -464,7 +490,9 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
 }
 
 /** create / rename / delete for the { id, name } lists; `onDelete` drops dependent rows. */
-export const namedRepo = <T extends Group | Location | TaskGroup | RoomType | RoomUnit>(
+export const namedRepo = <
+  T extends Group | Location | TaskGroup | RoomType | RoomUnit | RoomUnitGroup,
+>(
   ctx: Ctx,
   table: NamedTable,
   onDelete: (id: string) => void,

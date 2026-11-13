@@ -6,7 +6,11 @@ import {
   removeStatusIn,
   removeTypeIn,
   removeUnitIn,
+  removeUnitGroupIn,
   roomStatusList,
+  applyUnitMove,
+  moveUnitTo,
+  unitGroupList,
   applyTaskMove,
   isDefaultRolePermissions,
   itemCheckKey,
@@ -32,6 +36,7 @@ import {
   type RoomStatusPatchInput,
   type RoomType,
   type RoomUnit,
+  type RoomUnitGroup,
   type UnitStatusInput,
   type SettingsPatchInput,
   type StockCard,
@@ -122,11 +127,20 @@ export interface StockMutations {
    * An earlier day goes behind later cleanings, so it never replaces the latest one.
    */
   markCleaned(roomId: string, by: string, date?: string): void;
-  /** The rooms' master setup: units, types and statuses (each list reorders by `from` → `to`). */
-  addRoomUnit(name: string): Promise<RoomUnit | undefined>;
+  /**
+   * The rooms' master setup: units (in groups), types and statuses (each list but the units
+   * reorders by `from` → `to`).
+   */
+  addRoomUnit(name: string, group: string): Promise<RoomUnit | undefined>;
   renameRoomUnit(id: string, name: string): void;
   removeRoomUnit(id: string): void;
-  moveRoomUnit(from: number, to: number): void;
+  /** Puts unit `id` into `group` at place `to` among that group's units (`moveUnitTo`). */
+  moveRoomUnit(id: string, group: string, to: number): void;
+  addRoomUnitGroup(name: string): Promise<RoomUnitGroup | undefined>;
+  renameRoomUnitGroup(id: string, name: string): void;
+  /** False (nothing changes) while the group still has units. */
+  removeRoomUnitGroup(id: string): boolean;
+  moveRoomUnitGroup(from: number, to: number): void;
   addRoomType(name: string): Promise<RoomType | undefined>;
   renameRoomType(id: string, name: string): void;
   removeRoomType(id: string): void;
@@ -451,6 +465,15 @@ function roomSetupMutations(deps: Deps) {
     (d, id) => removeUnitIn(d, id),
     true,
   );
+  // Old data may have units without a group: their implied default group gets stored first
+  const groups = named<RoomUnitGroup>(
+    deps,
+    '/room-unit-groups',
+    'roomUnitGroups',
+    (d) => (d.roomUnitGroups = unitGroupList(d)),
+    () => {},
+    true,
+  );
   const types = named<RoomType>(
     deps,
     '/room-types',
@@ -461,11 +484,7 @@ function roomSetupMutations(deps: Deps) {
   );
   /** Moves a row of a master list and sends the new order. */
   const move =
-    <K extends 'roomUnits' | 'roomTypes' | 'roomStatuses'>(
-      key: K,
-      path: string,
-      list: () => StockData[K],
-    ) =>
+    <K extends 'roomTypes' | 'roomStatuses'>(key: K, path: string, list: () => StockData[K]) =>
     (from: number, to: number) => {
       const next = moved<StockData[K][number]>(list(), from, to);
       if (!next) return;
@@ -473,10 +492,39 @@ function roomSetupMutations(deps: Deps) {
       void send(() => api.put(`${path}/order`, { ids: next.map((r) => r.id) }));
     };
   return {
-    addRoomUnit: units.add,
+    addRoomUnit: async (name: string, group: string) => {
+      const unit = await send(() => api.post<RoomUnit>('/room-units', { name, group }));
+      if (unit) {
+        edit(['roomUnits', 'roomUnitGroups'], (d) => {
+          d.roomUnitGroups = unitGroupList(d);
+          d.roomUnits.push(unit);
+        });
+      }
+      return unit;
+    },
     renameRoomUnit: units.rename,
     removeRoomUnit: units.remove,
-    moveRoomUnit: move('roomUnits', '/room-units', () => data.roomUnits),
+    moveRoomUnit: (id: string, group: string, to: number) => {
+      const next = moveUnitTo(data, id, group, to);
+      if (!next) return;
+      edit(['roomUnits', 'roomUnitGroups'], (d) => applyUnitMove(d, id, next));
+      void send(() => api.put('/room-units/order', { ids: next.ids, move: { id, group } }));
+    },
+    addRoomUnitGroup: groups.add,
+    renameRoomUnitGroup: groups.rename,
+    removeRoomUnitGroup: (id: string) => {
+      const probe = { roomUnits: data.roomUnits, roomUnitGroups: data.roomUnitGroups };
+      if (removeUnitGroupIn(probe, id) !== true) return false;
+      edit('roomUnitGroups', (d) => void removeUnitGroupIn(d, id));
+      void send(() => api.delete(`/room-unit-groups/${id}`));
+      return true;
+    },
+    moveRoomUnitGroup: (from: number, to: number) => {
+      const list = moved(unitGroupList(data), from, to);
+      if (!list) return;
+      edit('roomUnitGroups', (d) => void (d.roomUnitGroups = list));
+      void send(() => api.put('/room-unit-groups/order', { ids: list.map((g) => g.id) }));
+    },
     addRoomType: types.add,
     renameRoomType: types.rename,
     removeRoomType: types.remove,

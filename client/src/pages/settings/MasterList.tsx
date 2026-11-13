@@ -10,7 +10,7 @@ export interface MasterRow {
 }
 
 /**
- * An ordered list of names (room units, statuses, room types): rename in place, ↑/↓ to reorder,
+ * An ordered list of names (room statuses, room types): rename in place, ↑/↓ to reorder,
  * remove, and the "new name" line under it. `extra` adds controls before a row's name (the
  * status colour); `removeDisabled` gives the reason a row can't be removed.
  */

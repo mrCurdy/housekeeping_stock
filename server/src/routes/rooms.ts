@@ -9,7 +9,11 @@ import {
   roomPatchSchema,
   roomStatusCreateSchema,
   roomStatusPatchSchema,
+  roomUnitCreateSchema,
+  unitOrderSchema,
   unitStatusSchema,
+  type RoomUnitCreateInput,
+  type UnitOrderInput,
   type CleaningInput,
   type IdOrderInput,
   type Room,
@@ -35,22 +39,37 @@ const notDuplicate = (room: Room | null | 'duplicate'): Room | null => {
 const cleaning = allow('cleaning');
 const setup = allow('setup');
 
-/** POST / · PATCH /:id · DELETE /:id · PUT /order for a master list (room units, room types). */
-function orderedRoutes<T>(r: Router, path: string, repo: OrderedRepo<T>, what: string) {
-  r.post(path, setup, validateBody(roomNameSchema), async (req, res) => {
-    res.status(201).json(await repo.create((req.body as RoomNameInput).name));
-  });
-  r.put(`${path}/order`, setup, validateBody(idOrderSchema), async (req, res) => {
-    res.json(await repo.reorder((req.body as IdOrderInput).ids));
-  });
+/**
+ * POST / · PATCH /:id · DELETE /:id · PUT /order for a master list (room types, unit groups).
+ * `custom` skips the routes the list defines itself (registered before these).
+ */
+function orderedRoutes<T>(
+  r: Router,
+  path: string,
+  repo: Omit<OrderedRepo<T>, 'delete'> & { delete(id: string): Promise<boolean | string> },
+  what: string,
+  custom: { create?: boolean; reorder?: boolean; remove?: boolean } = {},
+) {
+  if (!custom.create) {
+    r.post(path, setup, validateBody(roomNameSchema), async (req, res) => {
+      res.status(201).json(await repo.create((req.body as RoomNameInput).name));
+    });
+  }
+  if (!custom.reorder) {
+    r.put(`${path}/order`, setup, validateBody(idOrderSchema), async (req, res) => {
+      res.json(await repo.reorder((req.body as IdOrderInput).ids));
+    });
+  }
   r.patch(`${path}/:id`, setup, validateBody(roomNameSchema), async (req, res) => {
     const { name, lang } = req.body as RoomNameInput;
     res.json(found(await repo.rename(param(req, 'id'), name, lang), what));
   });
-  r.delete(`${path}/:id`, setup, async (req, res) => {
-    found(await repo.delete(param(req, 'id')), what);
-    res.status(204).end();
-  });
+  if (!custom.remove) {
+    r.delete(`${path}/:id`, setup, async (req, res) => {
+      found(await repo.delete(param(req, 'id')), what);
+      res.status(204).end();
+    });
+  }
 }
 
 /**
@@ -90,7 +109,25 @@ export function roomsRouter({ db }: AppContext) {
   });
 
   // ---- Master setup ----
-  orderedRoutes(r, '/room-units', db.roomUnits, 'Unit');
+  // A unit is created in a group, and a reorder may move it into another group
+  r.post('/room-units', setup, validateBody(roomUnitCreateSchema), async (req, res) => {
+    const { name, group } = req.body as RoomUnitCreateInput;
+    res.status(201).json(await db.roomUnits.create(name, group));
+  });
+  r.put('/room-units/order', setup, validateBody(unitOrderSchema), async (req, res) => {
+    const { ids, move } = req.body as UnitOrderInput;
+    res.json(await db.roomUnits.reorder(ids, move));
+  });
+  orderedRoutes(r, '/room-units', db.roomUnits, 'Unit', { create: true, reorder: true });
+  r.delete('/room-unit-groups/:id', setup, async (req, res) => {
+    const done = await db.roomUnitGroups.delete(param(req, 'id'));
+    if (done === 'notEmpty') {
+      throw HttpError.conflict('The group still has units: move them to another group first');
+    }
+    found(done, 'Unit group');
+    res.status(204).end();
+  });
+  orderedRoutes(r, '/room-unit-groups', db.roomUnitGroups, 'Unit group', { remove: true });
   orderedRoutes(r, '/room-types', db.roomTypes, 'Room type');
 
   r.post('/room-statuses', setup, validateBody(roomStatusCreateSchema), async (req, res) => {

@@ -116,8 +116,10 @@ export interface StockData {
   rooms: Room[];
   /** The room types a card can pick, in dropdown order. */
   roomTypes: RoomType[];
-  /** The master layout every room shares, in display order. */
+  /** The master layout every room shares, in display order (within their group). */
   roomUnits: RoomUnit[];
+  /** The groups the units are listed in ("Bathroom"…), in display order. [] only without units. */
+  roomUnitGroups: RoomUnitGroup[];
   /** Unit statuses, in order. [] = DEFAULT_ROOM_STATUSES (see `roomStatusList`). */
   roomStatuses: RoomStatus[];
   /** { [roomId]: { [unitId]: current status } }; missing = the first status. */
@@ -147,7 +149,20 @@ export interface RoomUnit {
   id: string;
   name: string;
   names?: LocalizedNames;
+  /** The `RoomUnitGroup` it is listed in. Missing or unknown = the default group (`unitGroupOf`). */
+  group?: string;
 }
+
+/** A group of room units ("Bathroom", "Electronics"…). Not tracked per day. */
+export interface RoomUnitGroup {
+  id: string;
+  /** '' = unnamed (the group old units were put in); the client shows a translated title. */
+  name: string;
+  names?: LocalizedNames;
+}
+
+/** The group units without one (old data and backups) are put in. */
+export const DEFAULT_UNIT_GROUP_ID = 'units';
 
 /** Status colours: the 3 main ones (ok, needs attention, needs fixing), then 7 additional ones. */
 export const ROOM_COLORS = [
@@ -250,6 +265,7 @@ export const emptyStockData = (): StockData => ({
   rooms: [],
   roomTypes: [],
   roomUnits: [],
+  roomUnitGroups: [],
   roomStatuses: [],
   unitStatus: {},
   cleanings: {},

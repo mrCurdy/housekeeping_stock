@@ -19,10 +19,11 @@ import { statusName } from '../rooms/roomText';
 import { sortByLevel } from '../rooms/roomView';
 import { RoomDialog } from './RoomDialog';
 import { CleaningThresholds } from './CleaningThresholds';
-import { MasterList, type MasterRow } from './MasterList';
+import { MasterList } from './MasterList';
+import { UnitGroups } from './UnitGroups';
 
 /**
- * The master layout every room card shares (admin, `setup`): units, statuses (name + colour),
+ * The master layout every room card shares (admin, `setup`): units in groups (`UnitGroups`), statuses (name + colour),
  * room types and the general-cleaning thresholds. "Add room" opens `RoomDialog`; the "Rooms" list
  * under it (level order) edits a card's number/type/note in the same dialog or removes the card
  * (confirmed). New cards are admin-only; the admin also edits them on /rooms.
@@ -123,22 +124,7 @@ export function RoomSetupCard() {
             </ul>
           )}
         </section>
-        <MasterList
-          title={tx.units}
-          hint={tx.unitsHint}
-          rows={data.roomUnits}
-          fieldLabel={tx.unitName}
-          addPlaceholder={tx.newUnit}
-          addLabel={tx.addUnit}
-          onAdd={stock.addRoomUnit}
-          onRename={stock.renameRoomUnit}
-          onMove={stock.moveRoomUnit}
-          onRemove={async (row: MasterRow) => {
-            if (await confirmed(tx.removeUnitTitle(row.name), tx.removeUnitDescription)) {
-              stock.removeRoomUnit(row.id);
-            }
-          }}
-        />
+        <UnitGroups />
         <MasterList
           title={tx.statuses}
           hint={tx.statusesHint}

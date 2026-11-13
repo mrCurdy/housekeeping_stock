@@ -57,6 +57,8 @@ describe('room mutations', () => {
         return { status: 201, body: { id: 'r1', number: '101' } };
       if (method === 'POST' && path === '/room-units')
         return { status: 201, body: { id: 'u9', ...(body as object) } };
+      if (method === 'POST' && path === '/room-unit-groups')
+        return { status: 201, body: { id: 'g9', ...(body as object) } };
       if (method === 'POST' && path === '/room-statuses')
         return { status: 201, body: { id: 's9', ...(body as object) } };
       if (method === 'PUT' && path.startsWith('/rooms/'))
@@ -162,21 +164,49 @@ describe('room mutations', () => {
 
   it('master units: add, rename, move, remove (drops their statuses)', async () => {
     const { state, calls, m, flush } = setup(withRoom);
-    await m().addRoomUnit('Desk');
+    await m().addRoomUnit('Desk', 'units');
     expect(state.data.roomUnits.map((u) => u.id)).toEqual(['u1', 'u2', 'u9']);
     m().renameRoomUnit('u1', 'Beds');
     expect(state.data.roomUnits[0]!.name).toBe('Beds');
-    m().moveRoomUnit(2, 0);
+    m().moveRoomUnit('u9', 'units', 0);
     expect(state.data.roomUnits.map((u) => u.id)).toEqual(['u9', 'u1', 'u2']);
     m().removeRoomUnit('u1');
     expect(state.data.roomUnits.map((u) => u.id)).toEqual(['u9', 'u2']);
     expect(state.data.unitStatus).toEqual({});
     await flush();
     expect(calls.map((c) => [c.method, c.path, c.body])).toEqual([
-      ['POST', '/room-units', { name: 'Desk' }],
+      ['POST', '/room-units', { name: 'Desk', group: 'units' }],
       ['PATCH', '/room-units/u1', { name: 'Beds' }],
-      ['PUT', '/room-units/order', { ids: ['u9', 'u1', 'u2'] }],
+      ['PUT', '/room-units/order', { ids: ['u9', 'u1', 'u2'], move: { id: 'u9', group: 'units' } }],
       ['DELETE', '/room-units/u1', undefined],
+    ]);
+  });
+
+  it('unit groups: add, rename, reorder, move a unit across, remove only when empty', async () => {
+    const { state, calls, m, flush } = setup(withRoom);
+    await m().addRoomUnitGroup('Bath');
+    // The units' implied default group got stored alongside
+    expect(state.data.roomUnitGroups.map((g) => g.id)).toEqual(['units', 'g9']);
+    m().renameRoomUnitGroup('g9', 'Bathroom');
+    m().moveRoomUnitGroup(1, 0);
+    expect(state.data.roomUnitGroups.map((g) => [g.id, g.name])).toEqual([
+      ['g9', 'Bathroom'],
+      ['units', ''],
+    ]);
+    m().moveRoomUnit('u2', 'g9', 0);
+    expect(state.data.roomUnits.find((u) => u.id === 'u2')!.group).toBe('g9');
+    expect(m().removeRoomUnitGroup('g9')).toBe(false);
+    m().moveRoomUnit('u2', 'units', 1);
+    expect(m().removeRoomUnitGroup('g9')).toBe(true);
+    expect(state.data.roomUnitGroups.map((g) => g.id)).toEqual(['units']);
+    await flush();
+    expect(calls.map((c) => [c.method, c.path, c.body])).toEqual([
+      ['POST', '/room-unit-groups', { name: 'Bath' }],
+      ['PATCH', '/room-unit-groups/g9', { name: 'Bathroom' }],
+      ['PUT', '/room-unit-groups/order', { ids: ['g9', 'units'] }],
+      ['PUT', '/room-units/order', { ids: ['u1', 'u2'], move: { id: 'u2', group: 'g9' } }],
+      ['PUT', '/room-units/order', { ids: ['u1', 'u2'], move: { id: 'u2', group: 'units' } }],
+      ['DELETE', '/room-unit-groups/g9', undefined],
     ]);
   });
 

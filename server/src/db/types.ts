@@ -20,6 +20,7 @@ import type {
   RoomStatusPatchInput,
   RoomType,
   RoomUnit,
+  RoomUnitGroup,
   StockCard,
   SettingsPatchInput,
   StockData,
@@ -134,6 +135,22 @@ export interface OrderedRepo<T> extends NamedRepo<T> {
   reorder(ids: string[]): Promise<T[]>;
 }
 
+/** Room units: each is in a group (`RoomUnitGroupRepo`). */
+export interface RoomUnitRepo extends OrderedRepo<RoomUnit> {
+  /** In `group`; a missing or unknown one = the first group (created as the default when none). */
+  create(name: string, group?: string): Promise<RoomUnit>;
+  /**
+   * Puts the listed units first, in that order, and `move.id` into group `move.group` (ignored
+   * when either is unknown). Returns the whole list.
+   */
+  reorder(ids: string[], move?: { id: string; group: string }): Promise<RoomUnit[]>;
+}
+
+export interface RoomUnitGroupRepo extends Omit<OrderedRepo<RoomUnitGroup>, 'delete'> {
+  /** 'notEmpty' (nothing deleted) while units are in it. */
+  delete(id: string): Promise<boolean | 'notEmpty'>;
+}
+
 /** Unit statuses. Stored only once changed: until then the defaults are used (and get stored). */
 export interface RoomStatusRepo {
   create(input: RoomStatusCreateInput): Promise<RoomStatus>;
@@ -188,7 +205,9 @@ export interface Db {
   settings: SettingsRepo;
   rooms: RoomRepo;
   /** Removing a unit removes its status on every card. */
-  roomUnits: OrderedRepo<RoomUnit>;
+  roomUnits: RoomUnitRepo;
+  /** A group with units isn't deleted. */
+  roomUnitGroups: RoomUnitGroupRepo;
   /** Removing a type clears it on its cards. */
   roomTypes: OrderedRepo<RoomType>;
   roomStatuses: RoomStatusRepo;

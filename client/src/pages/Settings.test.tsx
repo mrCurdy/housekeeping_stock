@@ -149,15 +149,6 @@ describe('Settings: room cards setup', () => {
       .filter(([u, init]) => u === url && init?.method === method)
       .map(([, init]) => JSON.parse(init?.body as string));
 
-  it('adds a unit', async () => {
-    const fetch = roomsApi();
-    settings();
-    await userEvent.type(await screen.findByPlaceholderText('New unit (bed, shower…)'), 'Bed');
-    await userEvent.click(screen.getByRole('button', { name: 'Add unit' }));
-    expect(await screen.findByLabelText('Unit name Bed')).toHaveValue('Bed');
-    expect(sent(fetch, '/api/room-units', 'POST')).toEqual([{ name: 'Bed' }]);
-  });
-
   it('renames a status and changes its colour', async () => {
     const fetch = roomsApi();
     settings();

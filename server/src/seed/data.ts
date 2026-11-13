@@ -100,14 +100,20 @@ const ROOM_TYPES = [
   { id: 'rt-family', name: 'Family' },
 ];
 
+const ROOM_UNIT_GROUPS = [
+  { id: 'ug-bath', name: 'Bathroom' },
+  { id: 'ug-tech', name: 'Electronics' },
+  { id: 'ug-room', name: 'Room' },
+];
+
 const ROOM_UNITS = [
-  { id: 'u-faucet', name: 'Faucet' },
-  { id: 'u-shower', name: 'Shower' },
-  { id: 'u-bulbs', name: 'Light bulbs' },
-  { id: 'u-tv', name: 'TV' },
-  { id: 'u-ac', name: 'Air conditioning' },
-  { id: 'u-minibar', name: 'Minibar' },
-  { id: 'u-lock', name: 'Door lock' },
+  { id: 'u-faucet', name: 'Faucet', group: 'ug-bath' },
+  { id: 'u-shower', name: 'Shower', group: 'ug-bath' },
+  { id: 'u-bulbs', name: 'Light bulbs', group: 'ug-tech' },
+  { id: 'u-tv', name: 'TV', group: 'ug-tech' },
+  { id: 'u-ac', name: 'Air conditioning', group: 'ug-tech' },
+  { id: 'u-minibar', name: 'Minibar', group: 'ug-room' },
+  { id: 'u-lock', name: 'Door lock', group: 'ug-room' },
 ];
 
 const CLEANERS = ['Anna', 'Marina', 'Kati', 'Olga', 'Liis'];
@@ -230,6 +236,7 @@ export function seedData(today: string): StockData {
     return pos === 9 ? 'rt-family' : pos <= 2 ? 'rt-single' : pos % 2 ? 'rt-double' : 'rt-twin';
   };
   data.roomTypes = ROOM_TYPES;
+  data.roomUnitGroups = ROOM_UNIT_GROUPS;
   data.roomUnits = ROOM_UNITS;
   data.roomStatuses = [
     ...DEFAULT_ROOM_STATUSES,

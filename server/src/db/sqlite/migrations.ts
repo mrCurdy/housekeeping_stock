@@ -134,4 +134,18 @@ export const migrations: { id: number; name: string; sql: string }[] = [
       ALTER TABLE room_statuses ADD COLUMN names TEXT;
     `,
   },
+  {
+    id: 8,
+    name: 'room unit groups',
+    // Units had no group: they all go, in their order, into one group created only if any exist
+    sql: `
+      CREATE TABLE room_unit_groups (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, pos INTEGER NOT NULL, names TEXT
+      );
+      ALTER TABLE room_units ADD COLUMN group_id TEXT;
+      INSERT INTO room_unit_groups (id, name, pos)
+        SELECT 'units', '', 0 WHERE EXISTS (SELECT 1 FROM room_units);
+      UPDATE room_units SET group_id = 'units';
+    `,
+  },
 ];

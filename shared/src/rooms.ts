@@ -3,12 +3,15 @@ import { parseDateLocal } from './dates';
 import {
   DEFAULT_CLEAN_DAYS,
   DEFAULT_ROOM_STATUSES,
+  DEFAULT_UNIT_GROUP_ID,
   type AppSettings,
   type Cleaning,
   type CleanThresholds,
   type Room,
   type RoomColor,
   type RoomStatus,
+  type RoomUnit,
+  type RoomUnitGroup,
   type StockData,
   type UnitStatus,
 } from './types';
@@ -87,6 +90,89 @@ function dropUnitStatuses(data: RoomData, drop: (unitId: string, s: UnitStatus) 
 export function removeUnitIn(data: RoomData, unitId: string): void {
   data.roomUnits = data.roomUnits.filter((u) => u.id !== unitId);
   dropUnitStatuses(data, (id) => id === unitId);
+}
+
+type UnitData = Pick<StockData, 'roomUnits' | 'roomUnitGroups'>;
+
+/**
+ * The group a unit is listed in: its own, or (without one, or a gone one) the default group.
+ * Not simply "the first": reordering the groups must not move units.
+ */
+export const unitGroupOf = (
+  unit: Pick<RoomUnit, 'group'>,
+  groups: readonly RoomUnitGroup[] | undefined,
+): string =>
+  unit.group && groups?.some((g) => g.id === unit.group) ? unit.group : DEFAULT_UNIT_GROUP_ID;
+
+/**
+ * The unit groups in order: the stored ones, plus the default group (last) while a unit has no
+ * known group and it isn't stored. Empty only without groups and units.
+ */
+export function unitGroupList(data: UnitData): RoomUnitGroup[] {
+  const groups = [...(data.roomUnitGroups ?? [])];
+  const needsDefault =
+    !groups.some((g) => g.id === DEFAULT_UNIT_GROUP_ID) &&
+    (data.roomUnits ?? []).some((u) => unitGroupOf(u, groups) === DEFAULT_UNIT_GROUP_ID);
+  if (needsDefault) groups.push({ id: DEFAULT_UNIT_GROUP_ID, name: '' });
+  return groups;
+}
+
+/** The units per group, in group order (every group is listed, maybe empty). */
+export function unitsByGroup(data: UnitData): { group: RoomUnitGroup; units: RoomUnit[] }[] {
+  const list = unitGroupList(data);
+  const out = list.map((group) => ({ group, units: [] as RoomUnit[] }));
+  const at = new Map(list.map((g, i) => [g.id, i]));
+  // `??`: a partial dataset (old test fixtures) may lack the list
+  for (const u of data.roomUnits ?? []) out[at.get(unitGroupOf(u, list))!]!.units.push(u);
+  return out;
+}
+
+/**
+ * Moving unit `id` into `group`, at place `to` among that group's units: the ids of all units in
+ * their new order, and the unit's group. Null when nothing moves.
+ */
+export function moveUnitTo(
+  data: UnitData,
+  id: string,
+  group: string,
+  to: number,
+): { ids: string[]; group: string } | null {
+  const list = unitGroupList(data);
+  const unit = data.roomUnits.find((u) => u.id === id);
+  if (!unit || !list.some((g) => g.id === group)) return null;
+  const inGroup = data.roomUnits.filter((u) => unitGroupOf(u, list) === group);
+  const others = inGroup.filter((u) => u.id !== id).map((u) => u.id);
+  if (to < 0 || to > others.length) return null;
+  if (unitGroupOf(unit, list) === group && inGroup.findIndex((u) => u.id === id) === to) {
+    return null;
+  }
+  const ids = data.roomUnits.map((u) => u.id).filter((i) => i !== id);
+  if (to < others.length) ids.splice(ids.indexOf(others[to]!), 0, id);
+  else if (others.length) ids.splice(ids.indexOf(others[others.length - 1]!) + 1, 0, id);
+  else ids.push(id);
+  return { ids, group };
+}
+
+/** Applies a `moveUnitTo` result to `data` (the default group gets stored if it was implied). */
+export function applyUnitMove(data: UnitData, id: string, move: { ids: string[]; group: string }) {
+  data.roomUnitGroups = unitGroupList(data);
+  const rank = new Map(move.ids.map((i, n) => [i, n]));
+  const at = (i: string) => rank.get(i) ?? Infinity;
+  data.roomUnits = [...data.roomUnits].sort((a, b) => at(a.id) - at(b.id));
+  const unit = data.roomUnits.find((u) => u.id === id);
+  if (unit) unit.group = move.group;
+}
+
+/**
+ * Deletes unit group `id`. 'notEmpty' (nothing deleted) while units are listed in it, false when
+ * there is no such group.
+ */
+export function removeUnitGroupIn(data: UnitData, id: string): boolean | 'notEmpty' {
+  const list = unitGroupList(data);
+  if (!list.some((g) => g.id === id)) return false;
+  if (data.roomUnits.some((u) => unitGroupOf(u, list) === id)) return 'notEmpty';
+  data.roomUnitGroups = list.filter((g) => g.id !== id);
+  return true;
 }
 
 /**

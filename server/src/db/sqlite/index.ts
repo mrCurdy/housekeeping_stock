@@ -31,7 +31,13 @@ import { createCounts } from './counts';
 import { createGroups, createItems, createLocations } from './items';
 import { migrations } from './migrations';
 import { createDepartures, createRecords } from './records';
-import { createRooms, createRoomStatuses, createRoomTypes, createRoomUnits } from './rooms';
+import {
+  createRooms,
+  createRoomStatuses,
+  createRoomTypes,
+  createRoomUnitGroups,
+  createRoomUnits,
+} from './rooms';
 import { CLEANING_ORDER, type Ctx, createRows, DATA_TABLES } from './rows';
 import { createSettings, createStockCards } from './settings';
 import { createTaskGroups, createTasks } from './tasks';
@@ -237,6 +243,7 @@ export function createSqliteDb(
     settings: createSettings(ctx),
     rooms: createRooms(ctx),
     roomUnits: createRoomUnits(ctx),
+    roomUnitGroups: createRoomUnitGroups(ctx),
     roomTypes: createRoomTypes(ctx),
     roomStatuses: createRoomStatuses(ctx),
     auth: createAuth(ctx),
