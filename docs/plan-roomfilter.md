@@ -133,8 +133,51 @@ room admin-only).
   - Docs: `docs/structure.md` (file map: the moved file, `/rooms` and `/settings` sections, the
     API line for `POST /rooms`), README's `/rooms` line if it mentions adding.
 
+- [ ] **4. Card view toggle: full or compact tiles** (skills `ui`, `i18n`)
+  - Added by the user after step 3. Decisions (confirmed):
+    - **Two modes**, a toggle in the filter bar (two icon buttons with `aria-pressed` and
+      translated `aria-label`s, e.g. `LayoutGrid` / `Grid2x2` or `Rows` / `Grid`):
+      - **Full:** the cards as they are now.
+      - **Compact:** each room is a small **square** tile (`aspect-square`) with the room number,
+        the room type name and two icons:
+        - **broom** (lucide `Brush` or similar), coloured by the general-cleaning colour
+          (`cleaningLevel`: green / yellow / red);
+        - **wrench** (`Wrench`), coloured by the room's worst unit status colour (the colour
+          `roomUrgency` ranks; all-green → green). No units → the wrench isn't shown.
+        - Colours come from the `--status-*` tokens (`text-status-red`…), never raw colours.
+          Each icon has a translated `aria-label`/`title` (e.g. "Cleaned 12 days ago", the worst
+          status name), so the meaning isn't only the colour.
+        - The tiles go in a denser grid (several per row on a phone, more on desktop), with no
+          horizontal page scroll.
+    - **Opening a tile:** tapping a tile (a `button`) opens that room as the normal full card,
+      **taking a whole grid row** (`col-span-full`) where it is. The other tiles stay small and
+      flow above/below it, so the user keeps scrolling. **Only one is open:** tapping another tile
+      closes the first and opens the new one. The open card has a close control (× or tap on its
+      header) that turns it back into a tile. The open room isn't remembered, and it closes when
+      the filters/search hide it.
+    - **Default per device:** with nothing stored, phones (`matchMedia('(max-width: 639px)')`,
+      Tailwind's `sm`) start in compact and wider screens in full. Once the user picks a mode it is
+      stored with the other view settings (`rooms.view` in `localStorage`, try/catch), and an
+      old stored view without the field uses the screen default.
+    - Admin and workers both get the toggle. It only changes the view; no server change.
+  - New `pages/rooms/RoomTile.tsx` (the square tile). The open card is the existing `RoomCard`;
+    put the close control in a wrapper in `Rooms.tsx` (or a small optional `onClose` prop on
+    `RoomCard`; read only the part of `RoomCard.tsx` you change). `useRoomView` gets `mode:
+    'full' | 'compact'` with the screen default. The toggle goes in `RoomFilters`.
+  - Text in en/et/ru (`rooms.filter.viewFull`, `rooms.filter.viewCompact`, the icon labels).
+  - Tests:
+    - `roomView.test.ts` (or `useRoomView` tests): the stored mode wins; no stored mode → compact
+      when `matchMedia` matches, full otherwise; an old stored view without `mode` still loads.
+    - `Rooms.test.tsx`: the toggle switches between cards and tiles; a tile shows the number, the
+      type and the icon labels (a red unit status → the wrench says the red status; never cleaned →
+      the broom is red); tapping a tile opens its full card and the others stay tiles; tapping a
+      second tile closes the first; the close control turns it back into a tile; the mode survives
+      a re-render from `localStorage`.
+  - Docs: `docs/structure.md` (file map `RoomTile.tsx`, the `/rooms` page section), the `ui`
+    skill if it lists page examples. Tick the plan.
+
 ## Token rules for these sessions
 
 - Start from `docs/structure.md`, this plan and the step's skill. Don't explore.
-- `RoomCard.tsx` (317 lines) is not touched; don't read it. `en.ts` is read in parts.
+- `RoomCard.tsx` (317 lines) is not touched (step 4 at most adds an `onClose` prop); don't read it whole. `en.ts` is read in parts.
 - Run single test files while working, the full suite once at the end (`| tail -30`).
