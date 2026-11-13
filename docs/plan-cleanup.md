@@ -121,10 +121,11 @@ figure** (totals, the counter page, the Overview).
   - Use `mockApi` with a small `StockData` fixture in `client/src/test/fixtures.ts`, which later tests can reuse.
   - Done differently: the two files already existed, so the cases are new `describe` blocks in them. `fixtures.ts` also has `mockApp(role, data, route)` (wraps `mockApi`) and `today`/`yesterday`. The worker case is paired with an admin case so it can't pass vacuously. Tests only: the behaviour already worked, so they passed on first run.
 
-- [ ] **10. Close out**
+- [x] **10. Close out**
   - Delete the "Known weak spots" section from `docs/structure.md`, or leave only what is still open.
   - Check that the `ui`, `sqlite-db` and `i18n` skills and CLAUDE.md match the code: `grep` every file path they name.
   - Delete this plan once every box is ticked, or keep it for the record.
+  - Done differently: "Known weak spots" keeps only the open one (every page using `useStock()` re-renders on any change). The 15 s full-poll reason moved to the `StockContext.tsx` line of the file map; the test-coverage line was dropped (the file map lists the tests). Every file path in the `ui`, `sqlite-db`, `i18n`, `auth` skills and CLAUDE.md exists. The plan is kept for the record.
 
 ## Token rules for these sessions
 

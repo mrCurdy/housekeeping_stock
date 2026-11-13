@@ -107,7 +107,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `main.tsx`, `App.tsx`: the provider stack (I18n → Theme → Toast → Confirm → Auth → Date → Stock → Router) and the lazy route table.
 - `context/`:
   - `AuthContext.tsx`: the session check, QR `?key=` exchange, Login screen until signed in. `useAuth()` → `{ role, can, logout }`.
-  - `StockContext.tsx` (**159**): the dataset, polling (`POLL_MS`), `send()` and `edit(key, fn)` (`useStock()`). See the `ui` skill. `StockContext.test.tsx`: optimistic edit, failure → toast + reload, a stale poll can't overwrite an edit (`version`), no poll while typing, `setCount` rethrows.
+  - `StockContext.tsx` (**159**): the dataset, polling (`POLL_MS`: all of `GET /api/data` every 15 s, kept on purpose since stock data is pruned to ~30 days), `send()` and `edit(key, fn)` (`useStock()`). See the `ui` skill. `StockContext.test.tsx`: optimistic edit, failure → toast + reload, a stale poll can't overwrite an edit (`version`), no poll while typing, `setCount` rethrows.
   - `stock/mutations.ts`: every mutation, grouped by area (setup, daily figures, checklist, settings), built by `createMutations({ edit, send, data })` (`useMutations` memoizes it; a hook, so the React lint allows passing it `send`, which touches refs). `editData(prev, key, fn)` copies only the top-level key(s) an edit names; the rest is shared with the old dataset. `mutations.test.ts`.
   - `DateContext.tsx`: the selected day (−30…+7, locked in counter mode).
   - `I18nContext.tsx`: `useI18n()` → `{ t, locale, lang, setLang }`.
@@ -246,9 +246,6 @@ settings:     { saluteText? }                                   // app-wide pref
 
 ## Known weak spots
 
-These are known and don't need to be copied. Fix one only when a task touches it.
+Still open. Fix one only when a task touches it.
 
-- **`StockContext`:**
-  - Every 15 s it polls all of `GET /api/data`. That stays on purpose: stock data is pruned to ~30 days (see the data model), so the full poll stays small.
-  - Any change re-renders every page that uses `useStock()`.
-- **Client tests** cover login, settings, counter mode (incl. the room-done fireworks), the checklist (reorder, line ticks, list editing), i18n and the UI kit. `StockContext.test.tsx` covers the optimistic update, rollback and polling. `Stock.test.tsx` covers the card order, the Overview's per-room rows, income → total, × on a manual value and the worker's missing rename/remove. `Checklist.test.tsx` also covers a tick's `PUT /checks/…`, the editor saving only on Save and the read-only previous-day note.
+- **`StockContext`:** any change re-renders every page that uses `useStock()`.
