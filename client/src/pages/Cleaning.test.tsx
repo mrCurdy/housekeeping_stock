@@ -71,10 +71,12 @@ describe('cleaning page', () => {
     expect(t101).toHaveAccessibleName('Room 101: Cleaned today · Ann');
     expect(within(t101).getByText('101')).toBeInTheDocument();
     expect(within(t101).getByText('0')).toHaveClass('text-status-green');
+    expect(t101).toHaveClass('border-status-green');
 
     const t102 = tile('102');
     expect(t102).toHaveAccessibleName('Room 102: Cleaned 30 days ago · Mari');
     expect(within(t102).getByText('30')).toHaveClass('text-status-red');
+    expect(t102).toHaveClass('border-status-red');
 
     const t205 = tile('205');
     expect(t205).toHaveAccessibleName('Room 205: No general cleaning yet');
