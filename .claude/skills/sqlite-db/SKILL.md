@@ -16,22 +16,22 @@ tests' data is still present.
 
 ## Schema (migrations 1–4)
 
-| table | columns | notes |
-|---|---|---|
-| `items` | `id, name, pos` | `pos` = display order |
-| `multipliers` | `item_id, group_id, qty` | PK (item, group); only qty > 0 stored |
-| `records` | `item_id, date, c, i, m, mc` | NULL = not entered; no all-NULL rows |
-| `groups` | `id, name, pos` | |
-| `departures` | `group_id, date, d` | no 0 rows |
-| `locations` | `id, name, pos` | |
-| `counts` | `date, location_id, item_id, value` | `location_id` may be a removed room |
-| `tasks` | `id, name, description, added, removed, earlier_json, group_id, pos` | `earlier` as JSON text; `group_id` (migration 4) = its `task_groups` row |
-| `task_groups` | `id, name, pos` | checklist group cards (migration 4); never empty (`writeTaskGroups` puts back `default`), so `isEmpty()` skips it |
-| `checks` | `date, task_id, at` | `at` = ISO time ticked |
-| `notes` | `date, text` | no blank notes |
-| `stock_cards` | `id, pos` | the Stock page's card order (migration 2); empty = default |
-| `settings` | `key, value` | `StockData.settings` (migration 3); a missing row = the default; a new setting needs no migration, only `writeSetting` in `fill()` |
-| `pins`, `sessions`, `qr_links` | auth (`db.auth`, see the `auth` skill) | not part of `StockData` / backups; written without `write()`; `sessions.link_id` = the QR link a counter session came from |
+| table                          | columns                                                              | notes                                                                                                                              |
+| ------------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `items`                        | `id, name, pos`                                                      | `pos` = display order                                                                                                              |
+| `multipliers`                  | `item_id, group_id, qty`                                             | PK (item, group); only qty > 0 stored                                                                                              |
+| `records`                      | `item_id, date, c, i, m, mc`                                         | NULL = not entered; no all-NULL rows                                                                                               |
+| `groups`                       | `id, name, pos`                                                      |                                                                                                                                    |
+| `departures`                   | `group_id, date, d`                                                  | no 0 rows                                                                                                                          |
+| `locations`                    | `id, name, pos`                                                      |                                                                                                                                    |
+| `counts`                       | `date, location_id, item_id, value`                                  | `location_id` may be a removed room                                                                                                |
+| `tasks`                        | `id, name, description, added, removed, earlier_json, group_id, pos` | `earlier` as JSON text; `group_id` (migration 4) = its `task_groups` row                                                           |
+| `task_groups`                  | `id, name, pos`                                                      | checklist group cards (migration 4); never empty (`writeTaskGroups` puts back `default`), so `isEmpty()` skips it                  |
+| `checks`                       | `date, task_id, at`                                                  | `at` = ISO time ticked                                                                                                             |
+| `notes`                        | `date, text`                                                         | no blank notes                                                                                                                     |
+| `stock_cards`                  | `id, pos`                                                            | the Stock page's card order (migration 2); empty = default                                                                         |
+| `settings`                     | `key, value`                                                         | `StockData.settings` (migration 3); a missing row = the default; a new setting needs no migration, only `writeSetting` in `fill()` |
+| `pins`, `sessions`, `qr_links` | auth (`db.auth`, see the `auth` skill)                               | not part of `StockData` / backups; written without `write()`; `sessions.link_id` = the QR link a counter session came from         |
 
 There are **no foreign keys**, on purpose: a restored backup may hold counts of removed rooms or
 ticks of old tasks. Deletes clean up dependent rows by hand (`items.delete`, the `groups` repo's
@@ -56,6 +56,7 @@ with a default, then update the row interface, `snapshot()` and `fill()`.
 ## Transactions and side effects
 
 Every change goes through `write(fn)`:
+
 1. the daily backup (`data/backups/db-YYYY-MM-DD.json`, i.e. `backups/` next to the DB file; the start-of-day `snapshot()` in the
    Backup/Restore format; pruned after `BACKUP_DAYS`; failures are only logged);
 2. `fn` and `prune()` in one `sql.transaction`.
@@ -65,6 +66,7 @@ Every change goes through `write(fn)`:
 `prune()` runs on start (after a `db.json` import), and inside every `write()` (so also after
 `replace()`, i.e. a Restore: an old backup is accepted whole, then pruned). The clock is the
 `today` option of `createSqliteDb` (default `formatDate(todayLocal())`); tests pass their own.
+
 - Checklist ticks, notes and task history older than `CHECKLIST_DAYS`: SQL deletes plus `pruneTasks`.
 - Stock (`pruneStockRows`): `keepFrom = today − HISTORY_DAYS − 2`, K = the day before. A cheap
   `SELECT 1 … WHERE date < K LIMIT 1` on `records`/`departures`/`counts` first; only on a hit it

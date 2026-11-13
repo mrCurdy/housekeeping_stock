@@ -31,35 +31,35 @@ The server stays English. `apiErrorMessage(err, t)` in `lib/api.ts` maps error c
 
 ## Glossary (keep it consistent)
 
-| English | Eesti | Русский |
-|---|---|---|
-| Stock (page) | Ladu | Склад |
-| Stock / Total stock (figure) | Laoseis | Остаток (card: Остатки) |
-| Inventory count | Inventuur | Инвентаризация |
-| Item / stock item | Toode | Позиция |
-| Stock name | Nimetus | Наименование |
-| Consumption | Kulu | Расход |
-| Income | Juurdetulek | Приход |
-| Departures | Lahkumised | Выезды |
-| Group | Grupp | Группа |
-| Items per departure | Kulu ühe lahkumise kohta | Расход на один выезд |
-| Hotel room (checked out) | tuba / toad | номер / номера |
-| Room where stock is counted (location) | ruum / ruumid | помещение / помещения |
-| Counted | Loetud | Посчитано |
-| Shortage | Puudujääk | Недостача |
-| Calculated / Entered by hand | Arvutatud / Käsitsi sisestatud | Рассчитано / Введено вручную |
-| Backup / Restore | Varukoopia / Taasta | Копия / Восстановить |
-| Save / Saved / Retry | Salvesta / Salvestatud / Proovi uuesti | Сохранить / Сохранено / Повторить |
-| Remove | Eemalda | Удалить |
-| Today | Täna | Сегодня |
-| Checklist | Kontrollnimekiri | Чек-лист |
-| Task | Ülesanne | Задача |
-| Instructions | Juhend | Инструкция |
-| Note for the next shift | Kommentaar järgmisele vahetusele | Комментарий для следующей смены |
-| Settings | Seaded | Настройки |
-| Admin / Worker (role) | administraator / töötaja | администратор / сотрудник |
-| PIN / QR code | PIN / QR-kood | PIN / QR-код |
-| Revoke | Tühista | Отозвать |
+| English                                | Eesti                                  | Русский                           |
+| -------------------------------------- | -------------------------------------- | --------------------------------- |
+| Stock (page)                           | Ladu                                   | Склад                             |
+| Stock / Total stock (figure)           | Laoseis                                | Остаток (card: Остатки)           |
+| Inventory count                        | Inventuur                              | Инвентаризация                    |
+| Item / stock item                      | Toode                                  | Позиция                           |
+| Stock name                             | Nimetus                                | Наименование                      |
+| Consumption                            | Kulu                                   | Расход                            |
+| Income                                 | Juurdetulek                            | Приход                            |
+| Departures                             | Lahkumised                             | Выезды                            |
+| Group                                  | Grupp                                  | Группа                            |
+| Items per departure                    | Kulu ühe lahkumise kohta               | Расход на один выезд              |
+| Hotel room (checked out)               | tuba / toad                            | номер / номера                    |
+| Room where stock is counted (location) | ruum / ruumid                          | помещение / помещения             |
+| Counted                                | Loetud                                 | Посчитано                         |
+| Shortage                               | Puudujääk                              | Недостача                         |
+| Calculated / Entered by hand           | Arvutatud / Käsitsi sisestatud         | Рассчитано / Введено вручную      |
+| Backup / Restore                       | Varukoopia / Taasta                    | Копия / Восстановить              |
+| Save / Saved / Retry                   | Salvesta / Salvestatud / Proovi uuesti | Сохранить / Сохранено / Повторить |
+| Remove                                 | Eemalda                                | Удалить                           |
+| Today                                  | Täna                                   | Сегодня                           |
+| Checklist                              | Kontrollnimekiri                       | Чек-лист                          |
+| Task                                   | Ülesanne                               | Задача                            |
+| Instructions                           | Juhend                                 | Инструкция                        |
+| Note for the next shift                | Kommentaar järgmisele vahetusele       | Комментарий для следующей смены   |
+| Settings                               | Seaded                                 | Настройки                         |
+| Admin / Worker (role)                  | administraator / töötaja               | администратор / сотрудник         |
+| PIN / QR code                          | PIN / QR-kood                          | PIN / QR-код                      |
+| Revoke                                 | Tühista                                | Отозвать                          |
 
 "Room" is ambiguous in English: hotel rooms (departures) and storage rooms (locations) are different words in et and ru. Pick by meaning.
 

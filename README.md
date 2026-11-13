@@ -2,13 +2,13 @@
 
 A small tool for tracking daily housekeeping stock (linens, amenities, …) in a hotel. Consumption is partly derived from guest departures per room group, and stock can be counted per room on a phone. It is standalone (no integration with a hotel system) and protected by a 4-digit PIN: an **admin** PIN (sets up items, groups, rooms, checklist tasks, PINs, QR code, Restore) and a **worker** PIN (everything day-to-day). A QR code made by the admin opens today's room counting without a PIN.
 
-| Layer   | Stack                                                                                        |
-| ------- | -------------------------------------------------------------------------------------------- |
-| Client  | React 19, Vite, Tailwind CSS 4, React Router, lucide icons, ExcelJS (lazy-loaded)            |
-| Server  | Express 5, zod, helmet, pino, cookie sessions, express-rate-limit                            |
-| Storage | SQLite (`data/stock.db`, better-sqlite3) behind a repository interface                       |
-| Shared  | `@app/shared`: types, zod schemas, the stock rules                                           |
-| Tooling | TypeScript, npm workspaces, Vitest, ESLint, Prettier, Docker                                 |
+| Layer   | Stack                                                                             |
+| ------- | --------------------------------------------------------------------------------- |
+| Client  | React 19, Vite, Tailwind CSS 4, React Router, lucide icons, ExcelJS (lazy-loaded) |
+| Server  | Express 5, zod, helmet, pino, cookie sessions, express-rate-limit                 |
+| Storage | SQLite (`data/stock.db`, better-sqlite3) behind a repository interface            |
+| Shared  | `@app/shared`: types, zod schemas, the stock rules                                |
+| Tooling | TypeScript, npm workspaces, Vitest, ESLint, Prettier, Docker                      |
 
 Structure and conventions come from the full-stack boilerplate (`../boilerplate`, reference only), without sockets, user accounts or the Postgres/MySQL drivers.
 
@@ -25,14 +25,14 @@ On the first start the PINs are admin **1234** and worker **0000** (or `ADMIN_PI
 
 Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/settings` (admin: PINs and the counting QR code).
 
-| Command             | What it does                                                               |
-| ------------------- | -------------------------------------------------------------------------- |
-| `npm run dev`       | Server (tsx watch) + client (Vite) together                                |
-| `npm run build`     | Bundle server (`server/dist`) and client (`client/dist`)                   |
-| `npm start`         | Run the built server in production mode (also serves the client build)   |
-| `npm test`          | Stock-rule tests, API tests, UI component tests                            |
-| `npm run typecheck` | `tsc --noEmit` in every workspace                                          |
-| `npm run lint`      | ESLint (`npm run format` for Prettier)                                     |
+| Command             | What it does                                                           |
+| ------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`       | Server (tsx watch) + client (Vite) together                            |
+| `npm run build`     | Bundle server (`server/dist`) and client (`client/dist`)               |
+| `npm start`         | Run the built server in production mode (also serves the client build) |
+| `npm test`          | Stock-rule tests, API tests, UI component tests                        |
+| `npm run typecheck` | `tsc --noEmit` in every workspace                                      |
+| `npm run lint`      | ESLint (`npm run format` for Prettier)                                 |
 
 Optional settings are in `.env.example` (copy to `.env`).
 
