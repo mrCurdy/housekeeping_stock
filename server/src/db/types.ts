@@ -1,5 +1,7 @@
 import type {
   AppSettings,
+  Cleaning,
+  CleaningInput,
   DayChecks,
   DayCounts,
   DayRecord,
@@ -10,12 +12,22 @@ import type {
   PinRole,
   RecordPatchInput,
   Role,
+  Room,
+  RoomCreateInput,
+  RoomPatchInput,
+  RoomStatus,
+  RoomStatusCreateInput,
+  RoomStatusPatchInput,
+  RoomType,
+  RoomUnit,
   StockCard,
   SettingsPatchInput,
   StockData,
   Task,
   TaskGroup,
   TaskPatchInput,
+  UnitStatus,
+  UnitStatusInput,
 } from '@app/shared';
 
 /**
@@ -98,6 +110,35 @@ export interface SettingsRepo {
   update(patch: SettingsPatchInput): Promise<AppSettings>;
 }
 
+/** Room cards. `'duplicate'`: another card already has that number. */
+export interface RoomRepo {
+  /** null: unknown room type (`type: ''` = none). */
+  create(input: RoomCreateInput): Promise<Room | null | 'duplicate'>;
+  /** Only the given fields change; `type: ''` and `note: ''` clear them. null: unknown room or type. */
+  update(id: string, patch: RoomPatchInput): Promise<Room | null | 'duplicate'>;
+  /** Deletes the card with its unit statuses and cleanings. */
+  delete(id: string): Promise<boolean>;
+  /** Sets a unit's current status (now as `at`). null: unknown room, unit or status. */
+  setUnitStatus(roomId: string, unitId: string, input: UnitStatusInput): Promise<UnitStatus | null>;
+  /** Records a general cleaning; returns the room's cleanings, newest first. null: unknown room. */
+  addCleaning(roomId: string, input: CleaningInput): Promise<Cleaning[] | null>;
+}
+
+/** A master list (room units, room types): create / rename / delete / reorder. */
+export interface OrderedRepo<T> extends NamedRepo<T> {
+  /** Puts the listed ids first, in that order. Returns the whole list. */
+  reorder(ids: string[]): Promise<T[]>;
+}
+
+/** Unit statuses. Stored only once changed: until then the defaults are used (and get stored). */
+export interface RoomStatusRepo {
+  create(input: RoomStatusCreateInput): Promise<RoomStatus>;
+  update(id: string, patch: RoomStatusPatchInput): Promise<RoomStatus | null>;
+  /** Its units go back to the first status. 'last' (nothing deleted) when it is the only one. */
+  delete(id: string): Promise<boolean | 'last'>;
+  reorder(ids: string[]): Promise<RoomStatus[]>;
+}
+
 /** Login storage. Not part of StockData: backups and restores never touch it. */
 export interface AuthRepo {
   /** Stored PIN hashes by role (a role without a PIN is missing). */
@@ -141,6 +182,12 @@ export interface Db {
   checklist: ChecklistRepo;
   stockCards: StockCardRepo;
   settings: SettingsRepo;
+  rooms: RoomRepo;
+  /** Removing a unit removes its status on every card. */
+  roomUnits: OrderedRepo<RoomUnit>;
+  /** Removing a type clears it on its cards. */
+  roomTypes: OrderedRepo<RoomType>;
+  roomStatuses: RoomStatusRepo;
   auth: AuthRepo;
   /** Create tables / files. Must be idempotent. */
   init(): Promise<void>;

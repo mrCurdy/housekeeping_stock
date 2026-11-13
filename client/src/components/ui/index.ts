@@ -1,10 +1,12 @@
 // Style system barrel: import everything UI from '@/components/ui'.
+export * from './AddForm';
 export * from './Alert';
 export * from './Avatar';
 export * from './Badge';
 export * from './Button';
 export * from './Card';
 export * from './Checkbox';
+export * from './ClearableInput';
 export * from './CommitInput';
 export * from './ConfirmDialog';
 export * from './Dropdown';

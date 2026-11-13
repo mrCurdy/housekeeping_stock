@@ -108,11 +108,100 @@ export interface StockData {
   stockCards: StockCard[];
   /** App-wide preferences the admin sets on the Settings page. Unset = the default. */
   settings: AppSettings;
+  /** Room cards (the Rooms page sorts them by number, see `sortRooms`). */
+  rooms: Room[];
+  /** The room types a card can pick, in dropdown order. */
+  roomTypes: RoomType[];
+  /** The master layout every room shares, in display order. */
+  roomUnits: RoomUnit[];
+  /** Unit statuses, in order. [] = DEFAULT_ROOM_STATUSES (see `roomStatusList`). */
+  roomStatuses: RoomStatus[];
+  /** { [roomId]: { [unitId]: current status } }; missing = the first status. */
+  unitStatus: Record<string, Record<string, UnitStatus>>;
+  /** { [roomId]: general cleanings, newest first }. Pruned after HISTORY_DAYS except each room's latest. */
+  cleanings: Record<string, Cleaning[]>;
 }
+
+export interface Room {
+  id: string;
+  /** The room number as shown ("101", "B2"). Unique. */
+  number: string;
+  /** A `RoomType` id. Missing = no type. */
+  type?: string;
+  /** The card's short description ("sea view"). Missing = none. At most ROOM_NOTE_MAX characters. */
+  note?: string;
+}
+
+export interface RoomType {
+  id: string;
+  name: string;
+}
+
+/** A part of a room (bed, shower…) whose status is tracked. */
+export interface RoomUnit {
+  id: string;
+  name: string;
+}
+
+/** Status colours: the 3 main ones (ok, needs attention, needs fixing), then 7 additional ones. */
+export const ROOM_COLORS = [
+  'green',
+  'yellow',
+  'red',
+  'blue',
+  'purple',
+  'orange',
+  'teal',
+  'pink',
+  'brown',
+  'grey',
+] as const;
+export type RoomColor = (typeof ROOM_COLORS)[number];
+
+export interface RoomStatus {
+  id: string;
+  name: string;
+  color: RoomColor;
+}
+
+/** The statuses used while none is stored (fixed ids). */
+export const DEFAULT_ROOM_STATUSES: readonly RoomStatus[] = [
+  { id: 'ok', name: 'OK', color: 'green' },
+  { id: 'attention', name: 'Needs attention', color: 'yellow' },
+  { id: 'fix', name: 'Needs fixing', color: 'red' },
+];
+
+/** A unit's current status: who set it and when (ISO time), with an optional note. */
+export interface UnitStatus {
+  status: string;
+  by: string;
+  at: string;
+  note?: string;
+}
+
+/** A general cleaning of a room: the local day and the cleaner's name. */
+export interface Cleaning {
+  date: string;
+  by: string;
+}
+
+/** Days since the last general cleaning: green up to `green`, yellow up to `yellow`, red above. */
+export interface CleanThresholds {
+  green: number;
+  yellow: number;
+}
+
+export const DEFAULT_CLEAN_DAYS: Readonly<CleanThresholds> = { green: 15, yellow: 29 };
+
+export const ROOM_NOTE_MAX = 500;
 
 export interface AppSettings {
   /** The word the fireworks spell when a checklist group's last task is ticked. Unset = DEFAULT_SALUTE_TEXT. */
   saluteText?: string;
+  /** Days a general cleaning stays green. Unset = DEFAULT_CLEAN_DAYS.green. Always < cleanYellowDays. */
+  cleanGreenDays?: number;
+  /** Days a general cleaning stays yellow (red after). Unset = DEFAULT_CLEAN_DAYS.yellow. */
+  cleanYellowDays?: number;
 }
 
 export const DEFAULT_SALUTE_TEXT = 'Tubli!';
@@ -128,8 +217,13 @@ export const stockCardOrder = (saved: readonly StockCard[]): StockCard[] => [
   ...new Set([...saved, ...STOCK_CARDS]),
 ];
 
+/**
+ * The history window: the date switcher goes back this many days, and the server deletes older
+ * checklist ticks/notes and (2 days before that) stock data.
+ */
+export const HISTORY_DAYS = 30;
 /** Checklist ticks and notes older than this many days are deleted by the server. */
-export const CHECKLIST_DAYS = 30;
+export const CHECKLIST_DAYS = HISTORY_DAYS;
 
 export const emptyStockData = (): StockData => ({
   items: [],
@@ -144,6 +238,12 @@ export const emptyStockData = (): StockData => ({
   notes: {},
   stockCards: [],
   settings: {},
+  rooms: [],
+  roomTypes: [],
+  roomUnits: [],
+  roomStatuses: [],
+  unitStatus: {},
+  cleanings: {},
 });
 
 export type DayChecks = Record<string, string>;

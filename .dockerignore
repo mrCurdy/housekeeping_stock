@@ -7,5 +7,4 @@ data
 .git
 **/*.log
 coverage
-boilerplate
 backups

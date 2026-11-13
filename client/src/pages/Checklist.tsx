@@ -1,13 +1,13 @@
 import { DEFAULT_SALUTE_TEXT, tasksByGroup } from '@app/shared';
 import { GripVertical } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { AddForm } from '@/components/AddForm';
 import { DateSwitcher } from '@/components/layout/DateSwitcher';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Salute } from '@/components/Salute';
-import { Alert, Card, Spinner } from '@/components/ui';
+import { AddForm, Alert, Card, Spinner } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { formatLongDate, useSelectedDate } from '@/context/DateContext';
+import { useSelectedDate } from '@/context/DateContext';
+import { formatLongDate } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { cn } from '@/lib/cn';

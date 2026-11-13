@@ -5,12 +5,18 @@ import { dateRange, formatDate, type StockData, type StockMath } from '@app/shar
 import ExcelJS from 'exceljs';
 import type { Messages } from '@/i18n/en';
 import { downloadBlob } from './download';
+import { cleaningSheet } from './excelRows';
 
-/** First day with data up to max(last day with data, today); empty when there is no data. */
-function historyRange(data: StockData, todayStr: string): string[] {
+/**
+ * First day with data (never before `from`, the oldest selectable day, so the carried-over count
+ * that stock pruning leaves the day before isn't exported) up to max(last day with data, today);
+ * empty when there is no data from `from` on.
+ */
+function historyRange(data: StockData, from: string, todayStr: string): string[] {
   let first: string | null = null;
   let last = todayStr;
   const see = (d: string) => {
+    if (d < from) return;
     if (first === null || d < first) first = d;
     if (d > last) last = d;
   };
@@ -21,18 +27,20 @@ function historyRange(data: StockData, todayStr: string): string[] {
 }
 
 /**
- * "Stock" sheet: one row per day, Consumption / Income / Stock columns per item.
- * "Departures" sheet when groups exist. Returns false when there is nothing to export.
+ * "Stock" sheet (when items and days with data exist): one row per day, Consumption / Income / Stock
+ * columns per item; "Departures" sheet with it when groups exist. "Cleanings" sheet when room cards
+ * exist. Returns false when there is nothing to export.
  */
 export async function exportExcel(
   data: StockData,
   math: StockMath,
-  todayStr: string,
+  { from, today: todayStr }: { from: string; today: string },
   t: Messages['excel'],
 ) {
   const { items, groups, groupRecords } = data;
-  const days = historyRange(data, todayStr);
-  if (items.length === 0 || days.length === 0) return false;
+  const days = historyRange(data, from, todayStr);
+  const hasStock = items.length > 0 && days.length > 0;
+  if (!hasStock && data.rooms.length === 0) return false;
 
   const wb = new ExcelJS.Workbook();
 
@@ -66,100 +74,137 @@ export async function exportExcel(
     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
   };
 
-  // --- Stock sheet ---
-  const ws = wb.addWorksheet(t.stockSheet, { views: [{ state: 'frozen', xSplit: 1, ySplit: 2 }] });
-  ws.getColumn(1).width = 16;
-  ws.getCell(1, 1).value = t.date;
-  ws.mergeCells(1, 1, 2, 1);
-  styleHeader(ws.getCell(1, 1));
+  if (hasStock) {
+    stockSheets();
+  }
 
-  items.forEach((item, k) => {
-    const col = 2 + k * 3;
-    ws.getCell(1, col).value = item.name || t.unnamedItem;
-    ws.mergeCells(1, col, 1, col + 2);
-    [t.consumption, t.income, t.stock].forEach((label, n) => {
-      ws.getColumn(col + n).width = 13;
-      ws.getCell(2, col + n).value = label;
-      styleHeader(ws.getCell(2, col + n));
+  // --- Cleanings sheet ---
+  if (data.rooms.length > 0) {
+    const cs = wb.addWorksheet(t.cleaningsSheet, { views: [{ state: 'frozen', ySplit: 1 }] });
+    const headers = [
+      t.room,
+      t.roomType,
+      t.lastCleaning,
+      t.daysAgo,
+      t.cleanedBy,
+      t.earlierCleanings,
+    ];
+    [10, 16, 16, 10, 16, 40].forEach((width, n) => {
+      cs.getColumn(1 + n).width = width;
     });
-    styleHeader(ws.getCell(1, col));
-    ws.getCell(1, col).border = { ...border, left: itemDivider };
-    ws.getCell(2, col).border = { ...border, left: itemDivider };
-  });
-  ws.getRow(1).height = 30;
+    headers.forEach((label, n) => {
+      cs.getCell(1, 1 + n).value = label;
+      styleHeader(cs.getCell(1, 1 + n));
+    });
+    cs.getRow(1).height = 30;
+    cleaningSheet(data, todayStr, t.never).forEach((r, k) => {
+      [r.number, r.type, r.last, r.days, r.by, r.earlier].forEach((value, n) => {
+        const cell = cs.getCell(2 + k, 1 + n);
+        cell.value = value;
+        cell.border = border;
+      });
+      if (r.days === '') cs.getCell(2 + k, 3).font = { italic: true, color: { argb: 'FFDC2626' } };
+    });
+  }
 
-  // Nothing happened before the first exported day, so every item starts at 0 (as in calculateTotal)
-  const running = items.map(() => 0);
-  days.forEach((dStr, r) => {
-    const row = 3 + r;
-    styleDateCell(ws.getCell(row, 1), dStr);
+  function stockSheets() {
+    // --- Stock sheet ---
+    const ws = wb.addWorksheet(t.stockSheet, {
+      views: [{ state: 'frozen', xSplit: 1, ySplit: 2 }],
+    });
+    ws.getColumn(1).width = 16;
+    ws.getCell(1, 1).value = t.date;
+    ws.mergeCells(1, 1, 2, 1);
+    styleHeader(ws.getCell(1, 1));
+
     items.forEach((item, k) => {
-      const f = math.dayFigures(item, dStr, running[k]!);
-      running[k] = f.total;
       const col = 2 + k * 3;
-      const cCell = ws.getCell(row, col);
-      const iCell = ws.getCell(row, col + 1);
-      const sCell = ws.getCell(row, col + 2);
-      cCell.value = f.consumption;
-      cCell.fill = consumptionFill;
-      iCell.value = f.income;
-      sCell.value = f.total;
-      sCell.font = { bold: true, color: { argb: f.total < 0 ? 'FFDC2626' : 'FF0F172A' } };
-      if (f.counted) sCell.fill = countedFill;
-      [cCell, iCell, sCell].forEach((c) => {
-        c.border = border;
+      ws.getCell(1, col).value = item.name || t.unnamedItem;
+      ws.mergeCells(1, col, 1, col + 2);
+      [t.consumption, t.income, t.stock].forEach((label, n) => {
+        ws.getColumn(col + n).width = 13;
+        ws.getCell(2, col + n).value = label;
+        styleHeader(ws.getCell(2, col + n));
       });
-      cCell.border = { ...border, left: itemDivider };
+      styleHeader(ws.getCell(1, col));
+      ws.getCell(1, col).border = { ...border, left: itemDivider };
+      ws.getCell(2, col).border = { ...border, left: itemDivider };
     });
-  });
+    ws.getRow(1).height = 30;
 
-  const legendRow = 3 + days.length + 1;
-  t.legend.forEach((text, n) => {
-    const cell = ws.getCell(legendRow + n, 1);
-    cell.value = text;
-    cell.font = { italic: true, color: { argb: 'FF64748B' } };
-  });
-
-  // --- Departures sheet ---
-  if (groups.length > 0) {
-    const ds = wb.addWorksheet(t.departuresSheet, {
-      views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }],
-    });
-    ds.getColumn(1).width = 16;
-    ds.getCell(1, 1).value = t.date;
-    styleHeader(ds.getCell(1, 1));
-    groups.forEach((g, k) => {
-      ds.getColumn(2 + k).width = 14;
-      ds.getCell(1, 2 + k).value = g.name;
-      styleHeader(ds.getCell(1, 2 + k));
-    });
+    // Nothing happened before the first exported day, so every item starts at 0 (as in calculateTotal)
+    const running = items.map(() => 0);
     days.forEach((dStr, r) => {
-      styleDateCell(ds.getCell(2 + r, 1), dStr);
-      groups.forEach((g, k) => {
-        const cell = ds.getCell(2 + r, 2 + k);
-        cell.value = groupRecords[g.id]?.[dStr]?.d ?? 0;
-        cell.border = border;
+      const row = 3 + r;
+      styleDateCell(ws.getCell(row, 1), dStr);
+      items.forEach((item, k) => {
+        const f = math.dayFigures(item, dStr, running[k]!);
+        running[k] = f.total;
+        const col = 2 + k * 3;
+        const cCell = ws.getCell(row, col);
+        const iCell = ws.getCell(row, col + 1);
+        const sCell = ws.getCell(row, col + 2);
+        cCell.value = f.consumption;
+        cCell.fill = consumptionFill;
+        iCell.value = f.income;
+        sCell.value = f.total;
+        sCell.font = { bold: true, color: { argb: f.total < 0 ? 'FFDC2626' : 'FF0F172A' } };
+        if (f.counted) sCell.fill = countedFill;
+        [cCell, iCell, sCell].forEach((c) => {
+          c.border = border;
+        });
+        cCell.border = { ...border, left: itemDivider };
       });
     });
 
-    // Items used per departure, as set up in each group
-    const setupRow = 2 + days.length + 1;
-    ds.getCell(setupRow, 1).value = t.itemsPerDeparture;
-    styleHeader(ds.getCell(setupRow, 1));
-    groups.forEach((g, k) => {
-      ds.getCell(setupRow, 2 + k).value = g.name;
-      styleHeader(ds.getCell(setupRow, 2 + k));
+    const legendRow = 3 + days.length + 1;
+    t.legend.forEach((text, n) => {
+      const cell = ws.getCell(legendRow + n, 1);
+      cell.value = text;
+      cell.font = { italic: true, color: { argb: 'FF64748B' } };
     });
-    items.forEach((item, n) => {
-      const nameCell = ds.getCell(setupRow + 1 + n, 1);
-      nameCell.value = item.name || t.unnamedItem;
-      nameCell.border = border;
-      groups.forEach((g, k) => {
-        const cell = ds.getCell(setupRow + 1 + n, 2 + k);
-        cell.value = item.multipliers[g.id] ?? 0;
-        cell.border = border;
+
+    // --- Departures sheet ---
+    if (groups.length > 0) {
+      const ds = wb.addWorksheet(t.departuresSheet, {
+        views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }],
       });
-    });
+      ds.getColumn(1).width = 16;
+      ds.getCell(1, 1).value = t.date;
+      styleHeader(ds.getCell(1, 1));
+      groups.forEach((g, k) => {
+        ds.getColumn(2 + k).width = 14;
+        ds.getCell(1, 2 + k).value = g.name;
+        styleHeader(ds.getCell(1, 2 + k));
+      });
+      days.forEach((dStr, r) => {
+        styleDateCell(ds.getCell(2 + r, 1), dStr);
+        groups.forEach((g, k) => {
+          const cell = ds.getCell(2 + r, 2 + k);
+          cell.value = groupRecords[g.id]?.[dStr]?.d ?? 0;
+          cell.border = border;
+        });
+      });
+
+      // Items used per departure, as set up in each group
+      const setupRow = 2 + days.length + 1;
+      ds.getCell(setupRow, 1).value = t.itemsPerDeparture;
+      styleHeader(ds.getCell(setupRow, 1));
+      groups.forEach((g, k) => {
+        ds.getCell(setupRow, 2 + k).value = g.name;
+        styleHeader(ds.getCell(setupRow, 2 + k));
+      });
+      items.forEach((item, n) => {
+        const nameCell = ds.getCell(setupRow + 1 + n, 1);
+        nameCell.value = item.name || t.unnamedItem;
+        nameCell.border = border;
+        groups.forEach((g, k) => {
+          const cell = ds.getCell(setupRow + 1 + n, 2 + k);
+          cell.value = item.multipliers[g.id] ?? 0;
+          cell.border = border;
+        });
+      });
+    }
   }
 
   const buffer = await wb.xlsx.writeBuffer();

@@ -14,6 +14,15 @@ import {
 } from '@app/shared';
 import { setup, type TestEnv } from './helpers';
 
+// Stock dates relative to today: stock data older than HISTORY_DAYS + 2 days is pruned.
+const ago = (n: number) => formatDate(addDays(todayLocal(), -n));
+const D1 = ago(10);
+const D2 = ago(9);
+const D3 = ago(8);
+const D5 = ago(6);
+const D6 = ago(5);
+const D7 = ago(4);
+
 describe('REST API', () => {
   let env: TestEnv;
   let towel: Item;
@@ -49,6 +58,12 @@ describe('REST API', () => {
       notes: {},
       stockCards: [],
       settings: {},
+      rooms: [],
+      roomTypes: [],
+      roomUnits: [],
+      roomStatuses: [],
+      unitStatus: {},
+      cleanings: {},
     });
   });
 
@@ -119,34 +134,34 @@ describe('REST API', () => {
 
   describe('daily figures', () => {
     it('patches a record field by field; null clears', async () => {
-      const url = `/api/records/${towel.id}/2026-10-01`;
+      const url = `/api/records/${towel.id}/${D1}`;
       await env.api().patch(url).send({ i: 20 }).expect(200);
       const res = await env.api().patch(url).send({ mc: 3 }).expect(200);
       expect(res.body).toEqual({ i: 20, mc: 3 });
       await env.api().patch(url).send({ mc: null }).expect(200);
-      expect((await data()).records[towel.id]).toEqual({ '2026-10-01': { i: 20 } });
+      expect((await data()).records[towel.id]).toEqual({ [D1]: { i: 20 } });
     });
 
     it('rejects bad dates and unknown items', async () => {
       await env.api().patch(`/api/records/${towel.id}/2026-1-1`).send({ i: 1 }).expect(400);
-      await env.api().patch('/api/records/nope/2026-10-01').send({ i: 1 }).expect(404);
+      await env.api().patch(`/api/records/nope/${D1}`).send({ i: 1 }).expect(404);
     });
 
     it('sets departures; 0 clears them', async () => {
-      await env.api().put(`/api/departures/${double.id}/2026-10-02`).send({ d: 3 }).expect(200);
-      await env.api().put(`/api/departures/${double.id}/2026-10-03`).send({ d: 1 }).expect(200);
-      await env.api().put(`/api/departures/${double.id}/2026-10-03`).send({ d: 0 }).expect(200);
-      expect((await data()).groupRecords).toEqual({ [double.id]: { '2026-10-02': { d: 3 } } });
+      await env.api().put(`/api/departures/${double.id}/${D2}`).send({ d: 3 }).expect(200);
+      await env.api().put(`/api/departures/${double.id}/${D3}`).send({ d: 1 }).expect(200);
+      await env.api().put(`/api/departures/${double.id}/${D3}`).send({ d: 0 }).expect(200);
+      expect((await data()).groupRecords).toEqual({ [double.id]: { [D2]: { d: 3 } } });
     });
 
     it('saves room counts and returns the whole day', async () => {
-      const url = `/api/counts/2026-10-02/${floor1.id}/${towel.id}`;
+      const url = `/api/counts/${D2}/${floor1.id}/${towel.id}`;
       const res = await env.api().put(url).send({ value: 0 }).expect(200);
       expect(res.body).toEqual({ [floor1.id]: { [towel.id]: 0 } });
       const cleared = await env.api().put(url).send({ value: null }).expect(200);
       expect(cleared.body).toEqual({});
       await env.api().put(url).send({ value: 12 }).expect(200);
-      await env.api().put(`/api/counts/2026-10-02/nope/${towel.id}`).send({ value: 1 }).expect(404);
+      await env.api().put(`/api/counts/${D2}/nope/${towel.id}`).send({ value: 1 }).expect(404);
     });
   });
 
@@ -342,7 +357,7 @@ describe('REST API', () => {
         .api()
         .patch(`/api/items/${towel.id}`)
         .send({ multipliers: { [g.id]: 1 } });
-      await env.api().put(`/api/departures/${g.id}/2026-10-05`).send({ d: 2 });
+      await env.api().put(`/api/departures/${g.id}/${D5}`).send({ d: 2 });
       await env.api().delete(`/api/groups/${g.id}`).expect(204);
       const d = await data();
       expect(d.groupRecords[g.id]).toBeUndefined();
@@ -353,7 +368,7 @@ describe('REST API', () => {
       await env.api().delete(`/api/locations/${floor1.id}`).expect(204);
       const d = await data();
       expect(d.locations).toEqual([]);
-      expect(d.counts['2026-10-02']).toEqual({ [floor1.id]: { [towel.id]: 12 } });
+      expect(d.counts[D2]).toEqual({ [floor1.id]: { [towel.id]: 12 } });
     });
   });
 
@@ -361,22 +376,58 @@ describe('REST API', () => {
     it('restores an old-format backup, counts included', async () => {
       const backup = {
         items: [{ id: '1', name: 'Pillow case', multipliers: { g_1: 2 } }],
-        records: { '1': { '2026-10-14': { c: '', i: 25, m: null, mc: null } } },
+        records: { '1': { [D6]: { c: '', i: 25, m: null, mc: null } } },
         groups: [{ id: 'g_1', name: 'DOUBLE' }],
-        groupRecords: { g_1: { '2026-10-15': { d: '' } } },
+        groupRecords: { g_1: { [D7]: { d: '' } } },
         locations: [{ id: 'l_1', name: 'Cleaning room' }],
-        counts: { '2026-10-15': { l_1: { '1': 5 } } },
+        counts: { [D7]: { l_1: { '1': 5 } } },
       };
       await env.api().post('/api/restore').send(backup).expect(200);
       const d = await data();
       expect(d.items).toEqual(backup.items);
-      expect(d.records).toEqual({ '1': { '2026-10-14': { i: 25 } } });
+      expect(d.records).toEqual({ '1': { [D6]: { i: 25 } } });
       expect(d.groupRecords).toEqual({});
       expect(d.counts).toEqual(backup.counts);
     });
 
     it('rejects files that are not backups', async () => {
       await env.api().post('/api/restore').send({ foo: 1 }).expect(400);
+    });
+
+    it('restores room cards, unit statuses, cleanings and thresholds unchanged', async () => {
+      const before = await data();
+      const backup: StockData = {
+        ...before,
+        rooms: [
+          { id: 'r_1', number: '101', type: 'rt_1', note: 'Sea view' },
+          { id: 'r_2', number: '102' },
+        ],
+        roomTypes: [{ id: 'rt_1', name: 'Double' }],
+        roomUnits: [{ id: 'u_1', name: 'Bed' }],
+        roomStatuses: [
+          { id: 's_ok', name: 'Clean', color: 'green' },
+          { id: 's_bad', name: 'Broken', color: 'red' },
+        ],
+        unitStatus: {
+          r_1: { u_1: { status: 's_bad', by: 'Ann', at: '2026-11-01T08:00:00.000Z', note: 'leg' } },
+        },
+        cleanings: {
+          r_1: [
+            { date: D7, by: 'Ann' },
+            { date: D5, by: 'Bo' },
+          ],
+        },
+        settings: { ...before.settings, cleanGreenDays: 10, cleanYellowDays: 20 },
+      };
+      await env.api().post('/api/restore').send(backup).expect(200);
+      const d = await data();
+      expect(d.rooms).toEqual(backup.rooms);
+      expect(d.roomTypes).toEqual(backup.roomTypes);
+      expect(d.roomUnits).toEqual(backup.roomUnits);
+      expect(d.roomStatuses).toEqual(backup.roomStatuses);
+      expect(d.unitStatus).toEqual(backup.unitStatus);
+      expect(d.cleanings).toEqual(backup.cleanings);
+      expect(d.settings).toEqual(backup.settings);
     });
 
     it('writes a start-of-day copy before the first change', async () => {

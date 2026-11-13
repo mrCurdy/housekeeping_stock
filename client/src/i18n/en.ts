@@ -1,3 +1,4 @@
+import type { BackupCounts } from '@/lib/backup';
 import { plural } from './plural';
 
 const p = plural('en');
@@ -50,6 +51,8 @@ export const en = {
     closeMenu: 'Close menu',
     logout: 'Log out',
     settings: 'Settings',
+    rooms: 'Room statuses',
+    cleaning: 'Cleaning',
   },
 
   theme: {
@@ -82,12 +85,12 @@ export const en = {
   },
 
   data: {
+    title: 'Data and backups',
+    description:
+      'Excel: the whole day-by-day history as a spreadsheet. Backup: download all data as one file (.json). Restore: replace all data with a backup file. The server also keeps a copy of each day for 30 days (by default).',
     excel: 'Excel',
-    excelHint: 'Full day-by-day history as Excel',
     backup: 'Backup',
-    backupHint: 'Download a backup file (.json)',
     restore: 'Restore',
-    restoreHint: 'Restore all data from a backup file',
     noData: 'No data to export yet',
     noHistory: 'No history to export yet',
     noBackupData: 'No data to back up yet',
@@ -95,8 +98,19 @@ export const en = {
     notBackup: 'Not a backup',
     notBackupFile: (file: string) => `"${file}" is not a Fomka backup.`,
     restoreTitle: 'Restore this backup?',
-    restoreDescription: (file: string, items: number, groups: number, rooms: number) =>
-      `"${file}" contains ${p(items, { one: 'item', other: 'items' })}, ${p(groups, { one: 'group', other: 'groups' })} and ${p(rooms, { one: 'room', other: 'rooms' })}. This replaces ALL current data, including room counts.`,
+    /** Counts of 0 are left out; `cleaned` = room cards with a general cleaning. */
+    restoreDescription: (file: string, c: BackupCounts) => {
+      const parts = [
+        c.items && p(c.items, { one: 'item', other: 'items' }),
+        c.groups && p(c.groups, { one: 'departure group', other: 'departure groups' }),
+        c.locations && p(c.locations, { one: 'count location', other: 'count locations' }),
+        c.rooms &&
+          p(c.rooms, { one: 'room card', other: 'room cards' }) +
+            (c.cleaned ? ` (${c.cleaned} with cleanings)` : ''),
+      ].filter(Boolean);
+      const has = parts.length ? `"${file}" contains: ${parts.join(', ')}.` : `"${file}" is empty.`;
+      return `${has} This replaces ALL current data, including counts, room statuses and cleanings.`;
+    },
     restored: 'Backup restored',
     restoreFailed: 'Restore failed',
   },
@@ -280,9 +294,75 @@ export const en = {
     },
   },
 
+  rooms: {
+    title: 'Room statuses',
+    description: 'What each room needs: the status of every unit',
+    empty: 'No rooms yet',
+    emptyHint: 'Add the rooms in Settings.',
+    noUnits: 'No room units set up yet',
+    noUnitsHint: 'Set up the units (bed, shower…) and their statuses in Settings.',
+    openSettings: 'Open Settings',
+    number: 'Room number',
+    type: 'Room type',
+    noType: 'No type',
+    exists: (number: string) => `Room ${number} already exists`,
+    roomNamed: (number: string) => `Room ${number}`,
+    notePlaceholder: 'Add a note about this room',
+    noteNamed: (number: string) => `Room note ${number}`,
+    statusOf: (unit: string, number: string) => `Status of ${unit} in room ${number}`,
+    setBy: (by: string, when: string) => `${by} · ${when}`,
+    neverCleaned: 'No general cleaning yet',
+    cleanedToday: (by: string) => `Cleaned today · ${by}`,
+    cleanedYesterday: (by: string) => `Cleaned yesterday · ${by}`,
+    cleanedDaysAgo: (days: number, by: string) =>
+      `Cleaned ${p(days, { one: 'day', other: 'days' })} ago · ${by}`,
+    history: 'Cleaning history',
+    edit: (number: string) => `Edit room ${number}`,
+    remove: (number: string) => `Delete room ${number}`,
+    removeTitle: (number: string) => `Delete room ${number}?`,
+    removeDescription: 'Its unit statuses and cleaning history are deleted too.',
+    /** The default statuses' names (shown while a default keeps its English name) */
+    defaultStatus: { ok: 'OK', attention: 'Needs attention', fix: 'Needs fixing' },
+    who: {
+      statusTitle: (unit: string, status: string) => `${unit}: ${status}`,
+      name: 'Your name',
+      note: 'Note',
+      notePlaceholder: 'What needs doing? (optional)',
+    },
+    filter: {
+      level: 'Level',
+      all: 'All',
+      sort: 'Sort',
+      attention: 'Needs attention first',
+      hideGreen: 'Hide all-green rooms',
+      noMatch: 'No rooms match',
+      noMatchHint: 'No room fits the search, the chosen level and filters.',
+      showAll: 'Show all',
+      search: 'Search rooms',
+      searchPlaceholder: 'Enter a room number',
+      searchClear: 'Clear search',
+      view: 'View',
+      viewFull: 'Full cards',
+      viewCompact: 'Compact tiles',
+      openRoom: (number: string) => `Open room ${number}`,
+      closeRoom: (number: string) => `Close room ${number}`,
+      unitsStatus: (status: string) => `Units: ${status}`,
+    },
+  },
+
+  cleaning: {
+    title: 'Cleaning',
+    description: 'Tap a room to register a cleaning.',
+    dirtyFirst: 'Dirty first',
+    cleanedToday: 'Cleaned today',
+    /** A tile's accessible name: the room and its cleaning in words (`cleaningText`) */
+    tile: (number: string, state: string) => `Room ${number}: ${state}`,
+  },
+
   settings: {
     title: 'Settings',
-    description: 'PINs, the QR code for counting and the fireworks. Only the admin sees this page.',
+    description:
+      'PINs, the QR code for counting, data and backups, the fireworks and the room cards setup. Only the admin sees this page.',
     pins: {
       title: 'PINs',
       description: 'Each role logs in with its own 4-digit PIN. The two PINs must be different.',
@@ -297,6 +377,63 @@ export const en = {
       mustDiffer: 'The admin and worker PINs must be different',
       adminChanged: 'Admin PIN changed',
       workerChanged: 'Worker PIN changed',
+    },
+    rooms: {
+      title: 'Room cards',
+      description:
+        'The layout every room card shares: its units, their statuses, the room types and when a general cleaning is due.',
+      units: 'Units',
+      unitsHint: 'Every room card lists these, in this order.',
+      newUnit: 'New unit (bed, shower…)',
+      addUnit: 'Add unit',
+      unitName: (name: string) => `Unit name ${name}`,
+      removeUnitTitle: (name: string) => `Remove the unit "${name}"?`,
+      removeUnitDescription: 'It disappears from every room card, with its statuses.',
+      statuses: 'Statuses',
+      statusesHint: 'A unit nobody has set yet shows the first status.',
+      newStatus: 'New status',
+      addStatus: 'Add status',
+      statusName: (name: string) => `Status name ${name}`,
+      statusColor: (name: string) => `Colour of ${name}`,
+      removeStatusTitle: (name: string) => `Remove the status "${name}"?`,
+      removeStatusDescription: (first: string) => `Units with this status go back to "${first}".`,
+      lastStatus: 'The only status cannot be removed',
+      types: 'Room types',
+      typesHint: 'Each room card can pick one.',
+      newType: 'New room type',
+      addType: 'Add type',
+      typeName: (name: string) => `Room type name ${name}`,
+      removeTypeTitle: (name: string) => `Remove the room type "${name}"?`,
+      removeTypeDescription: 'Rooms of this type are left without a type.',
+      addRoom: 'Add room',
+      addRoomTitle: 'New room',
+      addRoomDescription: 'Its card appears on the Rooms page.',
+      addRoomNote: 'Note',
+      moveUp: (name: string) => `Move ${name} up`,
+      moveDown: (name: string) => `Move ${name} down`,
+      removeNamed: (name: string) => `Remove ${name}`,
+      none: 'Nothing here yet.',
+      cleaning: 'General cleaning',
+      cleaningHint:
+        'Days after a general cleaning: green up to the first number, yellow up to the second, red after.',
+      greenDays: 'Green up to (days)',
+      yellowDays: 'Yellow up to (days)',
+      saveThresholds: 'Save thresholds',
+      wholeDays: 'Enter whole days, 0 or more',
+      greenBelowYellow: 'Green must be less than yellow',
+      thresholdsSaved: 'Thresholds saved',
+      colors: {
+        green: 'Green',
+        yellow: 'Yellow',
+        red: 'Red',
+        blue: 'Blue',
+        purple: 'Purple',
+        orange: 'Orange',
+        teal: 'Teal',
+        pink: 'Pink',
+        brown: 'Brown',
+        grey: 'Grey',
+      },
     },
     salute: {
       title: 'Fireworks',
@@ -344,6 +481,14 @@ export const en = {
     stock: 'Stock',
     unnamedItem: 'Unnamed item',
     itemsPerDeparture: 'Items per departure',
+    cleaningsSheet: 'Cleanings',
+    room: 'Room',
+    roomType: 'Type',
+    lastCleaning: 'Last general cleaning',
+    daysAgo: 'Days ago',
+    cleanedBy: 'Who',
+    earlierCleanings: 'Earlier general cleanings',
+    never: 'never',
     legend: [
       'Stock = end-of-day stock. Highlighted yellow = counted (sum of the room counts, or typed in); red = shortage.',
       'Consumption includes departures × items per room unless it was entered by hand.',

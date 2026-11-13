@@ -46,6 +46,28 @@
   --info: oklch(0.6 0.14 235);
   --info-soft: oklch(0.95 0.03 235);
 
+  /* Room status colours (ROOM_COLORS): the 3 main ones, then 7 more. `-soft` = chip background */
+  --status-green: oklch(0.62 0.16 150);
+  --status-green-soft: oklch(0.95 0.04 150);
+  --status-yellow: oklch(0.78 0.16 90);
+  --status-yellow-soft: oklch(0.95 0.04 90);
+  --status-red: oklch(0.58 0.21 27);
+  --status-red-soft: oklch(0.95 0.052 27);
+  --status-blue: oklch(0.58 0.16 255);
+  --status-blue-soft: oklch(0.95 0.04 255);
+  --status-purple: oklch(0.55 0.2 300);
+  --status-purple-soft: oklch(0.95 0.05 300);
+  --status-orange: oklch(0.68 0.17 55);
+  --status-orange-soft: oklch(0.95 0.043 55);
+  --status-teal: oklch(0.62 0.11 195);
+  --status-teal-soft: oklch(0.95 0.028 195);
+  --status-pink: oklch(0.64 0.19 350);
+  --status-pink-soft: oklch(0.95 0.048 350);
+  --status-brown: oklch(0.52 0.08 55);
+  --status-brown-soft: oklch(0.95 0.02 55);
+  --status-grey: oklch(0.58 0.01 265);
+  --status-grey-soft: oklch(0.95 0.003 265);
+
   --ring: oklch(0.51 var(--brand-c) var(--brand-h) / 0.45);
   color-scheme: light;
 }
@@ -72,6 +94,28 @@
   --danger-soft: oklch(0.3 0.08 25);
   --info: oklch(0.72 0.12 235);
   --info-soft: oklch(0.3 0.06 235);
+
+  /* Room status colours */
+  --status-green: oklch(0.72 0.15 150);
+  --status-green-soft: oklch(0.3 0.06 150);
+  --status-yellow: oklch(0.84 0.15 90);
+  --status-yellow-soft: oklch(0.3 0.06 90);
+  --status-red: oklch(0.68 0.19 27);
+  --status-red-soft: oklch(0.3 0.076 27);
+  --status-blue: oklch(0.7 0.14 255);
+  --status-blue-soft: oklch(0.3 0.056 255);
+  --status-purple: oklch(0.7 0.16 300);
+  --status-purple-soft: oklch(0.3 0.064 300);
+  --status-orange: oklch(0.76 0.15 55);
+  --status-orange-soft: oklch(0.3 0.06 55);
+  --status-teal: oklch(0.74 0.1 195);
+  --status-teal-soft: oklch(0.3 0.04 195);
+  --status-pink: oklch(0.74 0.16 350);
+  --status-pink-soft: oklch(0.3 0.064 350);
+  --status-brown: oklch(0.66 0.07 55);
+  --status-brown-soft: oklch(0.3 0.028 55);
+  --status-grey: oklch(0.7 0.01 265);
+  --status-grey-soft: oklch(0.3 0.004 265);
 
   --ring: oklch(0.65 calc(var(--brand-c) * 0.83) var(--brand-h) / 0.5);
   color-scheme: dark;
@@ -113,6 +157,26 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-ring: var(--ring);
+  --color-status-green: var(--status-green);
+  --color-status-green-soft: var(--status-green-soft);
+  --color-status-yellow: var(--status-yellow);
+  --color-status-yellow-soft: var(--status-yellow-soft);
+  --color-status-red: var(--status-red);
+  --color-status-red-soft: var(--status-red-soft);
+  --color-status-blue: var(--status-blue);
+  --color-status-blue-soft: var(--status-blue-soft);
+  --color-status-purple: var(--status-purple);
+  --color-status-purple-soft: var(--status-purple-soft);
+  --color-status-orange: var(--status-orange);
+  --color-status-orange-soft: var(--status-orange-soft);
+  --color-status-teal: var(--status-teal);
+  --color-status-teal-soft: var(--status-teal-soft);
+  --color-status-pink: var(--status-pink);
+  --color-status-pink-soft: var(--status-pink-soft);
+  --color-status-brown: var(--status-brown);
+  --color-status-brown-soft: var(--status-brown-soft);
+  --color-status-grey: var(--status-grey);
+  --color-status-grey-soft: var(--status-grey-soft);
 }
 
 @theme inline {

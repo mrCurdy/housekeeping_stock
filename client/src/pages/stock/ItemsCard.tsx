@@ -1,10 +1,10 @@
 import { Package, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { AddForm } from '@/components/AddForm';
-import { ClearableInput } from '@/components/ClearableInput';
 import {
+  AddForm,
   Button,
   Card,
+  ClearableInput,
   CommitInput,
   EmptyState,
   Table,
@@ -16,7 +16,8 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmContext';
-import { formatLongDate, useSelectedDate } from '@/context/DateContext';
+import { useSelectedDate } from '@/context/DateContext';
+import { formatLongDate } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';

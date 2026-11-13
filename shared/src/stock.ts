@@ -72,8 +72,9 @@ export function createStockMath(state: StockState, { minDateStr }: { minDateStr:
   };
 
   /**
-   * Day-by-day figures for an item from the earliest record up to `toDateStr`.
-   * Totals aren't stored: they are always replayed from the start.
+   * Day-by-day figures for an item from the earliest record up to `toDateStr` (the Overview and
+   * Excel show every day). One forward pass; each count resets the running total, so the result
+   * equals `calculateTotal` for every day.
    */
   const series = (item: Item, toDateStr: string): Map<string, DayFigures> => {
     const out = new Map<string, DayFigures>();
@@ -88,11 +89,43 @@ export function createStockMath(state: StockState, { minDateStr }: { minDateStr:
     return out;
   };
 
+  /** Per item, the sorted days whose total is a count (m on the Stock page, or room counts). Built once per item. */
+  const countedDaysCache = new Map<string, string[]>();
+  const countedDays = (itemId: string): string[] => {
+    let days = countedDaysCache.get(itemId);
+    if (!days) {
+      const set = new Set<string>();
+      for (const [d, rec] of Object.entries(state.records[itemId] ?? {}))
+        if (rec.m != null) set.add(d);
+      for (const d of Object.keys(state.counts)) if (roomSum(itemId, d) != null) set.add(d);
+      days = [...set].sort();
+      countedDaysCache.set(itemId, days);
+    }
+    return days;
+  };
+
+  /** The latest counted day ≤ dateStr, or null */
+  const latestCount = (itemId: string, dateStr: string): string | null => {
+    const days = countedDays(itemId);
+    let lo = 0;
+    let hi = days.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (days[mid]! <= dateStr) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo > 0 ? days[lo - 1]! : null;
+  };
+
+  /**
+   * End-of-day stock. A count closes the past, so the replay starts at the latest count ≤ the
+   * target (its total is the count) and only falls back to the earliest record when there is none.
+   */
   const calculateTotal = (itemId: string, targetDateStr: string): number => {
     const item = state.items.find((i) => i.id === itemId);
     if (!item) return 0;
     let total = 0;
-    const curr = parseDateLocal(earliestDate());
+    const curr = parseDateLocal(latestCount(itemId, targetDateStr) ?? earliestDate());
     const target = parseDateLocal(targetDateStr);
     while (curr <= target) {
       total = dayFigures(item, formatDate(curr), total).total;

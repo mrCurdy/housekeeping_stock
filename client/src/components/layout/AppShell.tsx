@@ -1,5 +1,16 @@
 import { todayOnly, type Permission } from '@app/shared';
-import { Boxes, ClipboardList, ListChecks, LogOut, Menu, Package, Settings, X } from 'lucide-react';
+import {
+  Boxes,
+  Broom,
+  ClipboardList,
+  DoorOpen,
+  ListChecks,
+  LogOut,
+  Menu,
+  Package,
+  Settings,
+  X,
+} from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@/components/ui';
@@ -7,7 +18,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import type { Messages } from '@/i18n/en';
 import { cn } from '@/lib/cn';
-import { DataMenu } from './DataMenu';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { PaletteToggle } from './PaletteToggle';
 import { ThemeToggle } from './ThemeToggle';
@@ -25,6 +35,8 @@ const NAV: NavItem[] = [
   { to: '/stock', label: (t) => t.nav.stock, icon: Package },
   { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList },
   { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks },
+  { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'setup' },
+  { to: '/cleaning', label: (t) => t.nav.cleaning, icon: Broom, perm: 'cleaning' },
   { to: '/settings', label: (t) => t.nav.settings, icon: Settings, perm: 'pins' },
 ];
 
@@ -32,9 +44,7 @@ export function AppShell() {
   const { t } = useI18n();
   const { role, can, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Counting and the checklist happen on phones: keep their header free of the admin tools
   const { pathname } = useLocation();
-  const counting = pathname.startsWith('/counter') || pathname.startsWith('/checklist');
   // Counter mode (QR session): only the Counter, with no menu or toolbar
   const counterOnly = todayOnly(role);
   if (counterOnly && !pathname.startsWith('/counter')) return <Navigate to="/counter" replace />;
@@ -111,11 +121,6 @@ export function AppShell() {
           )}
           <span className={cn('font-semibold', !counterOnly && 'md:hidden')}>{t.appName}</span>
           <div className="flex-1" />
-          {!counterOnly && (
-            <div className={cn(counting && 'hidden md:block')}>
-              <DataMenu />
-            </div>
-          )}
           <LanguageSwitcher />
           <PaletteToggle />
           <ThemeToggle />

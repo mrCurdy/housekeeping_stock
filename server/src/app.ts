@@ -13,6 +13,7 @@ import { authRouter } from './routes/auth';
 import { checklistRouter, taskGroupsRouter, tasksRouter } from './routes/checklist';
 import { dailyRouter } from './routes/daily';
 import { dataRouter } from './routes/data';
+import { roomsRouter } from './routes/rooms';
 import {
   groupsRouter,
   itemsRouter,
@@ -74,6 +75,7 @@ export function createApp(ctx: AppContext) {
   api.use('/tasks', allow('tasks'), tasksRouter(ctx));
   api.use('/task-groups', allow('tasks'), taskGroupsRouter(ctx));
   api.use('/', checklistRouter(ctx));
+  api.use('/', roomsRouter(ctx));
   // Register new feature routers here.
   api.use(notFoundHandler);
   app.use('/api', api);

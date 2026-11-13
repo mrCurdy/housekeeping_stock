@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockApi } from '@/test/fetch';
+import { mockApp, today, yesterday } from '@/test/fixtures';
 import { checkKeys } from './checklist/noteText';
 
 const tasks = [
@@ -264,5 +265,84 @@ describe('checklist', () => {
     render(<App />);
     expect(await screen.findByRole('checkbox', { name: 'Beds' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('checklist with the shared fixture', () => {
+  /** Answers a tick with the day's ticks, as the server does. */
+  const ticking = () => {
+    const ticks: Record<string, string> = {};
+    return (method: string, path: string, body: unknown) => {
+      if (method !== 'PUT' || !path.startsWith('/checks/')) return undefined;
+      const taskId = path.split('/').pop()!;
+      if ((body as { done: boolean }).done) ticks[taskId] = new Date().toISOString();
+      else delete ticks[taskId];
+      return { status: 200, body: { ...ticks } };
+    };
+  };
+
+  it('a tick sends PUT /checks/<day>/<task>', async () => {
+    const fetch = mockApp('worker', undefined, ticking());
+    const user = userEvent.setup();
+    const { default: App } = await import('../App');
+    render(<App />);
+
+    const beds = await screen.findByRole('checkbox', { name: 'Beds' });
+    await user.click(beds);
+    expect(beds).toBeChecked();
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/checks/${today}/a`,
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ done: true }) }),
+    );
+  });
+
+  it('the editor saves only on Save', async () => {
+    const fetch = mockApp('admin');
+    const user = userEvent.setup();
+    const { default: App } = await import('../App');
+    render(<App />);
+
+    await user.click(await screen.findByRole('button', { name: 'Edit Beds' }));
+    const name = screen.getByRole('textbox', { name: 'Task' });
+    await user.clear(name);
+    await user.type(name, 'Make beds');
+    await user.click(screen.getByRole('textbox', { name: 'Instructions' })); // the name loses focus
+    await user.type(screen.getByRole('textbox', { name: 'Instructions' }), 'Fresh sheets');
+    await user.tab();
+    const patches = () =>
+      fetch.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
+    expect(patches()).toHaveLength(0);
+
+    await user.click(within(name.closest('form')!).getByRole('button', { name: 'Save' }));
+    expect(screen.getByRole('checkbox', { name: 'Make beds' })).toBeInTheDocument();
+    expect(patches()).toHaveLength(1);
+    expect(patches()[0]![0]).toBe('/api/tasks/a');
+    expect(JSON.parse((patches()[0]![1] as RequestInit).body as string)).toMatchObject({
+      name: 'Make beds',
+      description: 'Fresh sheets',
+    });
+  });
+
+  it("shows the previous day's note read-only and edits only today's", async () => {
+    const fetch = mockApp('worker');
+    const user = userEvent.setup();
+    const { default: App } = await import('../App');
+    render(<App />);
+
+    const prev = await screen.findByText('Lift is broken');
+    expect(prev.closest('textarea, input, [contenteditable="true"]')).toBeNull();
+    const box = screen.getByRole('textbox', { name: 'Notes for the next shift' });
+    expect(box).toHaveValue('');
+    await user.type(box, 'Mop is in room 12');
+    await user.tab();
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/notes/${today}`,
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ text: 'Mop is in room 12' }),
+      }),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(`/api/notes/${yesterday}`, expect.anything());
+    expect(screen.getByText('Lift is broken')).toBeInTheDocument();
   });
 });

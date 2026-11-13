@@ -2,15 +2,15 @@
 
 A small tool for tracking daily housekeeping stock (linens, amenities, …) in a hotel. Consumption is partly derived from guest departures per room group, and stock can be counted per room on a phone. It is standalone (no integration with a hotel system) and protected by a 4-digit PIN: an **admin** PIN (sets up items, groups, rooms, checklist tasks, PINs, QR code, Restore) and a **worker** PIN (everything day-to-day). A QR code made by the admin opens today's room counting without a PIN.
 
-| Layer   | Stack                                                                                        |
-| ------- | -------------------------------------------------------------------------------------------- |
-| Client  | React 19, Vite, Tailwind CSS 4, React Router, lucide icons, ExcelJS (lazy-loaded)            |
-| Server  | Express 5, zod, helmet, pino, cookie sessions, express-rate-limit                            |
-| Storage | SQLite (`data/stock.db`, better-sqlite3) behind a repository interface                       |
-| Shared  | `@app/shared`: types, zod schemas, the stock rules                                           |
-| Tooling | TypeScript, npm workspaces, Vitest, ESLint, Prettier, Docker                                 |
+| Layer   | Stack                                                                             |
+| ------- | --------------------------------------------------------------------------------- |
+| Client  | React 19, Vite, Tailwind CSS 4, React Router, lucide icons, ExcelJS (lazy-loaded) |
+| Server  | Express 5, zod, helmet, pino, cookie sessions, express-rate-limit                 |
+| Storage | SQLite (`data/stock.db`, better-sqlite3) behind a repository interface            |
+| Shared  | `@app/shared`: types, zod schemas, the stock rules                                |
+| Tooling | TypeScript, npm workspaces, Vitest, ESLint, Prettier, Docker                      |
 
-Structure and conventions come from the full-stack boilerplate (`boilerplate/`, reference only), without sockets, user accounts or the Postgres/MySQL drivers.
+Structure and conventions come from the full-stack boilerplate (`../boilerplate`, reference only), without sockets, user accounts or the Postgres/MySQL drivers.
 
 ## Quick start
 
@@ -23,16 +23,17 @@ npm run dev        # client http://localhost:5173 · API http://localhost:3000
 
 On the first start the PINs are admin **1234** and worker **0000** (or `ADMIN_PIN`/`WORKER_PIN` from `.env`); change them under **Settings**. A browser stays logged in until **Logout**.
 
-Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/settings` (admin: PINs and the counting QR code).
+Pages: `/stock` (departures, consumption/income/stock per day, overview), `/counter` (all rooms) and `/counter/<roomId>` (one room's counting list; bookmark it per floor), `/checklist` (daily tasks and shift notes), `/rooms` ("Room statuses", admin: one card per hotel room with each unit's status and a note; search, level filter and an attention sort), `/cleaning` (admin and worker: every room as a tile with the days since its last general cleaning; tap to register one, a "Dirty first" sort), `/settings` (admin: PINs, the counting QR code, Excel/Backup/Restore, adding rooms and the room cards' units, statuses, types and cleaning thresholds).
 
-| Command             | What it does                                                               |
-| ------------------- | -------------------------------------------------------------------------- |
-| `npm run dev`       | Server (tsx watch) + client (Vite) together                                |
-| `npm run build`     | Bundle server (`server/dist`) and client (`client/dist`)                   |
-| `npm start`         | Run the built server in production mode (also serves the client build)   |
-| `npm test`          | Stock-rule tests, API tests, UI component tests                            |
-| `npm run typecheck` | `tsc --noEmit` in every workspace                                          |
-| `npm run lint`      | ESLint (`npm run format` for Prettier)                                     |
+| Command             | What it does                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`       | Server (tsx watch) + client (Vite) together                                                                                      |
+| `npm run build`     | Bundle server (`server/dist`) and client (`client/dist`)                                                                         |
+| `npm start`         | Run the built server in production mode (also serves the client build)                                                           |
+| `npm test`          | Stock-rule tests, API tests, UI component tests                                                                                  |
+| `npm run seed`      | Fill an empty database with demo hotel data (`-- --force` replaces existing data, saved to `data/backups/pre-seed-*.json` first) |
+| `npm run typecheck` | `tsc --noEmit` in every workspace                                                                                                |
+| `npm run lint`      | ESLint (`npm run format` for Prettier)                                                                                           |
 
 Optional settings are in `.env.example` (copy to `.env`).
 
@@ -61,7 +62,8 @@ cp .env.example .env   # set ADMIN_PIN, WORKER_PIN (first start only), APP_PORT;
 - `data/stock.db` (SQLite, `SQLITE_PATH`) holds everything. PINs and sessions are stored there too, but never in backups.
 - An old `data/db.json` from before the switch is imported automatically on the first start and renamed `db.json.imported`.
 - Before the first change of each day the server writes a JSON snapshot (backup format) to `data/backups/db-YYYY-MM-DD.json` (kept for `BACKUP_DAYS`, default 30).
-- **Backup** in the header downloads the data as JSON. **Restore** (admin) replaces all data with a backup file (old-format backups work too). **Excel** downloads the full day-by-day history.
+- In **Settings** (admin only) → "Data and backups": **Backup** downloads the data as JSON. **Restore** replaces all data with a backup file (old-format backups work too). **Excel** downloads the day-by-day stock history of the selectable days, plus a "Cleanings" sheet (each room's last general cleaning, days ago, who and the earlier kept dates).
+- Stock data older than 30 days is removed; counts carry the totals over, so no figure changes. Older history remains only in the daily backups (`BACKUP_DAYS`): keep a monthly Excel/Backup download if you need longer history.
 
 ## Adding a feature
 

@@ -9,8 +9,10 @@ export const PIN_ROLES = ['admin', 'worker'] as const;
 export type PinRole = (typeof PIN_ROLES)[number];
 
 /**
- * setup: items, groups, rooms · tasks: edit the checklist · restore · pins · qr ·
- * daily: departures, consumption, income, manual stock · checklist: ticks, notes · count: room counts
+ * setup: items, groups, locations, room cards (note, number, type, delete, unit statuses), adding
+ * rooms and the room master layout · tasks: edit the checklist · restore · pins · qr ·
+ * daily: departures, consumption, income, manual stock · checklist: ticks, notes · count: room counts ·
+ * cleaning: register general cleanings
  */
 export const PERMISSIONS = [
   'setup',
@@ -21,12 +23,13 @@ export const PERMISSIONS = [
   'daily',
   'checklist',
   'count',
+  'cleaning',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const MATRIX: Record<Role, readonly Permission[]> = {
   admin: PERMISSIONS,
-  worker: ['daily', 'checklist', 'count'],
+  worker: ['daily', 'checklist', 'count', 'cleaning'],
   counter: ['count'], // and only for today: see `todayOnly`
 };
 
