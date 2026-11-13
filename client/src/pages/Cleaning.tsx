@@ -1,8 +1,9 @@
-import { formatDate } from '@app/shared';
+import { DEFAULT_SALUTE_TEXT, formatDate } from '@app/shared';
 import { DoorOpen, SearchX } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Salute } from '@/components/Salute';
 import { Alert, Button, buttonVariants, Card, EmptyState, Spinner } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
@@ -29,6 +30,8 @@ export default function Cleaning() {
   const [view, setView] = useCleaningView(levels);
   const [search, setSearch] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [salute, setSalute] = useState(false);
+  const endSalute = useCallback(() => setSalute(false), []);
 
   if (!can('cleaning')) return <Navigate to="/stock" replace />;
   const today = formatDate(new Date());
@@ -106,7 +109,17 @@ export default function Cleaning() {
         </div>
       )}
 
-      {open && <CleaningDialog room={open} today={today} onClose={() => setOpenId(null)} />}
+      {open && (
+        <CleaningDialog
+          room={open}
+          today={today}
+          onClose={() => setOpenId(null)}
+          onCleaned={() => setSalute(true)}
+        />
+      )}
+      {salute && (
+        <Salute text={data.settings.saluteText || DEFAULT_SALUTE_TEXT} onDone={endSalute} />
+      )}
     </>
   );
 }

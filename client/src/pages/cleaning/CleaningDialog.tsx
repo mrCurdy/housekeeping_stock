@@ -9,16 +9,18 @@ import { WhoDialog } from '../rooms/WhoDialog';
 /**
  * A tapped cleaning tile: the room number and type, its latest general cleaning, the history and
  * "who" (required, remembered per device). "Cleaned today" registers a cleaning for today
- * (`markCleaned`) and closes; Cancel changes nothing.
+ * (`markCleaned`), closes and calls `onCleaned` (the page plays the salute); Cancel changes nothing.
  */
 export function CleaningDialog({
   room,
   today,
   onClose,
+  onCleaned,
 }: {
   room: Room;
   today: string;
   onClose: () => void;
+  onCleaned: () => void;
 }) {
   const { data, markCleaned } = useStock();
   const { t } = useI18n();
@@ -34,6 +36,7 @@ export function CleaningDialog({
       onConfirm={(by) => {
         markCleaned(room.id, by);
         onClose();
+        onCleaned();
       }}
     >
       <div className="flex flex-col gap-1">

@@ -140,7 +140,7 @@ describe('cleaning page', () => {
     expect(screen.getByRole('textbox', { name: 'Search rooms' })).toHaveValue('');
   });
 
-  it('a tile opens a dialog with the latest cleaning and the history; Cleaned today registers it', async () => {
+  it('a tile opens a dialog with the latest cleaning and the history; Cleaned today registers it and salutes', async () => {
     const fetch = mockApp('admin', hotel(), (method, path, body) =>
       method === 'POST' && path === '/rooms/r102/cleanings'
         ? {
@@ -166,7 +166,9 @@ describe('cleaning page', () => {
     expect(name).toHaveValue('');
     expect(confirm).toBeDisabled();
     await user.type(name, '  Kati ');
+    expect(document.querySelector('.salute')).toBeNull();
     await user.click(confirm);
+    expect(document.querySelector('.salute')).not.toBeNull();
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
@@ -197,6 +199,7 @@ describe('cleaning page', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
     expect(tile('205')).toHaveAccessibleName('Room 205: No general cleaning yet');
+    expect(document.querySelector('.salute')).toBeNull();
   });
 
   it('no rooms: the admin gets a Settings link', async () => {
