@@ -63,7 +63,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
 
   - Done: texts stay under `data.*` (+ `data.title`, `data.description`; the three `*Hint` keys removed). The description says "30 days (by default)": the client doesn't know `BACKUP_DAYS`. Buttons are `outline`. The header check is in `Stock.test.tsx` ("header").
 
-- [ ] **2. Backup and Restore know about rooms** (skills `ui`, `i18n`)
+- [x] **2. Backup and Restore know about rooms** (skills `ui`, `i18n`)
   - New pure `hasData(data)` (in `client/src/lib/` or `shared/src/`, + test): true when any of
     items, groups, locations, tasks, rooms, room types/units/statuses exist. Backup uses it; with
     nothing at all it still says "No data to back up yet".
@@ -77,6 +77,8 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     only add what's missing).
   - Tests: `DataCard` Backup with only rooms downloads; the confirmation text names room cards.
   - Docs: `docs/structure.md` Settings section.
+
+  - Done: `hasData`/`backupCounts` in `client/src/lib/backup.ts`. `restoreDescription(file, counts)` takes a `BackupCounts` object and lists the non-zero counts separated by commas (no "and", so no per-language joining); a file with nothing says it is empty. The server needed no change (new restore test passes as is).
 
 - [ ] **3. Excel: a "Cleanings" sheet** (skills `ui`, `i18n`)
   - New pure `cleaningSheet(data, today)` next to `lib/excel.ts` (e.g. `lib/excelRows.ts`, +

@@ -94,8 +94,18 @@ export const et: Messages = {
     notBackup: 'See pole varukoopia',
     notBackupFile: (file) => `„${file}“ ei ole Fomka varukoopia.`,
     restoreTitle: 'Kas taastada see varukoopia?',
-    restoreDescription: (file, items, groups, rooms) =>
-      `„${file}“ sisaldab: ${p(items, { one: 'toode', other: 'toodet' })}, ${p(groups, { one: 'grupp', other: 'gruppi' })} ja ${p(rooms, { one: 'ruum', other: 'ruumi' })}. See asendab KÕIK praegused andmed, ka ruumides loetud kogused.`,
+    restoreDescription: (file, c) => {
+      const parts = [
+        c.items && p(c.items, { one: 'toode', other: 'toodet' }),
+        c.groups && p(c.groups, { one: 'lahkumiste grupp', other: 'lahkumiste gruppi' }),
+        c.locations && p(c.locations, { one: 'inventuuri ruum', other: 'inventuuri ruumi' }),
+        c.rooms &&
+          p(c.rooms, { one: 'toakaart', other: 'toakaarti' }) +
+            (c.cleaned ? ` (${c.cleaned} suurpuhastusega)` : ''),
+      ].filter(Boolean);
+      const has = parts.length ? `„${file}“ sisaldab: ${parts.join(', ')}.` : `„${file}“ on tühi.`;
+      return `${has} See asendab KÕIK praegused andmed, ka loetud kogused, toa olekud ja suurpuhastused.`;
+    },
     restored: 'Varukoopia taastatud',
     restoreFailed: 'Taastamine ebaõnnestus',
   },

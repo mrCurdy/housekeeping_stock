@@ -277,10 +277,10 @@ describe('Settings: data and backups', () => {
     };
   });
 
-  function dataApi() {
+  function dataApi(data = stockFixture()) {
     return mockApi((method, path) => {
       if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
-      if (path === '/data') return { status: 200, body: stockFixture() };
+      if (path === '/data') return { status: 200, body: data };
       if (path === '/auth/qr') return { status: 200, body: { active: false } };
       if (path === '/restore' && method === 'POST') return { status: 200, body: stockFixture() };
     });
@@ -323,6 +323,44 @@ describe('Settings: data and backups', () => {
     await userEvent.click(dialog.getByRole('button', { name: 'Restore' }));
     await waitFor(() => expect(restores(fetch)).toHaveLength(1));
     expect(await screen.findByText('Backup restored')).toBeInTheDocument();
+  });
+
+  it('Backup works for a hotel that only has rooms', async () => {
+    dataApi({ ...emptyStockData(), rooms: [{ id: 'r1', number: '101' }] });
+    settings();
+    await waitFor(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Backup' }));
+      expect(download).toHaveBeenCalled();
+    });
+    const [blob] = download.mock.calls[0] as [Blob, string];
+    expect(JSON.parse(await blob.text()).rooms).toEqual([{ id: 'r1', number: '101' }]);
+  });
+
+  it('Backup with nothing at all says there is no data', async () => {
+    dataApi(emptyStockData());
+    settings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Backup' }));
+    expect(await screen.findByText('No data to back up yet')).toBeInTheDocument();
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it("Restore's confirmation names the room cards and cleanings", async () => {
+    dataApi();
+    settings();
+    const backup = stockFixture({
+      rooms: [
+        { id: 'r1', number: '101' },
+        { id: 'r2', number: '102' },
+      ],
+      cleanings: { r1: [{ date: '2026-11-01', by: 'Ann' }] },
+    });
+    await pick(JSON.stringify(backup), 'rooms.json');
+    const dialog = within(await screen.findByRole('dialog'));
+    const text = dialog.getByText(/rooms\.json/).textContent;
+    expect(text).toContain('2 items');
+    expect(text).toContain('2 room cards (1 with cleanings)');
+    expect(text).not.toContain('departure group');
+    expect(text).toContain('including counts, room statuses and cleanings');
   });
 
   it('a file that is not a backup shows an error and sends nothing', async () => {

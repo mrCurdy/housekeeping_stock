@@ -394,6 +394,42 @@ describe('REST API', () => {
       await env.api().post('/api/restore').send({ foo: 1 }).expect(400);
     });
 
+    it('restores room cards, unit statuses, cleanings and thresholds unchanged', async () => {
+      const before = await data();
+      const backup: StockData = {
+        ...before,
+        rooms: [
+          { id: 'r_1', number: '101', type: 'rt_1', note: 'Sea view' },
+          { id: 'r_2', number: '102' },
+        ],
+        roomTypes: [{ id: 'rt_1', name: 'Double' }],
+        roomUnits: [{ id: 'u_1', name: 'Bed' }],
+        roomStatuses: [
+          { id: 's_ok', name: 'Clean', color: 'green' },
+          { id: 's_bad', name: 'Broken', color: 'red' },
+        ],
+        unitStatus: {
+          r_1: { u_1: { status: 's_bad', by: 'Ann', at: '2026-11-01T08:00:00.000Z', note: 'leg' } },
+        },
+        cleanings: {
+          r_1: [
+            { date: D7, by: 'Ann' },
+            { date: D5, by: 'Bo' },
+          ],
+        },
+        settings: { ...before.settings, cleanGreenDays: 10, cleanYellowDays: 20 },
+      };
+      await env.api().post('/api/restore').send(backup).expect(200);
+      const d = await data();
+      expect(d.rooms).toEqual(backup.rooms);
+      expect(d.roomTypes).toEqual(backup.roomTypes);
+      expect(d.roomUnits).toEqual(backup.roomUnits);
+      expect(d.roomStatuses).toEqual(backup.roomStatuses);
+      expect(d.unitStatus).toEqual(backup.unitStatus);
+      expect(d.cleanings).toEqual(backup.cleanings);
+      expect(d.settings).toEqual(backup.settings);
+    });
+
     it('writes a start-of-day copy before the first change', async () => {
       await env.db.close();
       expect(existsSync(join(env.dir, 'backups'))).toBe(true);

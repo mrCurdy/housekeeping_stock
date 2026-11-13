@@ -94,8 +94,35 @@ export const ru: Messages = {
     notBackup: 'Это не резервная копия',
     notBackupFile: (file) => `«${file}» — не резервная копия Fomka.`,
     restoreTitle: 'Восстановить эту копию?',
-    restoreDescription: (file, items, groups, rooms) =>
-      `В «${file}»: ${p(items, { one: 'позиция', few: 'позиции', many: 'позиций', other: 'позиции' })}, ${p(groups, { one: 'группа', few: 'группы', many: 'групп', other: 'группы' })} и ${p(rooms, { one: 'помещение', few: 'помещения', many: 'помещений', other: 'помещения' })}. Это заменит ВСЕ текущие данные, включая подсчёты в помещениях.`,
+    restoreDescription: (file, c) => {
+      const parts = [
+        c.items &&
+          p(c.items, { one: 'позиция', few: 'позиции', many: 'позиций', other: 'позиции' }),
+        c.groups &&
+          p(c.groups, {
+            one: 'группа выездов',
+            few: 'группы выездов',
+            many: 'групп выездов',
+            other: 'группы выездов',
+          }),
+        c.locations &&
+          p(c.locations, {
+            one: 'помещение для инвентаризации',
+            few: 'помещения для инвентаризации',
+            many: 'помещений для инвентаризации',
+            other: 'помещения для инвентаризации',
+          }),
+        c.rooms &&
+          p(c.rooms, {
+            one: 'карточка номера',
+            few: 'карточки номеров',
+            many: 'карточек номеров',
+            other: 'карточки номеров',
+          }) + (c.cleaned ? ` (с генеральной уборкой: ${c.cleaned})` : ''),
+      ].filter(Boolean);
+      const has = parts.length ? `В «${file}»: ${parts.join(', ')}.` : `«${file}» пуст.`;
+      return `${has} Это заменит ВСЕ текущие данные, включая подсчёты, статусы номеров и уборки.`;
+    },
     restored: 'Копия восстановлена',
     restoreFailed: 'Не удалось восстановить',
   },

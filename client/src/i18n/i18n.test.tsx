@@ -29,10 +29,19 @@ describe('i18n', () => {
   );
 
   it('uses Russian plural forms', () => {
-    expect(ru.data.restoreDescription('f', 1, 3, 5)).toContain('1 позиция, 3 группы и 5 помещений');
-    expect(ru.data.restoreDescription('f', 21, 12, 2)).toContain(
-      '21 позиция, 12 групп и 2 помещения',
+    const c = { items: 1, groups: 3, locations: 5, rooms: 0, cleaned: 0 };
+    expect(ru.data.restoreDescription('f', c)).toContain(
+      '1 позиция, 3 группы выездов, 5 помещений для инвентаризации.',
     );
+    expect(
+      ru.data.restoreDescription('f', {
+        items: 21,
+        groups: 12,
+        locations: 0,
+        rooms: 2,
+        cleaned: 1,
+      }),
+    ).toContain('21 позиция, 12 групп выездов, 2 карточки номеров (с генеральной уборкой: 1).');
   });
 
   it('switches language and remembers it', async () => {

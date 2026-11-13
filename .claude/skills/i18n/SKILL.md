@@ -49,6 +49,8 @@ The server stays English. `apiErrorMessage(err, t)` in `lib/api.ts` maps error c
 | Shortage                               | Puudujääk                              | Недостача                         |
 | Calculated / Entered by hand           | Arvutatud / Käsitsi sisestatud         | Рассчитано / Введено вручную      |
 | Backup / Restore                       | Varukoopia / Taasta                    | Копия / Восстановить              |
+| Room card                              | toakaart                               | карточка номера                   |
+| General cleaning                       | suurpuhastus                           | генеральная уборка                |
 | Save / Saved / Retry                   | Salvesta / Salvestatud / Proovi uuesti | Сохранить / Сохранено / Повторить |
 | Remove                                 | Eemalda                                | Удалить                           |
 | Today                                  | Täna                                   | Сегодня                           |

@@ -1,3 +1,4 @@
+import type { BackupCounts } from '@/lib/backup';
 import { plural } from './plural';
 
 const p = plural('en');
@@ -97,8 +98,19 @@ export const en = {
     notBackup: 'Not a backup',
     notBackupFile: (file: string) => `"${file}" is not a Fomka backup.`,
     restoreTitle: 'Restore this backup?',
-    restoreDescription: (file: string, items: number, groups: number, rooms: number) =>
-      `"${file}" contains ${p(items, { one: 'item', other: 'items' })}, ${p(groups, { one: 'group', other: 'groups' })} and ${p(rooms, { one: 'room', other: 'rooms' })}. This replaces ALL current data, including room counts.`,
+    /** Counts of 0 are left out; `cleaned` = room cards with a general cleaning. */
+    restoreDescription: (file: string, c: BackupCounts) => {
+      const parts = [
+        c.items && p(c.items, { one: 'item', other: 'items' }),
+        c.groups && p(c.groups, { one: 'departure group', other: 'departure groups' }),
+        c.locations && p(c.locations, { one: 'count location', other: 'count locations' }),
+        c.rooms &&
+          p(c.rooms, { one: 'room card', other: 'room cards' }) +
+            (c.cleaned ? ` (${c.cleaned} with cleanings)` : ''),
+      ].filter(Boolean);
+      const has = parts.length ? `"${file}" contains: ${parts.join(', ')}.` : `"${file}" is empty.`;
+      return `${has} This replaces ALL current data, including counts, room statuses and cleanings.`;
+    },
     restored: 'Backup restored',
     restoreFailed: 'Restore failed',
   },

@@ -158,6 +158,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `useDragSort.ts`: drag-a-grip (or ↑/↓) reordering; a vertical list (the checklist group cards), or with `free` rows that may sit side by side, dropped on the row under the pointer (the Stock page cards).
   - `useListsDragSort.ts`: the same over several lists (the tasks of the checklist group cards): a row dragged onto another list's area lands there (`target` shows the drop line); ↑/↓ past a list's edge goes to the neighbouring list.
   - `roomColors.ts`: `ROOM_COLOR_CLASSES`, room status colour id → `dot`/`text`/`soft`/`border` classes (`bg-status-green`…). `roomColors.test.ts` checks every colour has its tokens.
+  - `backup.ts` (+ test): `hasData(data)` (anything to back up: stock, checklist or room setup) and `backupCounts(data)` (what Restore's confirmation lists).
   - `cn.ts`, `download.ts`.
   - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
 - `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
@@ -281,8 +282,8 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
   - The QR code for counting: Make (shown once, with Print and Download PNG), Make a new one (confirmed; revokes the old one) and Revoke. It encodes `${origin}/counter?key=<token>`.
   - **Data and backups** (`DataCard`; Settings is admin-only, so workers have no Excel or Backup):
     - **Excel:** from the oldest selectable day: a "Stock" sheet with one row per day and Consumption/Income/Stock per item, plus a "Departures" sheet when groups exist.
-    - **Backup:** a JSON download.
-    - **Restore** (`restore` permission): validates with `backupSchema`, asks for confirmation, then replaces everything, counts included.
+    - **Backup:** a JSON download of everything, room cards, unit statuses and cleanings included. Refused ("No data to back up yet") only when `hasData` is false.
+    - **Restore** (`restore` permission): validates with `backupSchema`, asks for confirmation (the file's items, departure groups, count locations and room cards with how many have cleanings, counts of 0 left out), then replaces everything: counts, room statuses and cleanings included.
   - The fireworks text (up to 12 characters, blank = "Tubli!"), with a Preview button. Saved for everyone (`PATCH /settings`, `setup` permission).
   - Room cards (`RoomSetupCard`, `setup` permission): "Add room" (a dialog: number, type, note; Cancel sends nothing), and the master layout every room shares. Units (rename in place, ↑/↓, remove confirmed: drops their statuses on every card), statuses (name + a colour from the 10, green/yellow/red first; remove confirmed: its units go back to the first; the last one can't be removed), room types (remove confirmed: cleared on its cards), and the cleaning thresholds (green up to N days, yellow up to M, red above; 0 ≤ green < yellow, checked before saving).
 - **Counter mode** (a QR session): `AppShell` drops the sidebar and menu and redirects every other path to `/counter`. The date is locked to today.

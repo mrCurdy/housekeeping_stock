@@ -9,6 +9,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useStock } from '@/context/StockContext';
 import { useToast } from '@/context/ToastContext';
 import { apiErrorMessage } from '@/lib/api';
+import { backupCounts, hasData } from '@/lib/backup';
 import { downloadBlob } from '@/lib/download';
 
 /** Settings card: Excel history, Backup (JSON download) and Restore (JSON upload, `can('restore')`). */
@@ -39,9 +40,7 @@ export function DataCard() {
   };
 
   const backup = () => {
-    if (data.items.length === 0 && data.groups.length === 0 && data.tasks.length === 0) {
-      return toast.info(t.data.noBackupData);
-    }
+    if (!hasData(data)) return toast.info(t.data.noBackupData);
     downloadBlob(
       new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
       `stock_backup_${formatDate(new Date())}.json`,
@@ -60,15 +59,9 @@ export function DataCard() {
       parsed = null;
     }
     if (!parsed?.success) return toast.error(t.data.notBackup, t.data.notBackupFile(file.name));
-    const { items, groups, locations } = parsed.data;
     const ok = await confirm({
       title: t.data.restoreTitle,
-      description: t.data.restoreDescription(
-        file.name,
-        items.length,
-        groups.length,
-        locations.length,
-      ),
+      description: t.data.restoreDescription(file.name, backupCounts(parsed.data)),
       confirmLabel: t.data.restore,
     });
     if (!ok) return;
