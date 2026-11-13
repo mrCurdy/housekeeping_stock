@@ -41,6 +41,7 @@ function adminApi(pins: () => { status: number; body?: unknown } = () => ({ stat
       return { status: 201, body: { token: 'tok', createdAt: '2026-10-17T08:00:00.000Z' } };
     }
     if (path === '/auth/pins' && method === 'PUT') return pins();
+    if (path === '/settings' && method === 'PATCH') return { status: 200, body: {} };
   });
 }
 
@@ -527,5 +528,44 @@ describe('Settings: room list', () => {
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
     );
     expect(calls(fetch, 'DELETE')).toEqual([]);
+  });
+});
+
+describe('Settings: roles', () => {
+  const patches = (fetch: ReturnType<typeof mockApi>) =>
+    fetch.mock.calls
+      .filter(([url, init]) => url === '/api/settings' && init?.method === 'PATCH')
+      .map(([, init]) => JSON.parse(String(init?.body)) as unknown);
+
+  it('shows the defaults and saves a change for both roles', async () => {
+    const fetch = adminApi();
+    settings();
+    const daily = await screen.findByRole('checkbox', { name: 'Daily stock: Reception' });
+    expect(daily).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Checklist: Reception' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'General cleaning: Housekeeper' })).toBeChecked();
+    await userEvent.click(daily);
+    expect(daily).toBeChecked();
+    expect(patches(fetch)).toEqual([
+      {
+        rolePermissions: {
+          housekeeper: ['count', 'cleaning'],
+          reception: ['daily', 'checklist'],
+        },
+      },
+    ]);
+  });
+
+  it('Reset to defaults sends the defaults', async () => {
+    const fetch = adminApi();
+    settings();
+    const reset = await screen.findByRole('button', { name: 'Reset to defaults' });
+    expect(reset).toBeDisabled();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Inventory count: Housekeeper' }));
+    await userEvent.click(reset);
+    expect(patches(fetch).at(-1)).toEqual({
+      rolePermissions: { housekeeper: ['count', 'cleaning'], reception: ['checklist'] },
+    });
+    expect(screen.getByRole('checkbox', { name: 'Inventory count: Housekeeper' })).toBeChecked();
   });
 });

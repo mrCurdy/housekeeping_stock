@@ -134,6 +134,14 @@ export type NamedTable =
 
 /** Settings stored as numbers (the key/value table holds text). */
 const NUMBER_SETTINGS = new Set<keyof AppSettings>(['cleanGreenDays', 'cleanYellowDays']);
+/** Settings stored as JSON text. */
+const JSON_SETTINGS = new Set<keyof AppSettings>(['rolePermissions']);
+
+const settingValue = (key: keyof AppSettings, value: string): unknown => {
+  if (NUMBER_SETTINGS.has(key)) return Number(value);
+  if (JSON_SETTINGS.has(key)) return JSON.parse(value) as unknown;
+  return value;
+};
 
 /**
  * What every repo file gets from `index.ts`: the query helpers on the open connection, and
@@ -162,21 +170,21 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     order.forEach((id, pos) => stmt.run(id, pos));
   };
 
-  /** Settings are key/value rows (numbers as text); a missing row is the default. */
+  /** Settings are key/value rows (numbers as text, objects as JSON); a missing row is the default. */
   const readSettings = (): AppSettings =>
     Object.fromEntries(
       all<{ key: keyof AppSettings; value: string }>('SELECT key, value FROM settings').map((r) => [
         r.key,
-        NUMBER_SETTINGS.has(r.key) ? Number(r.value) : r.value,
+        settingValue(r.key, r.value),
       ]),
     );
   /** undefined or '' deletes the row (= the default); 0 is stored. */
-  const writeSetting = (key: keyof AppSettings, value: string | number | undefined) => {
+  const writeSetting = (key: keyof AppSettings, value: string | number | object | undefined) => {
     if (value !== undefined && value !== '') {
       run(
         'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
         key,
-        String(value),
+        typeof value === 'object' ? JSON.stringify(value) : String(value),
       );
     } else run('DELETE FROM settings WHERE key = ?', key);
   };
@@ -372,6 +380,7 @@ export function createRows({ all, get, run, prepare }: Omit<Ctx, 'write'>) {
     writeSetting('saluteText', data.settings.saluteText);
     writeSetting('cleanGreenDays', data.settings.cleanGreenDays);
     writeSetting('cleanYellowDays', data.settings.cleanYellowDays);
+    writeSetting('rolePermissions', data.settings.rolePermissions);
 
     const room = prepare('INSERT INTO rooms (id, number, type_id, note) VALUES (?, ?, ?, ?)');
     for (const r of data.rooms) room.run(r.id, r.number, r.type ?? null, r.note ?? null);

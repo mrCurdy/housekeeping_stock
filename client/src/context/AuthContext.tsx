@@ -12,15 +12,24 @@ import { Spinner } from '@/components/ui';
 import { ApiError, api, apiErrorMessage, AUTH_EXPIRED } from '@/lib/api';
 import Login from '@/pages/Login';
 import { useI18n } from './I18nContext';
+import { PermissionsContext } from './PermissionsContext';
 
-interface AuthState {
+interface Session {
   role: Role;
-  /** `can('setup')`: hide what this role may not do (the server enforces it anyway). */
-  can(perm: Permission): boolean;
   logout(): Promise<void>;
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+interface AuthState extends Session {
+  /**
+   * `can('setup')`: hide what this role may not do (the server enforces it anyway). Follows the
+   * admin's role permissions from the dataset (`PermissionsContext`).
+   */
+  can(perm: Permission): boolean;
+  /** false until the dataset (with the role permissions) has loaded: don't redirect by `can` yet. */
+  ready: boolean;
+}
+
+const AuthContext = createContext<Session | null>(null);
 
 /** Reads and removes `?key=` (the QR code's token) from the URL, so it isn't bookmarked or shared. */
 function takeKey(): string | null {
@@ -97,10 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(
-    () => (role ? { role, can: (perm: Permission) => roleCan(role, perm), logout } : null),
-    [role, logout],
-  );
+  const value = useMemo(() => (role ? { role, logout } : null), [role, logout]);
 
   if (role === undefined) {
     return (
@@ -115,6 +121,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthState {
   const ctx = use(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
+  const { rolePermissions, ready } = use(PermissionsContext);
+  const value = useMemo(
+    () =>
+      ctx && {
+        ...ctx,
+        ready,
+        can: (perm: Permission) => roleCan(ctx.role, perm, { rolePermissions }),
+      },
+    [ctx, rolePermissions, ready],
+  );
+  if (!value) throw new Error('useAuth must be used inside <AuthProvider>');
+  return value;
 }

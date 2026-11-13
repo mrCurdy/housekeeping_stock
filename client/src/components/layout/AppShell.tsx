@@ -54,21 +54,23 @@ const homePath = (can: Can) =>
 
 /** The index route: sends `/` to the role's home page. */
 export function HomeRedirect() {
-  const { can } = useAuth();
+  const { can, ready } = useAuth();
+  // The role permissions come with the data: until then the home page isn't known
+  if (!ready) return null;
   return <Navigate to={homePath(can)} replace />;
 }
 
 export function AppShell() {
   const { t } = useI18n();
-  const { role, can, logout } = useAuth();
+  const { role, can, ready, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
   // Counter mode (QR session): only the Counter, with no menu or toolbar
   const counterOnly = todayOnly(role);
   if (counterOnly && !pathname.startsWith('/counter')) return <Navigate to="/counter" replace />;
-  // A page this role can't use → its home page
+  // A page this role can't use → its home page (once the role permissions have loaded)
   const page = NAV.find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`));
-  if (page?.perm && !can(page.perm)) return <Navigate to={homePath(can)} replace />;
+  if (ready && page?.perm && !can(page.perm)) return <Navigate to={homePath(can)} replace />;
 
   const sidebar = (
     <nav className="flex flex-col gap-1 p-3">

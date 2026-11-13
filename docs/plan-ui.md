@@ -182,7 +182,7 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     RolesCard can add them). A PIN change error says "Another role already has this PIN".
     `seedPins`' spare-PIN fallback applies to any role whose env/default PIN is taken.
 
-- [ ] **7. Role permissions editable in Settings** (skills `auth`, `sqlite-db`, `ui`, `i18n`)
+- [x] **7. Role permissions editable in Settings** (skills `auth`, `sqlite-db`, `ui`, `i18n`)
   - Decision (confirmed with the user): the admin can change what housekeeper and reception may
     do; the defaults are step 6's. Only the four staff permissions are editable: `daily`,
     `checklist`, `count`, `cleaning`. Admin-only ones (`setup`, `tasks`, `restore`, `pins`, `qr`)
@@ -205,6 +205,13 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     payload is refused (400); backup/restore keeps the overrides. Client: the card saves a change,
     NAV follows it.
   - Docs: `docs/structure.md` (settings, role matrix), `.claude/skills/auth`.
+
+  - Done: the change goes through `PATCH /settings`, which keeps its `allow('setup')` (admin-only
+    like `pins`). The body is the whole matrix `{ housekeeper, reception }`; Reset sends the
+    defaults, which delete the stored row. `session` reads the settings once per request
+    (`db.settings.read()`, new). Client: `PermissionsContext` (filled by `StockProvider`) feeds
+    `useAuth().can`; `useAuth().ready` keeps `AppShell`/`HomeRedirect` from redirecting with the
+    defaults before the first `/data` load. Role names are `settings.roles.role[role]`.
 
 - [ ] **8. Mark a room cleaned on a chosen date** (skills `ui`, `i18n`)
   - Request (from the user): the date a room was cleaned can be chosen, not only today. Where a

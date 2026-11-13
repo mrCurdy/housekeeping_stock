@@ -383,6 +383,27 @@ export const en = {
         reception: 'Reception PIN changed',
       },
     },
+    roles: {
+      title: 'Roles',
+      description:
+        'What the housekeeper and reception may do. The admin may always do everything. A change counts on every device at once.',
+      permission: 'Permission',
+      role: { housekeeper: 'Housekeeper', reception: 'Reception' },
+      perm: {
+        daily: {
+          name: 'Daily stock',
+          hint: 'Departures, consumption, income and stock on the Stock page.',
+        },
+        checklist: {
+          name: 'Checklist',
+          hint: 'Tick the tasks and write the note for the next shift.',
+        },
+        count: { name: 'Inventory count', hint: 'Count the stock in each room.' },
+        cleaning: { name: 'General cleaning', hint: 'Mark rooms cleaned on the Cleaning page.' },
+      },
+      toggle: (perm: string, role: string) => `${perm}: ${role}`,
+      reset: 'Reset to defaults',
+    },
     rooms: {
       title: 'Room cards',
       description:

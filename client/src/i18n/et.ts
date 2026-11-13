@@ -382,6 +382,27 @@ export const et: Messages = {
         reception: 'Vastuvõtu PIN muudetud',
       },
     },
+    roles: {
+      title: 'Rollid',
+      description:
+        'Mida toateenija ja vastuvõtt teha tohivad. Administraator tohib alati kõike. Muudatus kehtib kohe kõigis seadmetes.',
+      permission: 'Õigus',
+      role: { housekeeper: 'Toateenija', reception: 'Vastuvõtt' },
+      perm: {
+        daily: {
+          name: 'Igapäevane laoseis',
+          hint: 'Lahkumised, kulu, juurdetulek ja laoseis lehel Ladu.',
+        },
+        checklist: {
+          name: 'Kontrollnimekiri',
+          hint: 'Ülesannete märkimine ja kommentaar järgmisele vahetusele.',
+        },
+        count: { name: 'Inventuur', hint: 'Laoseisu lugemine igas ruumis.' },
+        cleaning: { name: 'Suurpuhastus', hint: 'Tubade koristatuks märkimine lehel Koristus.' },
+      },
+      toggle: (perm, role) => `${perm}: ${role}`,
+      reset: 'Taasta vaikimisi',
+    },
     rooms: {
       title: 'Toakaardid',
       description:

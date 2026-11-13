@@ -5,7 +5,7 @@ description: Fomka's PIN login and roles (admin, housekeeper, reception, counter
 
 # Auth: roles, guards, hiding UI
 
-## The matrix (`shared/src/auth.ts`, the only source)
+## The matrix (`shared/src/auth.ts`, the only source; the ticks below are the defaults)
 
 | permission  | what                                                                                                                                                                               | admin | housekeeper | reception | counter (QR) |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----------- | --------- | ------------ |
@@ -19,11 +19,18 @@ description: Fomka's PIN login and roles (admin, housekeeper, reception, counter
 | `count`     | room counts                                                                                                                                                                        | ✓     | ✓           |           | today only   |
 | `cleaning`  | register general cleanings (`POST /rooms/:id/cleanings`)                                                                                                                           | ✓     | ✓           |           |              |
 
+**Editable staff permissions:** the admin can change the housekeeper/reception columns for the four
+`STAFF_PERMISSIONS` (`daily`, `checklist`, `count`, `cleaning`) in Settings → Roles (`RolesCard`).
+They are `settings.rolePermissions` (`rolePermissionsSchema`, stored as JSON in the `settings` table,
+carried by backups; unset or equal to `DEFAULT_ROLE_PERMISSIONS` = not stored). Admin-only permissions
+and the `admin`/`counter` roles are fixed. `can(role, perm, settings?)` / `permissionsFor(role, settings)`
+read it; without settings they give the defaults.
+
 `PIN_ROLES` = admin, housekeeper, reception (one PIN each, all different). The old `worker` role
 became `housekeeper` (migration 6 renamed its PIN and sessions); `can()` gives an unknown role
 nothing.
 
-Reading (`GET /data`, Excel, Backup) needs only a login. To change who may do what, edit `MATRIX`
+Reading (`GET /data`, Excel, Backup) needs only a login. To change the fixed part or the defaults, edit `FIXED` / `DEFAULT_ROLE_PERMISSIONS`
 and `shared/src/auth.test.ts`; never check role names directly elsewhere, always `can(role, perm)`.
 A new kind of action gets a new `Permission`. `todayOnly(role)` (true for `counter`) is the date
 limit on top of the matrix: the counts route answers 403 for another day, and the UI locks the date.
@@ -32,6 +39,9 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
 
 - `server/src/auth/middleware.ts`: `session` (cookie → `req.role`, `req.sessionHash`),
   `requireAuth` (mounted in `app.ts` after the public routers: `system`, `auth`), `allow(perm)`.
+  `session` also loads `req.settings` (`db.settings.read()`, once per request), and `allow` checks
+  `can(req.role, perm, req.settings)`, so a change to the role permissions counts from the next
+  request without logging anyone out. Tests: `tests/rolePermissions.test.ts`.
 - **Guarding a new route:** a router mounted on its own path gets the guard in `app.ts`
   (`api.use('/things', allow('setup'), thingsRouter(ctx))`). A router mounted at `'/'` guards each
   route inside its file (`r.put('/x/:date', allow('daily'), validateBody(…), …)`), because a guard on
@@ -56,7 +66,9 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
 - `client/src/context/AuthContext.tsx`: `AuthProvider` (in `App.tsx`, outside the router) checks
   `/auth/me`, exchanges `?key=` first, and renders `pages/Login.tsx` while there is no session.
   `lib/api.ts` dispatches `AUTH_EXPIRED` on a 401 outside `/auth/*` → back to the PIN screen.
-- `useAuth()` returns `{ role, can, logout }`. Hide controls with `can('setup')` etc. — hiding is
+- `useAuth()` returns `{ role, can, ready, logout }`. `can` uses `settings.rolePermissions` from
+  `PermissionsContext` (filled by `StockProvider`); `ready` is false until the first `/data` load,
+  and `AppShell`/`HomeRedirect` don't redirect before it. Hide controls with `can('setup')` etc. — hiding is
   only convenience; the server guard is what enforces it. Where a role can't edit, show the value
   as plain text (item/group names) or a disabled field (the Stock figures without `daily`) and use
   `t.common.askAdmin` in empty states.

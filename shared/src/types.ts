@@ -1,3 +1,4 @@
+import type { RolePermissions } from './auth';
 /**
  * The whole dataset, as stored in data/db.json and returned by GET /api/data.
  * Dates are local-time 'YYYY-MM-DD' strings (see dates.ts), so string comparison sorts them.
@@ -202,6 +203,8 @@ export interface AppSettings {
   cleanGreenDays?: number;
   /** Days a general cleaning stays yellow (red after). Unset = DEFAULT_CLEAN_DAYS.yellow. */
   cleanYellowDays?: number;
+  /** What the housekeeper and reception may do. Unset = DEFAULT_ROLE_PERMISSIONS (never stored equal to it). */
+  rolePermissions?: RolePermissions;
 }
 
 export const DEFAULT_SALUTE_TEXT = 'Tubli!';

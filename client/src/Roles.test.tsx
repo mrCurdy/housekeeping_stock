@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockApp } from '@/test/fixtures';
+import { mockApp, stockFixture } from '@/test/fixtures';
 
 beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({
@@ -19,9 +19,9 @@ afterEach(() => {
 });
 
 /** Opens `path` as `role` and waits until the menu is drawn. */
-async function open(role: string, path: string) {
+async function open(role: string, path: string, data = stockFixture()) {
   window.history.replaceState(null, '', path);
-  mockApp(role);
+  mockApp(role, data);
   const { default: App } = await import('./App');
   render(<App />);
   await screen.findAllByRole('link', { name: 'Stock' });
@@ -63,6 +63,16 @@ describe('pages per role', () => {
 
   it('the admin types in the Stock page', async () => {
     await open('admin', '/stock');
+    expect(await screen.findByRole('spinbutton', { name: 'Total stock Towels' })).toBeEnabled();
+  });
+
+  it('the NAV follows the role permissions the admin set', async () => {
+    const data = stockFixture({
+      settings: { rolePermissions: { housekeeper: ['count'], reception: ['daily', 'cleaning'] } },
+    });
+    await open('reception', '/', data);
+    await waitFor(() => expect(nav()).toEqual(['Stock', 'Cleaning']));
+    await waitFor(() => expect(window.location.pathname).toBe('/stock'));
     expect(await screen.findByRole('spinbutton', { name: 'Total stock Towels' })).toBeEnabled();
   });
 });

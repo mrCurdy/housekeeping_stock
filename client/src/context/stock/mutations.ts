@@ -7,6 +7,7 @@ import {
   removeUnitIn,
   roomStatusList,
   applyTaskMove,
+  isDefaultRolePermissions,
   itemCheckKey,
   moveTaskTo,
   removeTaskGroupIn,
@@ -346,6 +347,9 @@ function settingsMutations({ edit, send }: Deps) {
         else if (patch.saluteText !== undefined) delete d.settings.saluteText;
         if (patch.cleanGreenDays !== undefined) d.settings.cleanGreenDays = patch.cleanGreenDays;
         if (patch.cleanYellowDays !== undefined) d.settings.cleanYellowDays = patch.cleanYellowDays;
+        const perms = patch.rolePermissions;
+        if (perms && !isDefaultRolePermissions(perms)) d.settings.rolePermissions = perms;
+        else if (perms) delete d.settings.rolePermissions;
       });
       void send(() => api.patch('/settings', patch));
     },

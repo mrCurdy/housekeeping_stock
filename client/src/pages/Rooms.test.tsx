@@ -498,8 +498,8 @@ describe('rooms page for a housekeeper', () => {
   it('a housekeeper opening /rooms is redirected, and has no Room statuses NAV entry', async () => {
     mockApp('housekeeper', rooms());
     await renderApp();
+    expect((await screen.findAllByRole('link', { name: 'Cleaning' })).length).toBeGreaterThan(0);
     await waitFor(() => expect(window.location.pathname).toBe('/counter'));
     expect(screen.queryByRole('link', { name: 'Room statuses' })).toBeNull();
-    expect(screen.getAllByRole('link', { name: 'Cleaning' }).length).toBeGreaterThan(0);
   });
 });

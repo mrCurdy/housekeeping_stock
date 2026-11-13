@@ -18,6 +18,7 @@ import {
 import { api, apiErrorMessage } from '@/lib/api';
 import { useSelectedDate } from './DateContext';
 import { useI18n } from './I18nContext';
+import { PermissionsContext } from './PermissionsContext';
 import { useToast } from './ToastContext';
 import {
   editData,
@@ -149,7 +150,17 @@ export function StockProvider({ children }: { children: ReactNode }) {
     [data, loading, loadError, minDate, reload, send, mutations],
   );
 
-  return <StockContext value={value}>{children}</StockContext>;
+  const rolePermissions = data.settings.rolePermissions;
+  const permissions = useMemo(
+    () => ({ rolePermissions, ready: !loading }),
+    [rolePermissions, loading],
+  );
+
+  return (
+    <StockContext value={value}>
+      <PermissionsContext value={permissions}>{children}</PermissionsContext>
+    </StockContext>
+  );
 }
 
 export function useStock() {

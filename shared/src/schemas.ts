@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDefaultRolePermissions, rolePermissionsSchema, STAFF_ROLES } from './auth';
 import { pruneTasks, taskGroupList } from './checklist';
 import { roomStatusList } from './rooms';
 import {
@@ -100,6 +101,8 @@ export const settingsPatchSchema = z
     saluteText: z.string().trim().max(SALUTE_TEXT_MAX).optional(),
     cleanGreenDays: days.optional(),
     cleanYellowDays: days.optional(),
+    /** The whole matrix for both staff roles (the defaults = reset). */
+    rolePermissions: rolePermissionsSchema.optional(),
   })
   .refine(
     (s) =>
@@ -239,6 +242,7 @@ export const backupSchema = z
         saluteText: z.string().max(SALUTE_TEXT_MAX).optional().catch(undefined),
         cleanGreenDays: days.optional().catch(undefined),
         cleanYellowDays: days.optional().catch(undefined),
+        rolePermissions: rolePermissionsSchema.optional().catch(undefined),
       })
       .catch({})
       .default({}),
@@ -365,6 +369,14 @@ export function normalizeStockData(raw: {
   if (green === undefined || yellow === undefined || green < yellow) {
     if (green !== undefined) out.settings.cleanGreenDays = green;
     if (yellow !== undefined) out.settings.cleanYellowDays = yellow;
+  }
+  const perms = raw.settings?.rolePermissions;
+  if (perms) {
+    const parsed = rolePermissionsSchema.safeParse(
+      Object.fromEntries(STAFF_ROLES.map((r) => [r, perms[r] ?? []])),
+    );
+    if (parsed.success && !isDefaultRolePermissions(parsed.data))
+      out.settings.rolePermissions = parsed.data;
   }
   normalizeRooms(raw, out);
   return out;

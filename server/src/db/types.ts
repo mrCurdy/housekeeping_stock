@@ -106,6 +106,8 @@ export interface StockCardRepo {
 }
 
 export interface SettingsRepo {
+  /** All settings (a missing one = its default). The auth guard reads it once per request. */
+  read(): Promise<AppSettings>;
   /** Changes the listed settings ('' resets one to its default); returns all of them. */
   update(patch: SettingsPatchInput): Promise<AppSettings>;
 }

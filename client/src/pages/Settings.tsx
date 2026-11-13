@@ -7,10 +7,11 @@ import { useI18n } from '@/context/I18nContext';
 import { DataCard } from './settings/DataCard';
 import { PinForm } from './settings/PinForm';
 import { QrCard } from './settings/QrCard';
+import { RolesCard } from './settings/RolesCard';
 import { RoomSetupCard } from './settings/RoomSetupCard';
 import { SaluteCard } from './settings/SaluteCard';
 
-/** /settings (admin only; `AppShell` redirects anyone else): the admin, housekeeper and reception PINs, the QR code for counting, Excel/Backup/Restore, the fireworks text, the room cards' master setup. */
+/** /settings (admin only; `AppShell` redirects anyone else): the admin, housekeeper and reception PINs, what those two roles may do, the QR code for counting, Excel/Backup/Restore, the fireworks text, the room cards' master setup. */
 export default function Settings() {
   const { can } = useAuth();
   const { t } = useI18n();
@@ -34,6 +35,7 @@ export default function Settings() {
             ))}
           </CardBody>
         </Card>
+        {can('pins') && <RolesCard />}
         {can('qr') && <QrCard />}
         <DataCard />
         {can('setup') && <SaluteCard />}
