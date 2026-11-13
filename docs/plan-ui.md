@@ -250,6 +250,12 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
   - Renaming in a language writes that language's override (or the base name when the entity has
     no other version yet — keep it simple, and note the rule chosen in `docs/structure.md`).
     Storage via a migration (`sqlite-db` skill); routes keep their existing `allow(perm)`.
+  - Seamless upgrade (from the user): today the DB has one plain name per entity, in mixed
+    languages, with no language tag. The migration keeps that column untouched as the base name
+    and only adds empty storage for the per-language versions: no guessing languages, no data
+    rewritten. It runs by itself when an existing `stock.db` starts. Old JSON backups (no
+    `names`) still restore. Tests: an old-schema DB and an old backup load with every name
+    unchanged, shown as the base name in et, en and ru.
   - Client: every place that shows or edits these names uses `displayName` with the current
     language; Excel uses the current UI language. Backup/restore carry all versions.
   - Tests: shared helper and normalize; server: renaming in en keeps et, backup/restore round
