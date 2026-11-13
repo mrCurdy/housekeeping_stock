@@ -227,6 +227,29 @@ Analysis of backups after the room pages (`docs/plan-roompages.md`, done):
     server (if changed): a past date is stored, a future date is refused (400).
   - Docs: `docs/structure.md` (Cleaning page).
 
+- [ ] **9. Names entered in several languages** (skills `sqlite-db`, `ui`, `i18n`)
+  - Request (from the user): user-entered names can have a version per UI language (et/en/ru).
+    Example: the admin, with the UI in Estonian, adds a stock item or room unit with an Estonian
+    name; every language shows that name. Switching the UI to English and renaming saves the
+    English version only; same for Russian.
+  - Applies to: stock item names, room units (room types and other user-entered room texts) and
+    their statuses, where those are names the user types (not built-in i18n texts). Does **not**
+    apply to the checklist, numbers or stock groups. If the scope of "room units" or "statuses"
+    is unclear from `docs/structure.md`, stop with a QUESTION.
+  - Model (`shared`): a localized name = the base name (what was first entered, current field
+    kept as is, so old data and backups still load) + optional per-language overrides, e.g.
+    `names?: Partial<Record<Lang, string>>`. A helper `displayName(entity, lang)` = the
+    override for `lang`, else the base name. `normalizeStockData` drops empty overrides and an
+    override equal to the base name.
+  - Renaming in a language writes that language's override (or the base name when the entity has
+    no other version yet — keep it simple, and note the rule chosen in `docs/structure.md`).
+    Storage via a migration (`sqlite-db` skill); routes keep their existing `allow(perm)`.
+  - Client: every place that shows or edits these names uses `displayName` with the current
+    language; Excel uses the current UI language. Backup/restore carry all versions.
+  - Tests: shared helper and normalize; server: renaming in en keeps et, backup/restore round
+    trip; client: switching language shows the right version and falls back to the base name.
+  - Docs: `docs/structure.md` (data model), the `sqlite-db` and `i18n` skills.
+
 ## Token rules for these sessions
 
 - Start from `docs/structure.md`, this plan and the step's skill. Don't explore.
