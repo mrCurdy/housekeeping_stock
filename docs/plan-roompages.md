@@ -134,6 +134,27 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     and no-match texts reuse `rooms.*` / `common.askAdmin`. Manual check with `npm run dev` not done
     (agent run): only the automated tests cover it.
 
+- [ ] **5. A newly created name already has the creating language** (skills `ui`, `i18n`)
+  - Request (from the user): creating a room unit group (or any name with per-language versions,
+    see `docs/plan-ui.md` steps 9 and 11) shows it in the admin's "untranslated" colour until it
+    is renamed. A new name should count as entered in the current UI language at once. Only
+    names loaded from an old DB (base name, no `names`) keep the colour until the admin saves
+    them in that language.
+  - Rule: a create stores the base name **and** `names[lang] = name` for the UI language it was
+    created in. The other languages fall back to the base name and stay marked, as today.
+    `normalizeStockData` and `cleanNames` must keep that override (step 11 already keeps one
+    equal to the base name).
+  - Applies to every create with localized names: stock items, room types, room units, room
+    statuses, room unit groups. Each create request sends `lang`, like renames do (server: the
+    create routes accept an optional `lang`, validated by the shared zod schema; without it only
+    the base name is set, so old clients and restores behave as before). The client's optimistic
+    create sets the same override, so the colour never flashes.
+  - Old data, migrations and backups are unchanged: no new migration.
+  - Tests: shared: a create with `lang` has `names[lang]`, so it isn't marked in that language
+    and is marked in the other two; server: each create route stores the `lang` override; client:
+    the admin adds a unit group in et and it shows without the colour in et and with it in en.
+  - Docs: `docs/structure.md` (names rule), the `i18n` and `ui` skills.
+
 ## Token rules for these sessions
 
 - Start from `docs/structure.md`, this plan and the step's skill. Don't explore.
