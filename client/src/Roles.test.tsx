@@ -18,13 +18,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Opens `path` as `role` and waits until the menu is drawn. */
+/** Opens `path` as `role` and waits until the menu is drawn (the brand link is always there). */
 async function open(role: string, path: string, data = stockFixture()) {
   window.history.replaceState(null, '', path);
   mockApp(role, data);
   const { default: App } = await import('./App');
   render(<App />);
-  await screen.findAllByRole('link', { name: 'Stock' });
+  await screen.findAllByRole('link', { name: 'Fomka' });
 }
 
 const PAGES = ['Stock', 'Inventory count', 'Checklist', 'Room statuses', 'Cleaning', 'Settings'];
@@ -34,8 +34,8 @@ const nav = () => PAGES.filter((name) => screen.queryAllByRole('link', { name })
 describe('pages per role', () => {
   it.each([
     ['admin', PAGES, '/stock'],
-    ['housekeeper', ['Stock', 'Inventory count', 'Cleaning'], '/counter'],
-    ['reception', ['Stock', 'Checklist'], '/checklist'],
+    ['housekeeper', ['Inventory count', 'Cleaning'], '/counter'],
+    ['reception', ['Checklist'], '/checklist'],
   ])('%s sees only its pages and starts on its home page', async (role, pages, home) => {
     await open(role, '/');
     expect(nav()).toEqual(pages);
@@ -49,16 +49,20 @@ describe('pages per role', () => {
     ['reception', '/counter', '/checklist'],
     ['reception', '/counter/l1', '/checklist'],
     ['reception', '/cleaning', '/checklist'],
+    ['housekeeper', '/stock', '/counter'],
+    ['reception', '/stock', '/checklist'],
   ])('%s opening %s is sent to %s', async (role, path, home) => {
     await open(role, path);
     await waitFor(() => expect(window.location.pathname).toBe(home));
   });
 
-  it('every role may open the Stock page; only the admin may type in it', async () => {
-    await open('reception', '/stock');
-    expect(window.location.pathname).toBe('/stock');
-    expect(await screen.findByRole('spinbutton', { name: 'Total stock Towels' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Clear manual value' })).toBeNull();
+  it('a role left no page sees a notice instead of a redirect loop', async () => {
+    const data = stockFixture({
+      settings: { rolePermissions: { housekeeper: [], reception: [] } },
+    });
+    await open('reception', '/stock', data);
+    expect(await screen.findByText('No pages are open to you yet.')).toBeInTheDocument();
+    expect(nav()).toEqual([]);
   });
 
   it('the admin types in the Stock page', async () => {

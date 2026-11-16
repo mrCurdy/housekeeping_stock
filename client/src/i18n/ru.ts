@@ -51,6 +51,7 @@ export const ru: Messages = {
     settings: 'Настройки',
     rooms: 'Статусы номеров',
     cleaning: 'Уборка',
+    noPages: 'Вам пока не открыта ни одна страница.',
   },
 
   theme: {

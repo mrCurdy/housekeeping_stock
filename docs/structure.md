@@ -131,7 +131,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
 - `components/`:
   - `Salute.tsx`: the fireworks (a canvas over the page): a rocket rises from the bottom centre, bursts in the middle and its sparks spell a word. Skipped with reduced motion.
 - `components/layout/`:
-  - `AppShell.tsx`: sidebar, `NAV` (each entry's `perm`; `home` = where a role lands), header, counter-mode redirect, and the role redirect: a NAV page the role can't open (and `/`, via `HomeRedirect`) goes to its home page (admin `/stock`, housekeeper `/counter`, reception `/checklist`). Pages don't redirect themselves.
+  - `AppShell.tsx`: sidebar, `NAV` (each entry's `perm`; a role lands on the first entry it has, or sees `NoPages` if none), header, counter-mode redirect, and the role redirect: a NAV page the role can't open (and `/`, via `HomeRedirect`) goes to its home page (admin `/stock`, housekeeper `/counter`, reception `/checklist`). Pages don't redirect themselves.
   - `PageHeader`, `DateSwitcher`, `LanguageSwitcher`, `ThemeToggle`, `PaletteToggle`.
 - `pages/`:
   - `Stock.tsx` + `stock/`:
@@ -167,7 +167,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `excel.ts` (the Excel export) and `qr.ts` (the QR code as SVG, PNG download and print): always dynamically imported, since ExcelJS alone is a ~1 MB chunk.
 - `i18n/`: `en.ts` (the source; its shape is the `Messages` type), `et.ts`, `ru.ts`, `plural.ts`, `i18n.test.tsx`.
 - `styles/index.css`: tokens (incl. the 10 room status colours `--status-<colour>` and `-soft`, light and dark), iOS 16px fields, and the `val-*` / `no-spin` utilities.
-- `test/`: `setup.ts` (cleanup), `fetch.ts` (`mockApi`, `unauthorized`) and `fixtures.ts` (`stockFixture(extra)`: a small `StockData` with two items, three tasks and yesterday's note; `mockApp(role, data, route)`: `/auth/me` + `/data` + your routes; `today`, `yesterday`). Other tests sit next to their code: `src/CounterMode.test.tsx`, `src/Roles.test.tsx` (NAV, home page and redirects per role, the read-only Stock page; `vi.resetModules()` gives each test a fresh router), `context/AuthContext.test.tsx`, `context/StockContext.test.tsx`, `pages/*.test.tsx`.
+- `test/`: `setup.ts` (cleanup), `fetch.ts` (`mockApi`, `unauthorized`) and `fixtures.ts` (`stockFixture(extra)`: a small `StockData` with two items, three tasks and yesterday's note; `mockApp(role, data, route)`: `/auth/me` + `/data` + your routes; `today`, `yesterday`). Other tests sit next to their code: `src/CounterMode.test.tsx`, `src/Roles.test.tsx` (NAV, home page and redirects per role, `/stock` only with `daily`, the notice for a role with no page; `vi.resetModules()` gives each test a fresh router), `context/AuthContext.test.tsx`, `context/StockContext.test.tsx`, `pages/*.test.tsx`.
 
 ### Root
 
@@ -249,7 +249,7 @@ cleanings:    { [roomId]: [{ date, by }] }                     // newest first; 
 - **`/stock`:** three cards in the order in `stockCards`, then the legend. While Departures and Stock are next to each other they share a row on wide screens (1fr / 2fr, in their order); the Overview always takes a full row.
   - With `setup` permission (admin) each card header has a grip: drag it onto the card whose place it should take (the card follows the pointer and the target is outlined), or press ↑/↓ on it. The order is the same for everyone (`PUT /stock-cards/order`). Hidden cards (Departures without groups, Overview without items) keep their place in the saved order.
   - Departures per group (⚙ opens items-per-departure).
-  - Items with Consumption / Income / Total stock for the selected day. × clears a manual value. Without `daily` (housekeeper, reception) the departures and figures are shown in disabled fields, with no ×. Totals from room counts are blue, with a "2/3 rooms" caption.
+  - Items with Consumption / Income / Total stock for the selected day. × clears a manual value. The page needs `daily` (by default only the admin); the disabled fields with no × for a role without it remain as a fallback. Totals from room counts are blue, with a "2/3 rooms" caption.
   - The Overview (`OverviewCard`):
     - has one column per navigable day up to tomorrow (further only to the selected day or the last future day with an entry) and scrolls sideways with item names pinned, on a full-size scrollbar (`scrollbar-thick`);
     - centres the selected day;

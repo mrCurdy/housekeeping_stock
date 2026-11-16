@@ -73,9 +73,9 @@ limit on top of the matrix: the counts route answers 403 for another day, and th
   as plain text (item/group names) or a disabled field (the Stock figures without `daily`) and use
   `t.common.askAdmin` in empty states.
 - Pages per role: a `NAV` entry's `perm` hides it, and `AppShell` redirects a path under a NAV
-  entry the role can't open to its home page (`homePath`: the first entry whose `home ?? perm` it
-  has; `/stock` has `home: 'daily'`, so admin → /stock, housekeeper → /counter, reception →
-  /checklist). The index route is `HomeRedirect`. Pages don't redirect themselves. Test:
+  entry the role can't open to its home page (`homePath`: the first entry whose `perm` it
+  has; `/stock` needs `daily`, so admin → /stock, housekeeper → /counter, reception →
+  /checklist). A role left no page at all sees a "no pages" notice (`NoPages`) instead. The index route is `HomeRedirect`. Pages don't redirect themselves. Test:
   `client/src/Roles.test.tsx`.
   Hidden now: item add/rename/remove (`ItemsCard`), group controls and ⚙ (`DeparturesCard`),
   Manage rooms (`Counter`), task ✎ and "New task" (`TaskList`, `Checklist`), Restore (`pages/settings/DataCard`),

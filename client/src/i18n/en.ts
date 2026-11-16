@@ -56,6 +56,8 @@ export const en = {
     settings: 'Settings',
     rooms: 'Room statuses',
     cleaning: 'Cleaning',
+    /** A role the admin left no page */
+    noPages: 'No pages are open to you yet.',
   },
 
   theme: {

@@ -51,6 +51,7 @@ export const et: Messages = {
     settings: 'Seaded',
     rooms: 'Tubade olek',
     cleaning: 'Koristus',
+    noPages: 'Sulle pole veel ühtegi lehte avatud.',
   },
 
   theme: {
