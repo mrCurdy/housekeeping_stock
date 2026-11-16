@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import {
   cleanThresholds,
+  itemCreateSchema,
   itemPatchSchema,
   nameSchema,
   settingsPatchSchema,
   stockCardOrderSchema,
+  type ItemCreateInput,
   type ItemPatchInput,
   type NameInput,
   type SettingsPatchInput,
@@ -37,9 +39,9 @@ function namedRouter<T>(repo: NamedRepo<T>, what: string) {
 /** The things you set up once: stock items, room groups (departures) and counting rooms. */
 export function itemsRouter({ db }: AppContext) {
   const r = Router();
-  r.post('/', validateBody(nameSchema), async (req, res) => {
-    const { name } = req.body as NameInput;
-    res.status(201).json(await db.items.create(name));
+  r.post('/', validateBody(itemCreateSchema), async (req, res) => {
+    const { name, lang } = req.body as ItemCreateInput;
+    res.status(201).json(await db.items.create(name, lang));
   });
   r.patch('/:id', validateBody(itemPatchSchema), async (req, res) => {
     res.json(found(await db.items.update(param(req, 'id'), req.body as ItemPatchInput), 'Item'));

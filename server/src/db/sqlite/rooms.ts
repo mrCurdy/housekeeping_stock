@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  createdName,
   emptyStockData,
   removeStatusIn,
   renameIn,
@@ -19,7 +20,7 @@ import type {
   RoomUnitGroupRepo,
   RoomUnitRepo,
 } from '../types';
-import { type Ctx, createRows, namedRepo, type NamedTable } from './rows';
+import { type Ctx, createRows, namedRepo, namesJson, type NamedTable } from './rows';
 
 /** Room cards: number, type, note, the units' current statuses and the general cleanings. */
 export function createRooms(ctx: Ctx): RoomRepo {
@@ -153,13 +154,18 @@ export function createRoomUnits(ctx: Ctx): RoomUnitRepo {
   );
   return {
     ...named,
-    async create(name, group) {
+    async create(name, group, lang) {
       return write(() => {
-        const unit: RoomUnit = { id: randomUUID(), name, group: groupFor(group) };
+        const unit: RoomUnit = {
+          id: randomUUID(),
+          ...createdName(name, lang),
+          group: groupFor(group),
+        };
         run(
-          'INSERT INTO room_units (id, name, group_id, pos) VALUES (?, ?, ?, ?)',
+          'INSERT INTO room_units (id, name, names, group_id, pos) VALUES (?, ?, ?, ?, ?)',
           unit.id,
           name,
+          namesJson(unit.names),
           unit.group,
           nextPos('room_units'),
         );
@@ -216,9 +222,9 @@ export function createRoomStatuses(ctx: Ctx): RoomStatusRepo {
   const { run, write } = ctx;
   const { readRoomStatuses, writeRoomStatuses } = createRows(ctx);
   return {
-    async create({ name, color }) {
+    async create({ name, color, lang }) {
       return write(() => {
-        const status: RoomStatus = { id: randomUUID(), name, color };
+        const status: RoomStatus = { id: randomUUID(), ...createdName(name, lang), color };
         writeRoomStatuses([...readRoomStatuses(), status]);
         return status;
       });

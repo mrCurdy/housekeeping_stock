@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import {
   type AppSettings,
+  createdName,
   cleanRecord,
   type DayChecks,
   emptyStockData,
@@ -513,10 +514,26 @@ export const namedRepo = <
     return next as T;
   };
   return {
-    async create(name) {
+    async create(name, lang) {
       return write(() => {
-        const row = { id: randomUUID(), name };
-        run(`INSERT INTO ${table} (id, name, pos) VALUES (?, ?, ?)`, row.id, name, nextPos(table));
+        if (!LOCALIZED_TABLES.has(table)) {
+          const row = { id: randomUUID(), name };
+          run(
+            `INSERT INTO ${table} (id, name, pos) VALUES (?, ?, ?)`,
+            row.id,
+            name,
+            nextPos(table),
+          );
+          return row as T;
+        }
+        const row = { id: randomUUID(), ...createdName(name, lang) };
+        run(
+          `INSERT INTO ${table} (id, name, names, pos) VALUES (?, ?, ?, ?)`,
+          row.id,
+          name,
+          namesJson(row.names),
+          nextPos(table),
+        );
         return row as T;
       });
     },

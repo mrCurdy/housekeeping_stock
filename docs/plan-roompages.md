@@ -134,7 +134,7 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     and no-match texts reuse `rooms.*` / `common.askAdmin`. Manual check with `npm run dev` not done
     (agent run): only the automated tests cover it.
 
-- [ ] **5. A newly created name already has the creating language** (skills `ui`, `i18n`)
+- [x] **5. A newly created name already has the creating language** (skills `ui`, `i18n`)
   - Request (from the user): creating a room unit group (or any name with per-language versions,
     see `docs/plan-ui.md` steps 9 and 11) shows it in the admin's "untranslated" colour until it
     is renamed. A new name should count as entered in the current UI language at once. Only
@@ -154,6 +154,12 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     and is marked in the other two; server: each create route stores the `lang` override; client:
     the admin adds a unit group in et and it shows without the colour in et and with it in en.
   - Docs: `docs/structure.md` (names rule), the `i18n` and `ui` skills.
+  - Done. `createdName(name, lang?)` in `shared/src/names.ts`; new `itemCreateSchema` (`POST /items`
+    no longer uses `nameSchema`); `roomStatusCreateSchema` got `lang` (so the patch schema is just
+    its `.partial()`); `NamedRepo.create` / `RoomUnitRepo.create` take an optional `lang` (ignored
+    for the non-localized lists). Creates aren't optimistic (they wait for the new id): the client
+    adds `createdName` to the returned row before it is shown. Tests: `shared/src/names.test.ts`,
+    `server/tests/createNames.test.ts`, `UnitGroups.test.tsx` (its mock now keeps a created group).
 
 ## Token rules for these sessions
 

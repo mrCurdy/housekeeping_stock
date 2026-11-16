@@ -52,6 +52,15 @@ export function renameIn<T extends Localized>(entity: T, name: string, lang?: Na
   return { ...rest, name: base, ...(next && { names: next }) } as T;
 }
 
+/**
+ * A new entity's name: the base `name` and, with `lang` (the UI language it was created in), that
+ * language's version too, so it isn't marked untranslated there. Without `lang` only the base.
+ */
+export function createdName(name: string, lang?: NameLang): Localized {
+  const names = lang ? cleanNames({ [lang]: name }) : undefined;
+  return { name, ...(names && { names }) };
+}
+
 interface WithLocalizedLists {
   items: Localized[];
   roomTypes: Localized[];

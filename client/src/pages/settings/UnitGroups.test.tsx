@@ -1,10 +1,17 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { emptyStockData, type StockData } from '@app/shared';
+import {
+  createdName,
+  emptyStockData,
+  type NameLang,
+  type RoomUnitGroup,
+  type StockData,
+} from '@app/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/context/AuthContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
 import { DateProvider } from '@/context/DateContext';
+import { I18nProvider, useI18n } from '@/context/I18nContext';
 import { StockProvider } from '@/context/StockContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { mockApi } from '@/test/fetch';
@@ -33,33 +40,48 @@ const grouped: Partial<StockData> = {
   ],
 };
 
-function start(data: Partial<StockData> = {}) {
+function start(data: Partial<StockData> = {}, withI18n = false) {
+  // a created group is in later reloads, stored as the server does (`createdName`)
+  const added: RoomUnitGroup[] = [];
   const fetch = mockApi((method, path, body) => {
     if (path === '/auth/me') return { status: 200, body: { role: 'admin' } };
-    if (path === '/data') return { status: 200, body: { ...emptyStockData(), ...data } };
+    if (path === '/data') {
+      const roomUnitGroups = [...(data.roomUnitGroups ?? []), ...added];
+      return { status: 200, body: { ...emptyStockData(), ...data, roomUnitGroups } };
+    }
     if (path === '/auth/qr') return { status: 200, body: { active: false } };
     if (path === '/room-unit-groups' && method === 'POST') {
-      return { status: 201, body: { id: 'g-new', ...(body as object) } };
+      const { name, lang } = body as { name: string; lang?: NameLang };
+      added.push({ id: 'g-new', ...createdName(name, lang) });
+      return { status: 201, body: added.at(-1) };
     }
     if (path === '/room-units' && method === 'POST') {
       return { status: 201, body: { id: 'u-new', ...(body as object) } };
     }
     return { status: 204 };
   });
-  render(
+  const tree = (
     <ToastProvider>
       <ConfirmProvider>
         <AuthProvider>
           <DateProvider>
             <StockProvider>
               <Settings />
+              {withI18n && <ToEnglish />}
             </StockProvider>
           </DateProvider>
         </AuthProvider>
       </ConfirmProvider>
-    </ToastProvider>,
+    </ToastProvider>
   );
+  render(withI18n ? <I18nProvider>{tree}</I18nProvider> : tree);
   return fetch;
+}
+
+/** Switches the UI to English (the header's language menu isn't in this tree). */
+function ToEnglish() {
+  const { setLang } = useI18n();
+  return <button onClick={() => setLang('en')}>to-en</button>;
 }
 
 const sent = (fetch: ReturnType<typeof mockApi>, url: string, method: string) =>
@@ -79,12 +101,14 @@ describe('Settings: room unit groups', () => {
     expect(await screen.findByText('No groups yet. Add a group, then its units.')).toBeVisible();
     await userEvent.type(screen.getByPlaceholderText('New group (bathroom, furniture…)'), 'Bath');
     await userEvent.click(screen.getByRole('button', { name: 'Add group' }));
-    expect(sent(fetch, '/api/room-unit-groups', 'POST')).toEqual([{ name: 'Bath' }]);
+    expect(sent(fetch, '/api/room-unit-groups', 'POST')).toEqual([{ name: 'Bath', lang: 'en' }]);
 
     const box = await screen.findByRole('group', { name: 'Bath' });
     await userEvent.type(within(box).getByPlaceholderText('New unit (bed, shower…)'), 'Faucet');
     await userEvent.click(within(box).getByRole('button', { name: 'Add unit' }));
-    expect(sent(fetch, '/api/room-units', 'POST')).toEqual([{ name: 'Faucet', group: 'g-new' }]);
+    expect(sent(fetch, '/api/room-units', 'POST')).toEqual([
+      { name: 'Faucet', group: 'g-new', lang: 'en' },
+    ]);
     await waitFor(() => expect(unitsIn('Bath')).toEqual(['Faucet']));
   });
 
@@ -167,5 +191,29 @@ describe('Settings: room unit groups', () => {
     start({ roomUnits: [{ id: 'bed', name: 'Bed' }] });
     expect(await screen.findByRole('group', { name: 'Units' })).toBeVisible();
     expect(unitsIn('Units')).toEqual(['Bed']);
+  });
+
+  it('a group added in et is not marked in et, and is in en', async () => {
+    localStorage.setItem('lang', 'et');
+    try {
+      const fetch = start({}, true);
+      await userEvent.type(
+        await screen.findByPlaceholderText('Uus grupp (vannituba, mööbel…)'),
+        'Vannituba',
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Lisa grupp' }));
+      expect(sent(fetch, '/api/room-unit-groups', 'POST')).toEqual([
+        { name: 'Vannituba', lang: 'et' },
+      ]);
+      const field = await screen.findByDisplayValue('Vannituba');
+      expect(field).not.toHaveClass('text-untranslated');
+
+      await userEvent.click(screen.getByRole('button', { name: 'to-en' }));
+      await waitFor(() =>
+        expect(screen.getByDisplayValue('Vannituba')).toHaveClass('text-untranslated'),
+      );
+    } finally {
+      localStorage.removeItem('lang');
+    }
   });
 });

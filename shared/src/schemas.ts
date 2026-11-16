@@ -30,9 +30,16 @@ const qty = z.number().finite().min(0);
 const nullableQty = qty.nullable();
 
 export const nameSchema = z.object({ name });
-/** The UI language a rename is for: only that language's version changes. Missing = the base name. */
+/**
+ * The UI language of a rename (only that language's version changes) or a create (the new name is
+ * also stored as that version). Missing = the base name only.
+ */
 const lang = z.enum(NAME_LANGS).optional();
 export type NameInput = z.infer<typeof nameSchema>;
+
+/** A new stock item; `lang`: the UI language it is created in (also stored as that version). */
+export const itemCreateSchema = z.object({ name, lang });
+export type ItemCreateInput = z.infer<typeof itemCreateSchema>;
 
 export const itemPatchSchema = z.object({
   name: name.optional(),
@@ -155,17 +162,21 @@ export const roomPatchSchema = z.object({
 });
 export type RoomPatchInput = z.infer<typeof roomPatchSchema>;
 
-/** Room types and units: create and rename use `nameSchema`-like bodies with a non-blank name. */
+/**
+ * Room types, units and unit groups: create and rename use `nameSchema`-like bodies with a
+ * non-blank name. `lang`: the UI language (a create also stores that version, `createdName`).
+ */
 export const roomNameSchema = z.object({ name: name.pipe(z.string().min(1)), lang });
 export type RoomNameInput = z.infer<typeof roomNameSchema>;
 
 export const roomStatusCreateSchema = z.object({
   name: name.pipe(z.string().min(1)),
   color: z.enum(ROOM_COLORS),
+  lang,
 });
 export type RoomStatusCreateInput = z.infer<typeof roomStatusCreateSchema>;
 
-export const roomStatusPatchSchema = roomStatusCreateSchema.partial().extend({ lang });
+export const roomStatusPatchSchema = roomStatusCreateSchema.partial();
 export type RoomStatusPatchInput = z.infer<typeof roomStatusPatchSchema>;
 
 /** A new room unit, in `group` (missing or unknown: the first group, see `roomUnits.create`). */

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { cleanNames, displayName, hasOwnName, localizeNames, renameIn } from './names';
-import { backupSchema, itemPatchSchema, normalizeStockData, roomNameSchema } from './schemas';
+import { cleanNames, createdName, displayName, hasOwnName, localizeNames, renameIn } from './names';
+import {
+  backupSchema,
+  itemCreateSchema,
+  itemPatchSchema,
+  normalizeStockData,
+  roomNameSchema,
+  roomStatusCreateSchema,
+  roomUnitCreateSchema,
+} from './schemas';
 import { emptyStockData, type Item, type RoomStatus, type RoomUnitGroup } from './types';
 
 describe('localized names', () => {
@@ -112,5 +120,37 @@ describe('localized names', () => {
     expect(et.roomUnitGroups[0]!.nameMissing).toBeUndefined();
     expect(et.roomUnitGroups[1]!.nameMissing).toBe(true);
     expect(et.roomStatuses.map((s) => s.nameMissing)).toEqual([undefined, true]);
+  });
+});
+
+describe('a new name has the language it was created in', () => {
+  it('createdName: the base name plus, with a language, that version', () => {
+    expect(createdName('Vannituba', 'et')).toEqual({
+      name: 'Vannituba',
+      names: { et: 'Vannituba' },
+    });
+    expect(createdName('Vannituba')).toEqual({ name: 'Vannituba' });
+  });
+
+  it('is not marked in that language, and is in the other two', () => {
+    const item = { id: 'i', ...createdName('Rätik', 'et'), multipliers: {} } as Item;
+    const data = { ...emptyStockData(), items: [item] };
+    expect(localizeNames(data, 'et').items[0]!.nameMissing).toBeUndefined();
+    expect(localizeNames(data, 'en').items[0]).toMatchObject({ name: 'Rätik', nameMissing: true });
+    expect(localizeNames(data, 'ru').items[0]!.nameMissing).toBe(true);
+    // normalizeStockData keeps the override equal to the base name
+    expect(normalizeStockData(data).items[0]!.names).toEqual({ et: 'Rätik' });
+  });
+
+  it('create bodies take an optional language', () => {
+    expect(itemCreateSchema.parse({ name: 'Towel', lang: 'en' })).toEqual({
+      name: 'Towel',
+      lang: 'en',
+    });
+    expect(itemCreateSchema.safeParse({ name: 'Towel', lang: 'de' }).success).toBe(false);
+    expect(roomStatusCreateSchema.parse({ name: 'OK', color: 'green', lang: 'ru' }).lang).toBe(
+      'ru',
+    );
+    expect(roomUnitCreateSchema.parse({ name: 'Bed', group: 'g', lang: 'et' }).lang).toBe('et');
   });
 });

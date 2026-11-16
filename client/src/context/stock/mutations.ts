@@ -2,6 +2,7 @@ import {
   editTask,
   formatDate,
   removeRoomIn,
+  createdName,
   renameIn,
   removeStatusIn,
   removeTypeIn,
@@ -171,7 +172,8 @@ function renameRow(row: Localized, name: string, lang?: NameLang) {
 
 /**
  * add / rename / remove for a list of named rows kept under `key`. `localized`: the rows have
- * per-language names, so a rename sends and changes only the current language's version.
+ * per-language names, so a rename sends and changes only the current language's version, and a
+ * new row is also stored in the current language (`createdName`, so it isn't marked untranslated).
  */
 function named<T extends { id: string; name: string }>(
   { edit, send, lang }: Deps,
@@ -183,7 +185,9 @@ function named<T extends { id: string; name: string }>(
 ) {
   return {
     add: async (name: string) => {
-      const row = await send(() => api.post<T>(path, { name }));
+      const body = localized && lang ? { name, lang } : { name };
+      const sent = await send(() => api.post<T>(path, body));
+      const row = sent && (localized ? { ...sent, ...createdName(sent.name, lang) } : sent);
       if (row) edit(key, (d) => void list(d).push(row));
       return row;
     },
@@ -228,6 +232,7 @@ function setupMutations(deps: Deps) {
     ['items', 'records'],
     (d) => d.items,
     (d, id) => void delete d.records[id],
+    true,
   );
   const groups = named<Group>(
     deps,
@@ -493,7 +498,9 @@ function roomSetupMutations(deps: Deps) {
     };
   return {
     addRoomUnit: async (name: string, group: string) => {
-      const unit = await send(() => api.post<RoomUnit>('/room-units', { name, group }));
+      const body = lang ? { name, group, lang } : { name, group };
+      const sent = await send(() => api.post<RoomUnit>('/room-units', body));
+      const unit = sent && { ...sent, ...createdName(sent.name, lang) };
       if (unit) {
         edit(['roomUnits', 'roomUnitGroups'], (d) => {
           d.roomUnitGroups = unitGroupList(d);
@@ -531,7 +538,9 @@ function roomSetupMutations(deps: Deps) {
     moveRoomType: move('roomTypes', '/room-types', () => data.roomTypes),
     // While none is stored the defaults show; any status change stores the whole list
     addRoomStatus: async (name: string, color: RoomColor) => {
-      const status = await send(() => api.post<RoomStatus>('/room-statuses', { name, color }));
+      const body = lang ? { name, color, lang } : { name, color };
+      const sent = await send(() => api.post<RoomStatus>('/room-statuses', body));
+      const status = sent && { ...sent, ...createdName(sent.name, lang) };
       if (status) {
         edit('roomStatuses', (d) => void (d.roomStatuses = [...roomStatusList(d), status]));
       }
