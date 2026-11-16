@@ -15,7 +15,8 @@ import {
 
 /**
  * Demo data for a small hotel: 7 linen/amenity items, 3 departure groups, 3 checklist groups of
- * a day shift's admin tasks, and 29 room cards (2 on level 0, 9 on levels 1–3).
+ * a day shift's admin tasks, 29 room cards (2 on level 0, 9 on levels 1–3) and 12 room units in
+ * 3 groups (Bathroom, Electronics, Furniture).
  * Deterministic for a given `today` (a seeded random), so tests can check exact figures.
  */
 
@@ -100,20 +101,40 @@ const ROOM_TYPES = [
   { id: 'rt-family', name: 'Family' },
 ];
 
+/**
+ * Room unit groups and units, in display order. English is the base name; et/ru versions show
+ * the per-language names. "Door lock" and "Safe" have no translations on purpose, so the admin
+ * sees the "missing in this language" colour in the demo.
+ */
 const ROOM_UNIT_GROUPS = [
-  { id: 'ug-bath', name: 'Bathroom' },
-  { id: 'ug-tech', name: 'Electronics' },
-  { id: 'ug-room', name: 'Room' },
+  { id: 'ug-bath', name: 'Bathroom', names: { et: 'Vannituba', ru: 'Ванная' } },
+  { id: 'ug-tech', name: 'Electronics', names: { et: 'Elektroonika', ru: 'Электроника' } },
+  { id: 'ug-furn', name: 'Furniture', names: { et: 'Mööbel', ru: 'Мебель' } },
 ];
 
 const ROOM_UNITS = [
-  { id: 'u-faucet', name: 'Faucet', group: 'ug-bath' },
-  { id: 'u-shower', name: 'Shower', group: 'ug-bath' },
-  { id: 'u-bulbs', name: 'Light bulbs', group: 'ug-tech' },
-  { id: 'u-tv', name: 'TV', group: 'ug-tech' },
-  { id: 'u-ac', name: 'Air conditioning', group: 'ug-tech' },
-  { id: 'u-minibar', name: 'Minibar', group: 'ug-room' },
-  { id: 'u-lock', name: 'Door lock', group: 'ug-room' },
+  { id: 'u-faucet', name: 'Faucet', group: 'ug-bath', names: { et: 'Kraan', ru: 'Смеситель' } },
+  { id: 'u-shower', name: 'Shower', group: 'ug-bath', names: { et: 'Dušš', ru: 'Душ' } },
+  { id: 'u-toilet', name: 'Toilet', group: 'ug-bath', names: { et: 'WC-pott', ru: 'Унитаз' } },
+  { id: 'u-bulbs', name: 'Light bulbs', group: 'ug-tech', names: { et: 'Pirnid', ru: 'Лампочки' } },
+  { id: 'u-tv', name: 'TV', group: 'ug-tech', names: { et: 'Teler', ru: 'Телевизор' } },
+  {
+    id: 'u-ac',
+    name: 'Air conditioning',
+    group: 'ug-tech',
+    names: { et: 'Konditsioneer', ru: 'Кондиционер' },
+  },
+  { id: 'u-minibar', name: 'Minibar', group: 'ug-tech', names: { et: 'Minibaar', ru: 'Минибар' } },
+  { id: 'u-lock', name: 'Door lock', group: 'ug-tech' },
+  { id: 'u-bed', name: 'Bed', group: 'ug-furn', names: { et: 'Voodi', ru: 'Кровать' } },
+  { id: 'u-wardrobe', name: 'Wardrobe', group: 'ug-furn', names: { et: 'Riidekapp', ru: 'Шкаф' } },
+  {
+    id: 'u-desk',
+    name: 'Desk and chair',
+    group: 'ug-furn',
+    names: { et: 'Laud ja tool', ru: 'Стол и стул' },
+  },
+  { id: 'u-safe', name: 'Safe', group: 'ug-furn' },
 ];
 
 const CLEANERS = ['Anna', 'Marina', 'Kati', 'Olga', 'Liis'];
@@ -130,6 +151,9 @@ const ISSUES: [string, string, string, string][] = [
   ['302', 'u-minibar', 'attention', 'Noisy, still cools'],
   ['306', 'u-faucet', 'attention', 'Hot water slow to come'],
   ['309', 'u-ac', 'fix', 'Does not cool'],
+  ['105', 'u-wardrobe', 'attention', 'Door hinge loose'],
+  ['203', 'u-bed', 'fix', 'Slat broken'],
+  ['308', 'u-toilet', 'ordered', 'Flush valve ordered'],
 ];
 
 const ROOM_NOTES: Record<string, string> = {

@@ -42,6 +42,14 @@ describe('seedData', () => {
     const units = new Set(data.roomUnits.map((u) => u.id));
     const types = new Set(data.roomTypes.map((t) => t.id));
     for (const r of data.rooms) if (r.type) expect(types.has(r.type)).toBe(true);
+    const unitGroups = new Set(data.roomUnitGroups.map((g) => g.id));
+    expect(data.roomUnitGroups.map((g) => g.name)).toEqual([
+      'Bathroom',
+      'Electronics',
+      'Furniture',
+    ]);
+    for (const g of unitGroups) expect(data.roomUnits.some((u) => u.group === g)).toBe(true);
+    for (const u of data.roomUnits) expect(unitGroups.has(u.group ?? '')).toBe(true);
     for (const byUnit of Object.values(data.unitStatus))
       for (const [unit, s] of Object.entries(byUnit)) {
         expect(units.has(unit)).toBe(true);

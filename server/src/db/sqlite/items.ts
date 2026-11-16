@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { type Group, type Item, type Location, renameIn } from '@app/shared';
+import { createdName, type Group, type Item, type Location, renameIn } from '@app/shared';
 import type { ItemRepo, NamedRepo } from '../types';
 import { type Ctx, createRows, namedRepo, namesJson } from './rows';
 
@@ -7,10 +7,16 @@ export function createItems(ctx: Ctx): ItemRepo {
   const { run, write } = ctx;
   const { nextPos, hasItem, readItem } = createRows(ctx);
   return {
-    async create(name) {
+    async create(name, lang) {
       return write(() => {
-        const item: Item = { id: randomUUID(), name, multipliers: {} };
-        run('INSERT INTO items (id, name, pos) VALUES (?, ?, ?)', item.id, name, nextPos('items'));
+        const item: Item = { id: randomUUID(), ...createdName(name, lang), multipliers: {} };
+        run(
+          'INSERT INTO items (id, name, names, pos) VALUES (?, ?, ?, ?)',
+          item.id,
+          name,
+          namesJson(item.names),
+          nextPos('items'),
+        );
         return item;
       });
     },

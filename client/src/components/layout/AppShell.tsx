@@ -5,6 +5,7 @@ import {
   ClipboardList,
   DoorOpen,
   ListChecks,
+  Lock,
   LogOut,
   Menu,
   Package,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
-import { Button } from '@/components/ui';
+import { Button, EmptyState } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import type { Messages } from '@/i18n/en';
@@ -28,14 +29,11 @@ interface NavItem {
   icon: ComponentType<{ className?: string }>;
   /** Shown only to roles with this permission; the others are redirected to their home page. */
   perm?: Permission;
-  /** A role lands here (on `/`, or from a page it can't open) only with this permission (default: `perm`). */
-  home?: Permission;
 }
 
 /** Add pages to the sidebar here (and their route in App.tsx). */
 const NAV: NavItem[] = [
-  // open to every role, but read-only without `daily`, so only the admin lands here
-  { to: '/stock', label: (t) => t.nav.stock, icon: Package, home: 'daily' },
+  { to: '/stock', label: (t) => t.nav.stock, icon: Package, perm: 'daily' },
   { to: '/counter', label: (t) => t.nav.counter, icon: ClipboardList, perm: 'count' },
   { to: '/checklist', label: (t) => t.nav.checklist, icon: ListChecks, perm: 'checklist' },
   { to: '/rooms', label: (t) => t.nav.rooms, icon: DoorOpen, perm: 'setup' },
@@ -45,19 +43,25 @@ const NAV: NavItem[] = [
 
 type Can = (perm: Permission) => boolean;
 
-/** The page a role starts on: the first NAV entry it may land on (admin /stock, housekeeper /counter, reception /checklist). */
-const homePath = (can: Can) =>
-  NAV.find((n) => {
-    const perm = n.home ?? n.perm;
-    return !perm || can(perm);
-  })?.to ?? '/stock';
+/**
+ * The page a role starts on: the first NAV entry it may land on (admin /stock, housekeeper /counter,
+ * reception /checklist). Undefined when the admin has left the role no page at all.
+ */
+const homePath = (can: Can) => NAV.find((n) => !n.perm || can(n.perm))?.to;
+
+/** Shown instead of a page when the role may open none. */
+function NoPages() {
+  const { t } = useI18n();
+  return <EmptyState icon={<Lock />} title={t.nav.noPages} description={t.common.askAdmin} />;
+}
 
 /** The index route: sends `/` to the role's home page. */
 export function HomeRedirect() {
   const { can, ready } = useAuth();
   // The role permissions come with the data: until then the home page isn't known
   if (!ready) return null;
-  return <Navigate to={homePath(can)} replace />;
+  const home = homePath(can);
+  return home ? <Navigate to={home} replace /> : <NoPages />;
 }
 
 export function AppShell() {
@@ -70,7 +74,9 @@ export function AppShell() {
   if (counterOnly && !pathname.startsWith('/counter')) return <Navigate to="/counter" replace />;
   // A page this role can't use → its home page (once the role permissions have loaded)
   const page = NAV.find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`));
-  if (ready && page?.perm && !can(page.perm)) return <Navigate to={homePath(can)} replace />;
+  const blocked = ready && !!page?.perm && !can(page.perm);
+  const home = homePath(can);
+  if (blocked && home) return <Navigate to={home} replace />;
 
   const sidebar = (
     <nav className="flex flex-col gap-1 p-3">
@@ -100,7 +106,7 @@ export function AppShell() {
       {/* Desktop sidebar */}
       {!counterOnly && (
         <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface md:flex">
-          <Brand />
+          <Brand home={home} />
           {sidebar}
         </aside>
       )}
@@ -114,7 +120,7 @@ export function AppShell() {
           />
           <aside className="absolute inset-y-0 left-0 w-64 animate-slide-up border-r border-border bg-surface">
             <div className="flex items-center justify-between pr-2">
-              <Brand />
+              <Brand home={home} />
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -159,7 +165,7 @@ export function AppShell() {
         </header>
         <main className="flex-1 overflow-y-auto scrollbar-thin">
           <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            <Outlet />
+            {blocked ? <NoPages /> : <Outlet />}
           </div>
         </main>
       </div>
@@ -167,11 +173,11 @@ export function AppShell() {
   );
 }
 
-function Brand() {
+function Brand({ home = '/' }: { home?: string }) {
   const { t } = useI18n();
   return (
     <NavLink
-      to="/stock"
+      to={home}
       className="flex h-14 items-center gap-2 border-b border-border px-5 font-semibold"
     >
       <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-fg">

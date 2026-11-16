@@ -66,7 +66,11 @@ describe('names without a version in the UI language', () => {
   });
 
   it('a housekeeper never sees the mark', async () => {
-    mockApp('housekeeper', data());
+    // the Stock page needs `daily`, so the housekeeper is given it here
+    mockApp('housekeeper', {
+      ...data(),
+      settings: { rolePermissions: { housekeeper: ['daily'], reception: [] } },
+    });
     const { default: App } = await import('../App');
     render(<App />);
 

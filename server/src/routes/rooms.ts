@@ -52,7 +52,8 @@ function orderedRoutes<T>(
 ) {
   if (!custom.create) {
     r.post(path, setup, validateBody(roomNameSchema), async (req, res) => {
-      res.status(201).json(await repo.create((req.body as RoomNameInput).name));
+      const { name, lang } = req.body as RoomNameInput;
+      res.status(201).json(await repo.create(name, lang));
     });
   }
   if (!custom.reorder) {
@@ -111,8 +112,8 @@ export function roomsRouter({ db }: AppContext) {
   // ---- Master setup ----
   // A unit is created in a group, and a reorder may move it into another group
   r.post('/room-units', setup, validateBody(roomUnitCreateSchema), async (req, res) => {
-    const { name, group } = req.body as RoomUnitCreateInput;
-    res.status(201).json(await db.roomUnits.create(name, group));
+    const { name, group, lang } = req.body as RoomUnitCreateInput;
+    res.status(201).json(await db.roomUnits.create(name, group, lang));
   });
   r.put('/room-units/order', setup, validateBody(unitOrderSchema), async (req, res) => {
     const { ids, move } = req.body as UnitOrderInput;

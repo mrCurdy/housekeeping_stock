@@ -39,7 +39,8 @@ import type {
  */
 
 export interface NamedRepo<T> {
-  create(name: string): Promise<T>;
+  /** `lang`: the UI language it is created in, stored as that version too (localized lists only). */
+  create(name: string, lang?: NameLang): Promise<T>;
   /** `lang`: rename only that language's version (lists with localized names); missing = the base name. */
   rename(id: string, name: string, lang?: NameLang): Promise<T | null>;
   delete(id: string): Promise<boolean>;
@@ -138,7 +139,7 @@ export interface OrderedRepo<T> extends NamedRepo<T> {
 /** Room units: each is in a group (`RoomUnitGroupRepo`). */
 export interface RoomUnitRepo extends OrderedRepo<RoomUnit> {
   /** In `group`; a missing or unknown one = the first group (created as the default when none). */
-  create(name: string, group?: string): Promise<RoomUnit>;
+  create(name: string, group?: string, lang?: NameLang): Promise<RoomUnit>;
   /**
    * Puts the listed units first, in that order, and `move.id` into group `move.group` (ignored
    * when either is unknown). Returns the whole list.

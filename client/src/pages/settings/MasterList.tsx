@@ -1,9 +1,11 @@
-import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
+import { GripVertical, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AddForm, Button, CommitInput } from '@/components/ui';
 import { useI18n } from '@/context/I18nContext';
 import { cn } from '@/lib/cn';
+import { useDragSort } from '@/lib/useDragSort';
 import { useUntranslated } from '@/lib/untranslated';
+import { GRIP } from './UnitGroups';
 
 /** One row of a master list: its id and the name shown (and edited) in the field. */
 export interface MasterRow {
@@ -14,7 +16,8 @@ export interface MasterRow {
 }
 
 /**
- * An ordered list of names (room statuses, room types): rename in place, ↑/↓ to reorder,
+ * An ordered list of names (room statuses, room types): rename in place, drag the grip to reorder
+ * (`useDragSort`: mouse, touch, or ↑/↓ on the focused grip),
  * remove, and the "new name" line under it. `extra` adds controls before a row's name (the
  * status colour); `removeDisabled` gives the reason a row can't be removed.
  */
@@ -48,6 +51,7 @@ export function MasterList({
   const { t } = useI18n();
   const tx = t.settings.rooms;
   const untranslated = useUntranslated();
+  const sort = useDragSort(rows.length, onMove);
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <div>
@@ -59,7 +63,26 @@ export function MasterList({
       ) : (
         <ul className="flex flex-col gap-2">
           {rows.map((row, i) => (
-            <li key={row.id} className="flex items-center gap-1">
+            <li
+              key={row.id}
+              ref={sort.rowRef(i)}
+              style={sort.rowStyle(i)}
+              className={cn(
+                'flex items-center gap-1 rounded-md bg-surface',
+                sort.dragging === i && 'shadow-lg ring-1 ring-border',
+              )}
+            >
+              {rows.length > 1 && (
+                <button
+                  type="button"
+                  title={tx.dragUnit}
+                  aria-label={tx.dragUnitNamed(row.name)}
+                  className={cn(GRIP, sort.dragging === i && 'cursor-grabbing')}
+                  {...sort.handleProps(i)}
+                >
+                  <GripVertical className="h-4 w-4" />
+                </button>
+              )}
               {extra?.(row)}
               <CommitInput
                 value={row.name}
@@ -75,26 +98,6 @@ export function MasterList({
                   }
                 }}
               />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={i === 0}
-                onClick={() => onMove(i, i - 1)}
-                aria-label={tx.moveUp(row.name)}
-                title={tx.moveUp(row.name)}
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={i === rows.length - 1}
-                onClick={() => onMove(i, i + 1)}
-                aria-label={tx.moveDown(row.name)}
-                title={tx.moveDown(row.name)}
-              >
-                <ArrowDown className="h-4 w-4" />
-              </Button>
               <Button
                 variant="ghost"
                 size="icon-sm"

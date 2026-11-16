@@ -1,9 +1,14 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatDate } from '@app/shared';
+import { formatDate, type AppSettings } from '@app/shared';
 import { mockApi } from '@/test/fetch';
-import { mockApp, today } from '@/test/fixtures';
+import { mockApp, stockFixture, today } from '@/test/fixtures';
+
+/** The Stock page needs `daily`: the staff roles get it here, to see what they still can't do. */
+const staffDaily: AppSettings = {
+  rolePermissions: { housekeeper: ['daily'], reception: ['daily'] },
+};
 
 const start = (role = 'admin', extra: object = {}) =>
   mockApi((_method, path) => {
@@ -100,7 +105,7 @@ describe('stock page', () => {
   });
 
   it('shows no grips to a housekeeper', async () => {
-    start('housekeeper');
+    start('housekeeper', { settings: staffDaily });
     const { default: App } = await import('../App');
     render(<App />);
     await screen.findByRole('heading', { name: 'Overview' });
@@ -177,7 +182,7 @@ describe('stock items', () => {
   });
 
   it('a housekeeper sees no rename or remove controls', async () => {
-    mockApp('housekeeper');
+    mockApp('housekeeper', stockFixture({ settings: staffDaily }));
     const { default: App } = await import('../App');
     render(<App />);
 
@@ -203,7 +208,7 @@ describe('header', () => {
   it.each(['admin', 'housekeeper', 'reception'])(
     'has no Excel, Backup or Restore for the %s',
     async (role) => {
-      mockApp(role);
+      mockApp(role, stockFixture({ settings: staffDaily }));
       const { default: App } = await import('../App');
       render(<App />);
       expect(

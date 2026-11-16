@@ -51,6 +51,7 @@ export const et: Messages = {
     settings: 'Seaded',
     rooms: 'Tubade olek',
     cleaning: 'Koristus',
+    noPages: 'Sulle pole veel ühtegi lehte avatud.',
   },
 
   theme: {
@@ -459,8 +460,6 @@ export const et: Messages = {
       noRooms: 'Tube veel pole.',
       addRoomDescription: 'Selle kaart ilmub lehele Toad.',
       addRoomNote: 'Märkus',
-      moveUp: (name) => `Liiguta ${name} üles`,
-      moveDown: (name) => `Liiguta ${name} alla`,
       removeNamed: (name) => `Eemalda ${name}`,
       none: 'Siin pole veel midagi.',
       cleaning: 'Suurpuhastus',
