@@ -478,8 +478,6 @@ export const ru: Messages = {
       noRooms: 'Номеров пока нет.',
       addRoomDescription: 'Его карточка появится на странице «Номера».',
       addRoomNote: 'Заметка',
-      moveUp: (name) => `Переместить ${name} выше`,
-      moveDown: (name) => `Переместить ${name} ниже`,
       removeNamed: (name) => `Удалить ${name}`,
       none: 'Здесь пока пусто.',
       cleaning: 'Генеральная уборка',

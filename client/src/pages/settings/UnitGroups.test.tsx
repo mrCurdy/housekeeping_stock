@@ -217,3 +217,48 @@ describe('Settings: room unit groups', () => {
     }
   });
 });
+
+describe('Settings: groups stand out, statuses and room types drag', () => {
+  const lists: Partial<StockData> = {
+    ...grouped,
+    roomStatuses: [
+      { id: 'ok', name: 'OK', color: 'green' },
+      { id: 'fix', name: 'Needs fixing', color: 'red' },
+    ],
+    roomTypes: [
+      { id: 'single', name: 'Single' },
+      { id: 'double', name: 'Double' },
+    ],
+  };
+
+  it("a group's name sits in a header band, apart from its units", async () => {
+    start(grouped);
+    const field = await screen.findByRole('textbox', { name: 'Group name Bathroom' });
+    const header = field.closest('[data-group-header]');
+    expect(header).not.toBeNull();
+    expect(
+      within(group('Bathroom'))
+        .getByRole('textbox', { name: 'Unit name Faucet' })
+        .closest('[data-group-header]'),
+    ).toBeNull();
+  });
+
+  it('statuses and room types have grips, not up/down buttons', async () => {
+    start(lists);
+    await screen.findByRole('button', { name: 'Move Needs fixing' });
+    expect(await screen.findByRole('button', { name: 'Move Double' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Move .* (up|down)$/ })).toBeNull();
+  });
+
+  it('the arrow keys on a grip reorder statuses and room types', async () => {
+    const fetch = start(lists);
+    await screen.findByRole('button', { name: 'Move Double' }); // the loaded lists, not the defaults
+    screen.getByRole('button', { name: 'Move Needs fixing' }).focus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(sent(fetch, '/api/room-statuses/order', 'PUT')).toEqual([{ ids: ['fix', 'ok'] }]);
+
+    screen.getByRole('button', { name: 'Move Single' }).focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(sent(fetch, '/api/room-types/order', 'PUT')).toEqual([{ ids: ['double', 'single'] }]);
+  });
+});

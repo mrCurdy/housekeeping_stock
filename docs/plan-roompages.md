@@ -161,7 +161,7 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     adds `createdName` to the returned row before it is shown. Tests: `shared/src/names.test.ts`,
     `server/tests/createNames.test.ts`, `UnitGroups.test.tsx` (its mock now keeps a created group).
 
-- [ ] **6. Settings: unit groups stand out; statuses and room types drag** (skills `ui`, `i18n`)
+- [x] **6. Settings: unit groups stand out; statuses and room types drag** (skills `ui`, `i18n`)
   - Request (from the user): in Settings, the room unit groups (`settings/UnitGroups.tsx`) look the
     same as the units inside them. Make a group clearly a group: e.g. its name as a small heading
     (semibold, `text-fg-muted` uppercase or larger), a separator line or a tinted header band
@@ -178,6 +178,12 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     test id); dragging (or keyboard on the grip) reorders statuses and room types and sends the
     reorder request; no up/down buttons left.
   - Docs: `docs/structure.md` (Settings), the `ui` skill if a pattern changes.
+  - Done. A group's top row is a header band (`data-group-header`, `bg-surface-2`, bottom border,
+    semibold name); its units are indented behind a `border-l-2`. `MasterList` uses `useDragSort`
+    with a grip (only with 2+ rows); the grip reuses `dragUnit` / `dragUnitNamed` ("Move {name}"),
+    so no new texts; `settings.rooms.moveUp/moveDown` are removed (the checklist's stay). `GRIP` is
+    exported from `UnitGroups.tsx`. No server change: the reorder routes already existed. Tests in
+    `UnitGroups.test.tsx`. Manual check in the browser not done.
 
 ## Token rules for these sessions
 

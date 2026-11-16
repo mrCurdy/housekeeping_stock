@@ -10,7 +10,7 @@ import { useDragSort } from '@/lib/useDragSort';
 import { useUntranslated } from '@/lib/untranslated';
 import { useListsDragSort } from '@/lib/useListsDragSort';
 
-const GRIP =
+export const GRIP =
   'focus-ring flex h-9 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-fg-muted select-none hover:text-fg';
 
 /**
@@ -95,7 +95,10 @@ export function UnitGroups() {
                 (unitSort.target?.list === gi || groupSort.over === gi) && 'ring-2 ring-primary',
               )}
             >
-              <div className="flex items-center gap-1">
+              <div
+                data-group-header
+                className="-mx-3 -mt-3 flex items-center gap-1 rounded-t-md border-b border-border bg-surface-2 px-3 py-2"
+              >
                 {groups.length > 1 && (
                   <button
                     type="button"
@@ -113,7 +116,7 @@ export function UnitGroups() {
                   maxLength={100}
                   aria-label={tx.groupName(name)}
                   title={untranslated(group).title}
-                  className={cn('min-w-0 flex-1 font-medium', untranslated(group).className)}
+                  className={cn('min-w-0 flex-1 font-semibold', untranslated(group).className)}
                   confirmUnchanged={group.nameMissing}
                   onCommit={(text) => {
                     if (text.trim() && (text.trim() !== group.name || group.nameMissing)) {
@@ -132,7 +135,7 @@ export function UnitGroups() {
                 </Button>
               </div>
               {units.length > 0 && (
-                <ul className="flex flex-col gap-1">
+                <ul className="ml-1 flex flex-col gap-1 border-l-2 border-border pl-2">
                   {units.map((unit, i) => {
                     const dragging =
                       unitSort.dragging?.list === gi && unitSort.dragging.index === i;

@@ -75,7 +75,7 @@ Outside the kit:
 - Numbers and names inside tables → `CommitInput`.
 - Text where an accidental change would hurt (task names) → plain `Input`s with an explicit Save button (`TaskEditor.tsx`).
 - Several fields that are checked together (PINs, the cleaning thresholds) → a `<form>` with `FormField`s (`pages/settings/PinForm.tsx`, `CleaningThresholds.tsx`).
-- An ordered list of names (rename / ↑↓ / remove / add) → `pages/settings/MasterList.tsx`.
+- An ordered list of names (rename / drag grip / remove / add) → `pages/settings/MasterList.tsx`. Every reorderable list drags by a grip (`GRIP` style from `settings/UnitGroups.tsx`); no ↑/↓ buttons.
 
 ## Styling
 

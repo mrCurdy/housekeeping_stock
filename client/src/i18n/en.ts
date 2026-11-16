@@ -462,8 +462,6 @@ export const en = {
       noRooms: 'No rooms yet.',
       addRoomDescription: 'Its card appears on the Rooms page.',
       addRoomNote: 'Note',
-      moveUp: (name: string) => `Move ${name} up`,
-      moveDown: (name: string) => `Move ${name} down`,
       removeNamed: (name: string) => `Remove ${name}`,
       none: 'Nothing here yet.',
       cleaning: 'General cleaning',
