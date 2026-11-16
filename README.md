@@ -1,6 +1,6 @@
 # Fomka
 
-A small tool for tracking daily housekeeping stock (linens, amenities, …) in a hotel. Consumption is partly derived from guest departures per room group, and stock can be counted per room on a phone. It is standalone (no integration with a hotel system) and protected by a 4-digit PIN: an **admin** PIN (everything: sets up items, groups, rooms, checklist tasks, PINs, QR code, Restore, and the daily stock figures), a **housekeeper** PIN (general cleanings and room counts) and a **reception** PIN (the checklist). Everyone can look at the Stock page. A QR code made by the admin opens today's room counting without a PIN.
+A small tool for tracking daily housekeeping stock (linens, amenities, …) in a hotel. Consumption is partly derived from guest departures per room group, and stock can be counted per room on a phone. It is standalone (no integration with a hotel system) and protected by a 4-digit PIN: an **admin** PIN (everything: sets up items, groups, rooms, checklist tasks, PINs, QR code, Restore, and the daily stock figures), a **housekeeper** PIN (general cleanings and room counts) and a **reception** PIN (the checklist). The Stock page needs the daily stock permission (by default only the admin); the admin can change what housekeeper and reception may do under **Settings → Roles**. A QR code made by the admin opens today's room counting without a PIN.
 
 | Layer   | Stack                                                                             |
 | ------- | --------------------------------------------------------------------------------- |

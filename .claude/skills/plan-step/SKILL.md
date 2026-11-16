@@ -24,7 +24,7 @@ One session = one step. Its context starts cold, so only load what that step nee
 6. **Record the step:**
    - tick its checkbox in the plan, and add a line under it for any decision that differs from
      the plan;
-   - update `docs/structure.md` where the step changes it (file map, data model, pages), and CLAUDE.md only for architecture or rules;
+   - update `docs/structure.md` (file map, routes) and `docs/behaviour.md` (data model, pages) where the step changes them, and CLAUDE.md only for architecture or rules;
    - update or create the skill the step names;
    - commit with a message that names the step (`Step 2: PIN auth on the server`).
 7. **Stop.** Report in 3–5 lines what was done, and anything left over for the next step. Don't

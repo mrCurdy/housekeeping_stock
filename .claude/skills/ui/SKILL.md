@@ -43,7 +43,7 @@ Data lives on the server. The client keeps one copy of it in `StockContext`, and
   - `loadError` → `<Alert tone="danger">` with a "try again" `Button variant="link"`;
   - `loading` → a centred `<Spinner />`;
   - then a `flex flex-col gap-6` stack of `Card`s.
-- For an admin-only page, start with `if (!can('<perm>')) return <Navigate to="/stock" replace />`. The server must guard the routes as well.
+- For a page only some roles may open, give its `NAV` entry a `perm`: `AppShell` hides it and redirects anyone without it to their home page. Pages don't redirect themselves. The server must guard the routes as well.
 - The selected day is `useSelectedDate().date`, a local `YYYY-MM-DD` string. Show it with `formatLongDate(date, locale)` (`@/lib/format`). Never use `toISOString()` for dates.
 
 ## UI kit (`import { … } from '@/components/ui'`)
@@ -127,4 +127,4 @@ plurals). Never read the et/ru files whole.
 - Read big files in parts: `stock/mutations.ts` (grep the method name), `en.ts` (grep the section).
 - Copy the nearest existing component and change it. Don't design from scratch.
 - Don't re-read files after editing them. Pipe test and build output through `| tail`.
-- If a change shifts the structure (a new file, page or rule), update `docs/structure.md` in the same commit.
+- If a change shifts the structure (a new file, page or rule), update `docs/structure.md` (and `docs/behaviour.md` for a page's behaviour) in the same commit.

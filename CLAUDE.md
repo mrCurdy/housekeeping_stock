@@ -35,7 +35,8 @@ If the app behaves unlike the code (e.g. the server ignores a new field), check 
 
 ## Where to look
 
-- **`docs/structure.md`** has the file map and a "Where to change X" table. It also holds the data model, the stock calculation, the per-page behaviour and the known weak spots. Read it instead of exploring the tree.
+- **`docs/structure.md`** has the "Where to change X" table, the file map and the API routes. Read it instead of exploring the tree.
+- **`docs/behaviour.md`** has the data model, the stock calculation, the per-page behaviour and the known weak spots. Read only the section a change touches.
 - Skills:
   - **`ui`**: any client work (pages, components, a new data change through `StockContext`, styling, phones, client tests).
   - **`i18n`**: any visible text.
@@ -73,4 +74,9 @@ A new feature goes through the layers in this order: types/zod in `shared/src/` 
 - Never hard-code UI text. Use `t` from `useI18n()` and add it in all three languages.
 - Use semantic colour tokens (`bg-surface`, `text-fg-muted`, `text-primary`…), never raw colours, so dark mode keeps working.
 - Each new route needs `allow(perm)` on the server. Hiding a control in the UI is not enough.
-- When a change adds a file, a page or a rule, update `docs/structure.md` (and the skill involved) in the same commit.
+- No new framework or library (ORM, state manager, i18n library, CSS-in-JS, sockets) without asking.
+- SQL only inside `server/src/db/`. No foreign keys (restored backups may point at removed rows); never edit an applied migration.
+- Errors only via `HttpError` / `found()`, never `res.status(4xx)` by hand. Repo sentinels `'duplicate'`, `'last'`, `'notEmpty'` → 409.
+- Pages never redirect by role: a `NAV` entry's `perm` and `AppShell` do it.
+- `lib/excel.ts` and `lib/qr.ts` only through a dynamic `import()` (ExcelJS is ~1 MB).
+- When a change adds a file, a page or a rule, update `docs/structure.md` (files) or `docs/behaviour.md` (rules, page behaviour), and the skill involved, in the same commit.
