@@ -161,6 +161,24 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     adds `createdName` to the returned row before it is shown. Tests: `shared/src/names.test.ts`,
     `server/tests/createNames.test.ts`, `UnitGroups.test.tsx` (its mock now keeps a created group).
 
+- [ ] **6. Settings: unit groups stand out; statuses and room types drag** (skills `ui`, `i18n`)
+  - Request (from the user): in Settings, the room unit groups (`settings/UnitGroups.tsx`) look the
+    same as the units inside them. Make a group clearly a group: e.g. its name as a small heading
+    (semibold, `text-fg-muted` uppercase or larger), a separator line or a tinted header band
+    (`bg-surface-muted` or similar semantic token), and the units indented under it. Readable on
+    phones and in dark mode; semantic tokens only.
+  - The room statuses and room types lists in Settings (`settings/MasterList.tsx` or wherever they
+    render) still reorder with up/down arrow buttons. Remove the arrows and make them draggable
+    like the other lists (the grip handle and `useDragSort` used by the unit groups and the
+    checklist: mouse, touch and arrow keys on the grip). The order is still saved through the
+    existing reorder mutations/routes (keep their `allow(perm)`); add a route only if one is
+    missing.
+  - Text: drag-handle aria-labels if new ones are needed; remove texts only the arrows used; en/et/ru.
+  - Tests: client: a group renders as a heading distinct from its units (role/heading or a
+    test id); dragging (or keyboard on the grip) reorders statuses and room types and sends the
+    reorder request; no up/down buttons left.
+  - Docs: `docs/structure.md` (Settings), the `ui` skill if a pattern changes.
+
 ## Token rules for these sessions
 
 - Start from `docs/structure.md`, this plan and the step's skill. Don't explore.
