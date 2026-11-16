@@ -63,7 +63,7 @@ change needs. Line counts are approximate and flag the files worth reading in pa
   - `data.ts`: `GET /data`, `POST /restore`.
   - `system.ts`: health.
 - `seed/` (`npm run seed`, not part of the build):
-  - `data.ts`: `seedData(today)`, deterministic demo data: 7 linen/amenity items, 3 departure groups (Single/Double/Family) with items per departure, 2 count locations, 14 days of departures, laundry income every 2 days and a starting count; 3 checklist groups of a day shift's admin tasks (Before 11, Service, End of shift) with ticks and a note; 29 room cards (001–002, 101–109, 201–209, 301–309) with types, 7 units in 3 groups (Bathroom, Electronics, Room), the default statuses + "Part ordered", a few issues, notes and cleanings (some overdue, two never).
+  - `data.ts`: `seedData(today)`, deterministic demo data: 7 linen/amenity items, 3 departure groups (Single/Double/Family) with items per departure, 2 count locations, 14 days of departures, laundry income every 2 days and a starting count; 3 checklist groups of a day shift's admin tasks (Before 11, Service, End of shift) with ticks and a note; 29 room cards (001–002, 101–109, 201–209, 301–309) with types, 12 units in 3 groups (Bathroom, Electronics, Furniture; et/ru names on all but "Door lock" and "Safe", to show the untranslated colour), the default statuses + "Part ordered", a few issues, notes and cleanings (some overdue, two never).
   - `index.ts`: `seed(db, { force, today, backupDir })` refuses a database with data unless `force`, which first saves the old data as `backups/pre-seed-<time>.json` (restorable with Restore). PINs and sessions are kept.
 - `lib/`:
   - `errors.ts`: `HttpError.*`.
