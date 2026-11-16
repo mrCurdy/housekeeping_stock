@@ -179,7 +179,7 @@ No storage change: rooms, unit statuses and cleanings stay as they are (`shared/
     reorder request; no up/down buttons left.
   - Docs: `docs/structure.md` (Settings), the `ui` skill if a pattern changes.
   - Done. A group's top row is a header band (`data-group-header`, `bg-surface-2`, bottom border,
-    semibold name); its units are indented behind a `border-l-2`. `MasterList` uses `useDragSort`
+    semibold name); the units have no extra indent or line (removed at the user's request). `MasterList` uses `useDragSort`
     with a grip (only with 2+ rows); the grip reuses `dragUnit` / `dragUnitNamed` ("Move {name}"),
     so no new texts; `settings.rooms.moveUp/moveDown` are removed (the checklist's stay). `GRIP` is
     exported from `UnitGroups.tsx`. No server change: the reorder routes already existed. Tests in

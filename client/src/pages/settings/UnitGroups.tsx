@@ -135,7 +135,7 @@ export function UnitGroups() {
                 </Button>
               </div>
               {units.length > 0 && (
-                <ul className="ml-1 flex flex-col gap-1 border-l-2 border-border pl-2">
+                <ul className="flex flex-col gap-1">
                   {units.map((unit, i) => {
                     const dragging =
                       unitSort.dragging?.list === gi && unitSort.dragging.index === i;
