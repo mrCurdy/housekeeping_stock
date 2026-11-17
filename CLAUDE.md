@@ -79,4 +79,4 @@ A new feature goes through the layers in this order: types/zod in `shared/src/` 
 - Errors only via `HttpError` / `found()`, never `res.status(4xx)` by hand. Repo sentinels `'duplicate'`, `'last'`, `'notEmpty'` → 409.
 - Pages never redirect by role: a `NAV` entry's `perm` and `AppShell` do it.
 - `lib/excel.ts` and `lib/qr.ts` only through a dynamic `import()` (ExcelJS is ~1 MB).
-- When a change adds a file, a page or a rule, update `docs/structure.md` (files) or `docs/behaviour.md` (rules, page behaviour), and the skill involved, in the same commit.
+- When a change adds a file, a page or a rule, update `docs/structure.md` (files) or `docs/behaviour.md` (rules, page behaviour), and the skill involved (page files: the `ui` skill's "Page files"), in the same commit.
